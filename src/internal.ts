@@ -1,5 +1,5 @@
 import { NetworkError } from "./errors";
-import type { FetchLike, UrlSafetyOptions } from "./types";
+import type { FetchControls, FetchLike, UrlSafetyOptions } from "./types";
 
 export function get_fetch(fetcher?: FetchLike): FetchLike {
   const selected = fetcher ?? globalThis.fetch;
@@ -17,6 +17,74 @@ export function merge_headers(headers?: HeadersInit): Headers {
     merged.set("accept", "application/json");
   }
   return merged;
+}
+
+export function request_init(
+  headers: HeadersInit | undefined,
+  options: FetchControls,
+): { init: RequestInit; cleanup: () => void } {
+  const init: RequestInit = {
+    headers: merge_headers(headers),
+  };
+  const cleanup_callbacks: Array<() => void> = [];
+
+  if (options.timeout_ms !== undefined) {
+    if (!Number.isSafeInteger(options.timeout_ms) || options.timeout_ms <= 0) {
+      throw new NetworkError("timeout_ms must be a positive safe integer");
+    }
+
+    const controller = new AbortController();
+    init.signal = controller.signal;
+    const timeout = setTimeout(() => controller.abort(), options.timeout_ms);
+    cleanup_callbacks.push(() => clearTimeout(timeout));
+
+    if (options.signal) {
+      if (options.signal.aborted) {
+        controller.abort();
+      } else {
+        const abort = () => controller.abort();
+        options.signal.addEventListener("abort", abort, { once: true });
+        cleanup_callbacks.push(() => options.signal?.removeEventListener("abort", abort));
+      }
+    }
+  } else if (options.signal) {
+    init.signal = options.signal;
+  }
+
+  return {
+    init,
+    cleanup: () => {
+      for (const cleanup of cleanup_callbacks) {
+        cleanup();
+      }
+    },
+  };
+}
+
+export function assert_redirect_policy(
+  request_url: URL | string,
+  response: Response,
+  options: FetchControls,
+): void {
+  const policy = options.redirect_policy ?? "follow";
+  if (policy === "follow" || !response.redirected || !response.url) {
+    return;
+  }
+
+  if (policy === "error") {
+    throw new NetworkError("Redirected responses are disabled by redirect_policy");
+  }
+
+  const original = new URL(String(request_url));
+  const final = new URL(response.url);
+
+  if (policy === "same-origin" && final.origin !== original.origin) {
+    throw new NetworkError("Redirected response changed origin");
+  }
+
+  if (policy === "no-downgrade" && original.protocol === "https:" && final.protocol === "http:") {
+    throw new NetworkError("Redirected response downgraded from https to http");
+  }
 }
 
 export function parse_json_object(raw: unknown, label: string): Record<string, unknown> {

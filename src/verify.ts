@@ -1,10 +1,11 @@
 import { NetworkError, VerifyError } from "./errors";
 import {
+  assert_redirect_policy,
   get_fetch,
-  merge_headers,
   read_boolean,
   read_json_response,
   read_string,
+  request_init,
   unknown_to_record,
 } from "./internal";
 import type { PaymentInstruction, VerifyPaymentOptions, VerifyResult } from "./types";
@@ -40,14 +41,17 @@ export async function verify_payment(
 
   const fetcher = get_fetch(options.fetch);
   let response: Response;
+  const { init, cleanup } = request_init(options.headers, options);
 
   try {
-    response = await fetcher(parsed_url, {
-      headers: merge_headers(options.headers),
-    });
+    response = await fetcher(parsed_url, init);
   } catch (cause) {
     throw new NetworkError(`Failed to verify payment: ${parsed_url.toString()}`, { cause });
+  } finally {
+    cleanup();
   }
+
+  assert_redirect_policy(parsed_url, response, options);
 
   if (!response.ok) {
     throw new NetworkError(`Failed to verify payment: ${response.status} ${response.statusText}`);

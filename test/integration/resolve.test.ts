@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { InvalidLnurlError, InvalidPayRequestError, encode_lnurl, resolve } from "../../src";
+import {
+  InvalidLnurlError,
+  InvalidPayRequestError,
+  NetworkError,
+  encode_lnurl,
+  resolve,
+} from "../../src";
 
 function json_response(body: unknown, init?: ResponseInit): Response {
   return new Response(JSON.stringify(body), {
@@ -7,6 +13,13 @@ function json_response(body: unknown, init?: ResponseInit): Response {
     headers: { "content-type": "application/json" },
     ...init,
   });
+}
+
+function redirected_response(body: unknown, url: string): Response {
+  const response = json_response(body);
+  Object.defineProperty(response, "redirected", { value: true });
+  Object.defineProperty(response, "url", { value: url });
+  return response;
 }
 
 const pay_request_response = {
@@ -94,5 +107,43 @@ describe("resolve", () => {
       "https://abcdefghijklmnop.onion/.well-known/lnurlp/alice",
       "https://abcdefghijklmnop.onion/.well-known/lnurlp/alice",
     ]);
+  });
+
+  test("passes AbortSignal to fetch", async () => {
+    const controller = new AbortController();
+    const fetcher = async (_input: RequestInfo | URL, init?: RequestInit) => {
+      expect(init?.signal).toBe(controller.signal);
+      return json_response(pay_request_response);
+    };
+
+    await expect(
+      resolve("alice@example.com", { fetch: fetcher, signal: controller.signal }),
+    ).resolves.toMatchObject({
+      callback: "https://example.com/callback",
+    });
+  });
+
+  test("aborts resolve requests after timeout_ms", async () => {
+    const fetcher = async (_input: RequestInfo | URL, init?: RequestInit) => {
+      return new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => reject(new Error("aborted")), {
+          once: true,
+        });
+      });
+    };
+
+    await expect(resolve("alice@example.com", { fetch: fetcher, timeout_ms: 1 })).rejects.toThrow(
+      NetworkError,
+    );
+  });
+
+  test("enforces redirect policy", async () => {
+    await expect(
+      resolve("https://example.com/lnurlp/alice", {
+        redirect_policy: "same-origin",
+        fetch: async () =>
+          redirected_response(pay_request_response, "https://pay.example.net/lnurlp/alice"),
+      }),
+    ).rejects.toThrow(NetworkError);
   });
 });

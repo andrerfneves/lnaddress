@@ -5,11 +5,18 @@ export type UrlSafetyOptions = {
 };
 
 export type Bolt11Network = "bitcoin" | "testnet" | "regtest" | "signet";
+export type RedirectPolicy = "follow" | "error" | "same-origin" | "no-downgrade";
+
+export type FetchControls = {
+  signal?: AbortSignal;
+  timeout_ms?: number;
+  redirect_policy?: RedirectPolicy;
+};
 
 export type ResolveOptions = UrlSafetyOptions & {
   fetch?: FetchLike;
   headers?: HeadersInit;
-};
+} & FetchControls;
 
 export type RequestPaymentOptions = UrlSafetyOptions & {
   amount_msat: number | bigint;
@@ -21,12 +28,12 @@ export type RequestPaymentOptions = UrlSafetyOptions & {
   expected_network?: Bolt11Network;
   validate_expiry?: boolean;
   now?: Date | number | (() => Date | number);
-};
+} & FetchControls;
 
 export type VerifyPaymentOptions = UrlSafetyOptions & {
   fetch?: FetchLike;
   headers?: HeadersInit;
-};
+} & FetchControls;
 
 export type LightningAddress = {
   username: string;

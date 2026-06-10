@@ -4,7 +4,13 @@ import {
   InvalidPayRequestError,
   NetworkError,
 } from "./errors";
-import { assert_http_url, get_fetch, merge_headers, read_json_response } from "./internal";
+import {
+  assert_http_url,
+  assert_redirect_policy,
+  get_fetch,
+  read_json_response,
+  request_init,
+} from "./internal";
 import { parse_lightning_address } from "./lightning-address";
 import { decode_lnurl } from "./lnurl";
 import { parse_pay_request_response } from "./payrequest";
@@ -122,14 +128,17 @@ export async function resolve(input: string, options: ResolveOptions = {}): Prom
   const { url, address } = input_to_url(input, options);
   const fetcher = get_fetch(options.fetch);
   let response: Response;
+  const { init, cleanup } = request_init(options.headers, options);
 
   try {
-    response = await fetcher(url, {
-      headers: merge_headers(options.headers),
-    });
+    response = await fetcher(url, init);
   } catch (cause) {
     throw new NetworkError(`Failed to resolve LNURL-pay endpoint: ${url}`, { cause });
+  } finally {
+    cleanup();
   }
+
+  assert_redirect_policy(url, response, options);
 
   if (!response.ok) {
     throw new NetworkError(

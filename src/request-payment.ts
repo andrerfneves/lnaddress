@@ -10,11 +10,12 @@ import {
 import {
   amount_to_msat_string,
   assert_http_url,
+  assert_redirect_policy,
   get_fetch,
-  merge_headers,
   read_json_response,
   read_string,
   read_unknown,
+  request_init,
   to_msat_bigint,
   unknown_to_record,
 } from "./internal";
@@ -243,16 +244,19 @@ export async function request_payment(
   const callback_url = build_callback_url(pay_request, options);
   const fetcher = get_fetch(options.fetch);
   let response: Response;
+  const { init, cleanup } = request_init(options.headers, options);
 
   try {
-    response = await fetcher(callback_url, {
-      headers: merge_headers(options.headers),
-    });
+    response = await fetcher(callback_url, init);
   } catch (cause) {
     throw new NetworkError(`Failed to request payment instruction: ${callback_url.toString()}`, {
       cause,
     });
+  } finally {
+    cleanup();
   }
+
+  assert_redirect_policy(callback_url, response, options);
 
   if (!response.ok) {
     throw new NetworkError(

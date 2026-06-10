@@ -1,0 +1,62 @@
+{
+  "name": "lnaddress",
+  "version": "0.1.0",
+  "description": "Lightning Address-first TypeScript client for LNURL-pay.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": ["dist", "README.md", "LICENSE", "CHANGELOG.md"],
+  "sideEffects": false,
+  "keywords": ["lightning", "bitcoin", "lnurl", "lnurl-pay", "lightning-address", "bolt11"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sevenlabsxyz/lnaddress.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sevenlabsxyz/lnaddress/issues"
+  },
+  "homepage": "https://github.com/sevenlabsxyz/lnaddress#readme",
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "dev": "tsup src/index.ts --format esm,cjs --dts --watch",
+    "test": "bun test",
+    "test:unit": "bun test test/unit",
+    "test:integration": "bun test test/integration",
+    "test:e2e": "bun test test/e2e",
+    "test:types": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "check": "bun run typecheck && bun run lint && bun run test",
+    "prepack": "bun run check && bun run build",
+    "pack:local": "bun pm pack",
+    "release:dry": "npm publish --dry-run",
+    "release": "npm publish --access public"
+  },
+  "dependencies": {
+    "zod": "^3.25.67"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/bun": "^1.2.16",
+    "tsup": "^8.5.0",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

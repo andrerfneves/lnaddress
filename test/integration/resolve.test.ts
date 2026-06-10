@@ -80,6 +80,13 @@ describe("resolve", () => {
     );
   });
 
+  test("rejects onion Lightning Address and lnurlp URI inputs by default", async () => {
+    await expect(resolve("alice@abcdefghijklmnop.onion")).rejects.toThrow(InvalidLnurlError);
+    await expect(resolve("lnurlp://abcdefghijklmnop.onion/alice")).rejects.toThrow(
+      InvalidLnurlError,
+    );
+  });
+
   test("allows onion URL inputs when explicitly enabled", async () => {
     const fetcher = async () => json_response(pay_request_response);
 

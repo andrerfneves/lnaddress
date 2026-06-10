@@ -4,7 +4,7 @@ import {
   InvalidPayRequestError,
   NetworkError,
 } from "./errors";
-import { get_fetch, merge_headers, read_json_response } from "./internal";
+import { assert_http_url, get_fetch, merge_headers, read_json_response } from "./internal";
 import { parse_lightning_address } from "./lightning-address";
 import { decode_lnurl } from "./lnurl";
 import { parse_pay_request_response } from "./payrequest";
@@ -14,6 +14,14 @@ function lightning_address_to_url(lightning_address: LightningAddress): string {
   return `https://${lightning_address.domain}/.well-known/lnurlp/${encodeURIComponent(
     lightning_address.username,
   )}`;
+}
+
+function assert_resolve_url(url: string, options: ResolveOptions): string {
+  try {
+    return assert_http_url(url, options).toString();
+  } catch (cause) {
+    throw new InvalidLnurlError("Generated LNURL-pay endpoint URL is invalid", { cause });
+  }
 }
 
 function lnurlp_uri_to_url(input: string): { url: string; lightning_address?: LightningAddress } {
@@ -65,11 +73,11 @@ function input_to_url(
     const result = lnurlp_uri_to_url(value);
     return result.lightning_address
       ? {
-          url: result.url,
+          url: assert_resolve_url(result.url, options),
           address: result.lightning_address,
         }
       : {
-          url: result.url,
+          url: assert_resolve_url(result.url, options),
         };
   }
 
@@ -82,7 +90,7 @@ function input_to_url(
   if (!value.includes("://") && value.includes("@")) {
     const address = parse_lightning_address(value);
     return {
-      url: lightning_address_to_url(address),
+      url: assert_resolve_url(lightning_address_to_url(address), options),
       address,
     };
   }

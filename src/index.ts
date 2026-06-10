@@ -23,7 +23,7 @@ export {
   validate_mandatory_payer_data,
 } from "./request-payment";
 export { resolve } from "./resolve";
-export { parse_success_action } from "./success-action";
+export { decrypt_success_action, parse_success_action } from "./success-action";
 export { verify_payment } from "./verify";
 export type {
   Bolt11PaymentInstruction,

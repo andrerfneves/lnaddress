@@ -26,13 +26,20 @@ describe("Lightning Address parsing", () => {
     expect(parse_lightning_address("alice@bücher.example").domain).toBe("xn--bcher-kva.example");
   });
 
-  test.each(["alice", "@example.com", "alice@", "ali ce@example.com", "alice@example.com/path"])(
-    "rejects invalid address %s",
-    (address) => {
-      expect(() => parse_lightning_address(address)).toThrow(InvalidLightningAddressError);
-      expect(is_lightning_address(address)).toBe(false);
-    },
-  );
+  test.each([
+    "alice",
+    "@example.com",
+    "alice@",
+    "ali ce@example.com",
+    "alice@example.com/path",
+    "alice@example.com:443",
+    "alice@foo_bar.com",
+    "alice@-example.com",
+    "alice@example-.com",
+  ])("rejects invalid address %s", (address) => {
+    expect(() => parse_lightning_address(address)).toThrow(InvalidLightningAddressError);
+    expect(is_lightning_address(address)).toBe(false);
+  });
 
   test("detects valid addresses", () => {
     expect(is_lightning_address("bob@example.com")).toBe(true);

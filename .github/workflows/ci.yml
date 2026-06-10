@@ -25,3 +25,31 @@ jobs:
 
       - name: Publish dry run
         run: npm publish --dry-run
+
+  node-package:
+    name: Node package (${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18, 20, 22]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install
+        run: bun install
+
+      - name: Build
+        run: bun run build
+
+      - name: Node smoke test
+        run: node test/package/node-smoke.mjs

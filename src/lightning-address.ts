@@ -10,7 +10,8 @@ function is_valid_domain(hostname: string): boolean {
   }
 
   const labels = hostname.split(".");
-  return labels.every((label) => domain_label_pattern.test(label));
+  const tld = labels.at(-1);
+  return !!tld && /[a-z]/.test(tld) && labels.every((label) => domain_label_pattern.test(label));
 }
 
 export function parse_lightning_address(address: string): LightningAddress {

@@ -36,6 +36,13 @@ describe("Lightning Address parsing", () => {
     "alice@foo_bar.com",
     "alice@-example.com",
     "alice@example-.com",
+    "alice@example..com",
+    "alice@example.com.",
+    "alice@127.0.0.1",
+    "alice@[::1]",
+    "ålice@example.com",
+    `alice@${"a".repeat(64)}.com`,
+    `alice@${Array.from({ length: 130 }, () => "a").join(".")}.com`,
   ])("rejects invalid address %s", (address) => {
     expect(() => parse_lightning_address(address)).toThrow(InvalidLightningAddressError);
     expect(is_lightning_address(address)).toBe(false);

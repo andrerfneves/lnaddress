@@ -137,9 +137,10 @@ export function get_image(metadata: MetadataEntry[]): MetadataImage | undefined 
   }
 
   const [mime_type, data] = entry;
+  const data_uri_mime_type = mime_type.endsWith(";base64") ? mime_type : `${mime_type};base64`;
   return {
     mime_type,
     data,
-    data_uri: `data:${mime_type};base64,${data}`,
+    data_uri: `data:${data_uri_mime_type},${data}`,
   };
 }

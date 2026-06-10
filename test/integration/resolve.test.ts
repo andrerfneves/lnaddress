@@ -66,6 +66,10 @@ describe("resolve", () => {
     });
   });
 
+  test("wraps malformed lnurlp URI paths", async () => {
+    await expect(resolve("lnurlp://example.com/%E0%A4%A")).rejects.toThrow(InvalidLnurlError);
+  });
+
   test("rejects non-payRequest responses", async () => {
     const fetcher = async () => json_response({ tag: "withdrawRequest" });
 

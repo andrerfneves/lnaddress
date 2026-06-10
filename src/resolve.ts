@@ -45,7 +45,12 @@ function lnurlp_uri_to_url(input: string): { url: string; lightning_address?: Li
     };
   }
 
-  const pathname = decodeURIComponent(parsed.pathname.replace(/^\/+/, ""));
+  let pathname: string;
+  try {
+    pathname = decodeURIComponent(parsed.pathname.replace(/^\/+/, ""));
+  } catch (cause) {
+    throw new InvalidLnurlError("lnurlp URI path is invalid", { cause });
+  }
 
   if (!parsed.hostname || !pathname) {
     throw new InvalidLnurlError("lnurlp URI must include a host and username path");

@@ -13,6 +13,13 @@ export {
 } from "./errors";
 export { is_lightning_address, parse_lightning_address } from "./lightning-address";
 export { decode_lnurl, encode_lnurl } from "./lnurl";
+export {
+  assert_destination_payment,
+  assert_destination_rail,
+  destination_matches_rail,
+  is_destination_payment,
+} from "./destination";
+export type { DestinationRail } from "./destination";
 export { get_metadata_hash, parse_metadata } from "./metadata";
 export { parse_pay_request_response } from "./payrequest";
 export {

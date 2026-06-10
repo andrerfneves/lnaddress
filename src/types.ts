@@ -6,6 +6,7 @@ export type UrlSafetyOptions = {
 
 export type Bolt11Network = "bitcoin" | "testnet" | "regtest" | "signet";
 export type RedirectPolicy = "follow" | "error" | "same-origin" | "no-downgrade";
+export type ProviderPolicy = "off" | "same-origin" | "same-site";
 
 export type FetchControls = {
   signal?: AbortSignal;
@@ -28,6 +29,7 @@ export type RequestPaymentOptions = UrlSafetyOptions & {
   expected_network?: Bolt11Network;
   validate_expiry?: boolean;
   now?: Date | number | (() => Date | number);
+  provider_policy?: ProviderPolicy;
 } & FetchControls;
 
 export type VerifyPaymentOptions = UrlSafetyOptions & {

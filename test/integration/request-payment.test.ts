@@ -323,6 +323,71 @@ describe("request_payment", () => {
     });
   });
 
+  test("enforces optional provider identity policy", async () => {
+    const sourced_pay_request = {
+      ...pay_request,
+      source_url: "https://example.com/.well-known/lnurlp/alice",
+    };
+
+    await expect(
+      request_payment(
+        {
+          ...sourced_pay_request,
+          callback: "https://payments.example.net/callback",
+        },
+        {
+          amount_msat: 2000,
+          payer_data: { name: "Alice" },
+          provider_policy: "same-site",
+          fetch: async () =>
+            json_response({ pr: await test_bolt11_invoice(2000, pay_request.metadata_hash) }),
+        },
+      ),
+    ).rejects.toThrow(InvalidCallbackResponseError);
+
+    await expect(
+      request_payment(
+        {
+          ...sourced_pay_request,
+          callback: "https://pay.example.com/callback",
+        },
+        {
+          amount_msat: 2000,
+          payer_data: { name: "Alice" },
+          provider_policy: "same-site",
+          fetch: async () =>
+            json_response({ pr: await test_bolt11_invoice(2000, pay_request.metadata_hash) }),
+        },
+      ),
+    ).resolves.toMatchObject({ type: "bolt11" });
+
+    await expect(
+      request_payment(sourced_pay_request, {
+        amount_msat: 2000,
+        payer_data: { name: "Alice" },
+        provider_policy: "same-origin",
+        fetch: async () =>
+          json_response({
+            pr: await test_bolt11_invoice(2000, pay_request.metadata_hash),
+            verify: "https://verify.example.net/verify",
+          }),
+      }),
+    ).rejects.toThrow(InvalidCallbackResponseError);
+
+    await expect(
+      request_payment(sourced_pay_request, {
+        amount_msat: 2000,
+        payer_data: { name: "Alice" },
+        provider_policy: "same-origin",
+        fetch: async () =>
+          json_response({
+            pr: await test_bolt11_invoice(2000, pay_request.metadata_hash),
+            verify: "https://example.com/verify",
+          }),
+      }),
+    ).resolves.toMatchObject({ type: "bolt11" });
+  });
+
   test("wraps non-serializable payer data errors", async () => {
     const fetcher = async () =>
       json_response({ pr: await test_bolt11_invoice(2000, pay_request.metadata_hash) });

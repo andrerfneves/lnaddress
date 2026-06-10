@@ -38,6 +38,7 @@ export type {
   PayerData,
   PayerDataField,
   PaymentInstruction,
+  ProviderPolicy,
   RequestPaymentOptions,
   ResolveOptions,
   RedirectPolicy,

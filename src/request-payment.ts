@@ -108,6 +108,48 @@ function read_verify_url(raw: Record<string, unknown>): string | undefined {
   }
 }
 
+function same_site(hostname: string, expected_hostname: string): boolean {
+  return hostname === expected_hostname || hostname.endsWith(`.${expected_hostname}`);
+}
+
+function provider_base(pay_request: PayRequest): URL | undefined {
+  if (pay_request.source_url) {
+    return new URL(pay_request.source_url);
+  }
+  if (pay_request.lightning_address) {
+    return new URL(`https://${pay_request.lightning_address.domain}`);
+  }
+  return undefined;
+}
+
+function assert_provider_policy(
+  pay_request: PayRequest,
+  url: string | URL,
+  options: RequestPaymentOptions,
+  label: string,
+): void {
+  const policy = options.provider_policy ?? "off";
+  if (policy === "off") {
+    return;
+  }
+
+  const base = provider_base(pay_request);
+  if (!base) {
+    throw new InvalidCallbackResponseError(
+      `${label} provider_policy requires a resolved PayRequest with source_url or lightning_address`,
+    );
+  }
+
+  const parsed = typeof url === "string" ? new URL(url) : url;
+  if (policy === "same-origin" && parsed.origin !== base.origin) {
+    throw new InvalidCallbackResponseError(`${label} does not match provider origin`);
+  }
+
+  if (policy === "same-site" && !same_site(parsed.hostname, base.hostname)) {
+    throw new InvalidCallbackResponseError(`${label} does not match provider site`);
+  }
+}
+
 function stringify_payer_data(payer_data: Record<string, unknown>): string {
   try {
     return JSON.stringify(payer_data);
@@ -135,6 +177,9 @@ async function parse_callback_response(
   const payment_destination = read_string(record, ["paymentDestination", "payment_destination"]);
   const payment_uri = read_string(record, ["paymentURI", "paymentUri", "payment_uri"]);
   const verify_url = read_verify_url(record);
+  if (verify_url) {
+    assert_provider_policy(pay_request, verify_url, options, "Payment callback verify URL");
+  }
   const success_action = parse_success_action(
     read_unknown(record, ["successAction", "success_action"]),
   );
@@ -242,6 +287,7 @@ export async function request_payment(
   validate_mandatory_payer_data(pay_request, options.payer_data);
 
   const callback_url = build_callback_url(pay_request, options);
+  assert_provider_policy(pay_request, callback_url, options, "Pay request callback URL");
   const fetcher = get_fetch(options.fetch);
   let response: Response;
   const { init, cleanup } = request_init(options.headers, options);

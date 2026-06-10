@@ -121,6 +121,32 @@ describe("request_payment", () => {
     ).rejects.toThrow(InvalidCallbackResponseError);
   });
 
+  test("rejects invalid callback verify URLs", async () => {
+    await expect(
+      request_payment(pay_request, {
+        amount_msat: 2000,
+        payer_data: { name: "Alice" },
+        fetch: async () =>
+          json_response({
+            pr: test_bolt11_invoice(2000, pay_request.metadata_hash),
+            verify: "lightning:lnbc1example",
+          }),
+      }),
+    ).rejects.toThrow(InvalidCallbackResponseError);
+
+    await expect(
+      request_payment(pay_request, {
+        amount_msat: 2000,
+        payer_data: { name: "Alice" },
+        fetch: async () =>
+          json_response({
+            paymentDestination: "liquid-address",
+            verify: "not a url",
+          }),
+      }),
+    ).rejects.toThrow(InvalidCallbackResponseError);
+  });
+
   test("validates BOLT11 amount and metadata hash by default and can skip the check", async () => {
     await expect(
       request_payment(pay_request, {

@@ -90,6 +90,19 @@ function callback_error_message(raw: Record<string, unknown>): string {
     : "Payment callback returned an error";
 }
 
+function read_verify_url(raw: Record<string, unknown>): string | undefined {
+  const verify_url = read_string(raw, ["verify", "verifyUrl", "verify_url"]);
+  if (!verify_url) {
+    return undefined;
+  }
+
+  try {
+    return assert_http_url(verify_url).toString();
+  } catch (cause) {
+    throw new InvalidCallbackResponseError("Payment callback verify URL is invalid", { cause });
+  }
+}
+
 function parse_callback_response(
   raw: unknown,
   pay_request: PayRequest,
@@ -108,7 +121,7 @@ function parse_callback_response(
   const routes = read_unknown(record, ["routes"]);
   const payment_destination = read_string(record, ["paymentDestination", "payment_destination"]);
   const payment_uri = read_string(record, ["paymentURI", "paymentUri", "payment_uri"]);
-  const verify_url = read_string(record, ["verify", "verifyUrl", "verify_url"]);
+  const verify_url = read_verify_url(record);
   const success_action = parse_success_action(
     read_unknown(record, ["successAction", "success_action"]),
   );

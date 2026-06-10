@@ -20,17 +20,8 @@ jobs:
       - name: Install
         run: bun install
 
-      - name: Typecheck
-        run: bun run typecheck
-
-      - name: Lint
-        run: bun run lint
-
-      - name: Test
-        run: bun run test
-
-      - name: Build
-        run: bun run build
+      - name: Check
+        run: bun run check
 
       - name: Publish dry run
         run: npm publish --dry-run

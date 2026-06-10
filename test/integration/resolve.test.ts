@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { InvalidPayRequestError, encode_lnurl, resolve } from "../../src";
+import { InvalidLnurlError, InvalidPayRequestError, encode_lnurl, resolve } from "../../src";
 
 function json_response(body: unknown, init?: ResponseInit): Response {
   return new Response(JSON.stringify(body), {
@@ -72,5 +72,24 @@ describe("resolve", () => {
     await expect(resolve("alice@example.com", { fetch: fetcher })).rejects.toThrow(
       InvalidPayRequestError,
     );
+  });
+
+  test("rejects onion URL inputs by default", async () => {
+    await expect(resolve("https://abcdefghijklmnop.onion/lnurlp/alice")).rejects.toThrow(
+      InvalidLnurlError,
+    );
+  });
+
+  test("allows onion URL inputs when explicitly enabled", async () => {
+    const fetcher = async () => json_response(pay_request_response);
+
+    await expect(
+      resolve("https://abcdefghijklmnop.onion/lnurlp/alice", {
+        allow_onion: true,
+        fetch: fetcher,
+      }),
+    ).resolves.toMatchObject({
+      callback: "https://example.com/callback",
+    });
   });
 });

@@ -81,4 +81,30 @@ describe("verify_payment", () => {
       }),
     ).rejects.toThrow(VerifyError);
   });
+
+  test("requires a verify_url when verifying a payment instruction", async () => {
+    await expect(
+      verify_payment({
+        type: "destination",
+        payment_destination: "liquid-address",
+        raw: {},
+      }),
+    ).rejects.toThrow(VerifyError);
+  });
+
+  test("rejects onion verify URLs by default and allows them explicitly", async () => {
+    await expect(verify_payment("https://abcdefghijklmnop.onion/verify")).rejects.toThrow(
+      VerifyError,
+    );
+
+    await expect(
+      verify_payment("https://abcdefghijklmnop.onion/verify", {
+        allow_onion: true,
+        fetch: async () => json_response({ status: "OK", settled: false }),
+      }),
+    ).resolves.toMatchObject({
+      status: "OK",
+      settled: false,
+    });
+  });
 });

@@ -118,4 +118,26 @@ describe("request_payment", () => {
       }),
     ).rejects.toThrow(InvalidCallbackResponseError);
   });
+
+  test("validates BOLT11 shape by default and can skip the shape check", async () => {
+    await expect(
+      request_payment(pay_request, {
+        amount_msat: 2000,
+        payer_data: { name: "Alice" },
+        fetch: async () => json_response({ pr: "not-an-invoice" }),
+      }),
+    ).rejects.toThrow(InvalidCallbackResponseError);
+
+    await expect(
+      request_payment(pay_request, {
+        amount_msat: 2000,
+        payer_data: { name: "Alice" },
+        validate_bolt11: false,
+        fetch: async () => json_response({ pr: "not-an-invoice" }),
+      }),
+    ).resolves.toMatchObject({
+      type: "bolt11",
+      pr: "not-an-invoice",
+    });
+  });
 });

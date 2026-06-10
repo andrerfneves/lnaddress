@@ -183,6 +183,21 @@ if (payment.type === "destination") {
 
 The same shape works for BOLT12-style offers and destination rails such as onchain, Liquid, Ark, or Spark when a provider returns `paymentDestination`, `paymentURI`, and optionally `verify`.
 
+## Examples
+
+This repository includes copy-pasteable examples and a richer mocked playground:
+
+- `examples/basic`: small scripts for resolve, BOLT11 requests, comments, payer data, verify, and destination payments.
+- `examples/playground`: a Vite React playground with shadcn-style local components that exercises the library end to end against mocked provider flows.
+
+```sh
+bun examples/basic/resolve.ts
+
+cd examples/playground
+bun install
+bun run dev
+```
+
 ## Custom Fetch
 
 ```ts
@@ -327,6 +342,8 @@ bun run test
 bun run test:unit
 bun run test:integration
 bun run test:e2e
+bun run test:examples
+bun run test:package
 bun run typecheck
 bun run lint
 bun run build

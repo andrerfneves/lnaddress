@@ -8,6 +8,7 @@ import {
 } from "./errors";
 import {
   amount_to_msat_string,
+  assert_http_url,
   get_fetch,
   merge_headers,
   read_json_response,
@@ -173,7 +174,14 @@ function parse_callback_response(raw: unknown, validate_bolt11: boolean): Paymen
 }
 
 function build_callback_url(pay_request: PayRequest, options: RequestPaymentOptions): URL {
-  const callback_url = new URL(pay_request.callback);
+  let callback_url: URL;
+
+  try {
+    callback_url = assert_http_url(pay_request.callback, options);
+  } catch (cause) {
+    throw new InvalidCallbackResponseError("Pay request callback URL is invalid", { cause });
+  }
+
   callback_url.searchParams.set("amount", amount_to_msat_string(options.amount_msat));
 
   if (options.comment !== undefined) {

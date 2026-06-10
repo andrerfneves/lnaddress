@@ -140,4 +140,36 @@ describe("request_payment", () => {
       pr: "not-an-invoice",
     });
   });
+
+  test("enforces callback URL safety for PayRequest inputs", async () => {
+    const onion_pay_request = {
+      ...pay_request,
+      callback: "https://abcdefghijklmnop.onion/callback",
+    };
+    let called = false;
+
+    await expect(
+      request_payment(onion_pay_request, {
+        amount_msat: 2000,
+        payer_data: { name: "Alice" },
+        fetch: async () => {
+          called = true;
+          return json_response({ pr: "lnbc1qqqqqqqqqqqqqq" });
+        },
+      }),
+    ).rejects.toThrow(InvalidCallbackResponseError);
+    expect(called).toBe(false);
+
+    await expect(
+      request_payment(onion_pay_request, {
+        amount_msat: 2000,
+        payer_data: { name: "Alice" },
+        allow_onion: true,
+        fetch: async () => json_response({ pr: "lnbc1qqqqqqqqqqqqqq" }),
+      }),
+    ).resolves.toMatchObject({
+      type: "bolt11",
+      pr: "lnbc1qqqqqqqqqqqqqq",
+    });
+  });
 });

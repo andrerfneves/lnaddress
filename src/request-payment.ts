@@ -75,7 +75,11 @@ export function validate_mandatory_payer_data(
   }
 
   const missing = Object.entries(requested)
-    .filter(([field, config]) => config.mandatory === true && payer_data?.[field] === undefined)
+    .filter(
+      ([field, config]) =>
+        config.mandatory === true &&
+        (payer_data?.[field] === undefined || payer_data[field] === null),
+    )
     .map(([field]) => field);
 
   if (missing.length > 0) {

@@ -53,5 +53,8 @@ describe("validation helpers", () => {
     expect(() => validate_mandatory_payer_data(pay_request, {})).toThrow(
       MissingMandatoryPayerDataError,
     );
+    expect(() => validate_mandatory_payer_data(pay_request, { name: null })).toThrow(
+      MissingMandatoryPayerDataError,
+    );
   });
 });

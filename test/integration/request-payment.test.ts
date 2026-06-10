@@ -101,6 +101,14 @@ describe("request_payment", () => {
         fetch: fetcher,
       }),
     ).rejects.toThrow(MissingMandatoryPayerDataError);
+
+    await expect(
+      request_payment(pay_request, {
+        amount_msat: 2000,
+        payer_data: { name: null },
+        fetch: fetcher,
+      }),
+    ).rejects.toThrow(MissingMandatoryPayerDataError);
   });
 
   test("rejects callback errors and missing instructions", async () => {

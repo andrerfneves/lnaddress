@@ -1,7 +1,12 @@
+import { get_metadata_hash } from "../../src";
+import { test_bolt11_invoice } from "./bolt11";
+
 type ServerState = {
   liquid_settled: boolean;
   bolt12_settled: boolean;
 };
+
+const alice_metadata = '[["text/plain","Alice test payment"]]';
 
 function json(body: unknown, init?: ResponseInit): Response {
   return new Response(JSON.stringify(body), {
@@ -29,7 +34,7 @@ export function start_lnurl_test_server() {
           callback: `${origin}/callback/bolt11`,
           minSendable: 1000,
           maxSendable: 100_000,
-          metadata: '[["text/plain","Alice test payment"]]',
+          metadata: alice_metadata,
           commentAllowed: 20,
         });
       }
@@ -61,7 +66,7 @@ export function start_lnurl_test_server() {
 
         return json({
           status: "OK",
-          pr: "lnbc1qqqqqqqqqqqqqq",
+          pr: test_bolt11_invoice(2500, get_metadata_hash(alice_metadata)),
           routes: [],
           verify: `${origin}/verify/bolt11`,
         });

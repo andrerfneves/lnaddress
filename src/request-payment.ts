@@ -1,3 +1,4 @@
+import { assert_bolt11_payment } from "./bolt11";
 import {
   AmountOutOfRangeError,
   CommentNotAllowedError,
@@ -28,14 +29,6 @@ import type {
   RequestPaymentOptions,
   ResolveOptions,
 } from "./types";
-
-function assert_probably_bolt11(pr: string): void {
-  if (!/^ln(bc|tb|bcrt|sb)[a-z0-9]+$/i.test(pr)) {
-    throw new InvalidCallbackResponseError(
-      "Callback response pr is not a valid-looking BOLT11 invoice",
-    );
-  }
-}
 
 export function validate_callback_amount(
   pay_request: PayRequest,
@@ -97,7 +90,11 @@ function callback_error_message(raw: Record<string, unknown>): string {
     : "Payment callback returned an error";
 }
 
-function parse_callback_response(raw: unknown, validate_bolt11: boolean): PaymentInstruction {
+function parse_callback_response(
+  raw: unknown,
+  pay_request: PayRequest,
+  options: RequestPaymentOptions,
+): PaymentInstruction {
   const record = unknown_to_record(raw);
   if (!record) {
     throw new InvalidCallbackResponseError("Payment callback response must be an object");
@@ -117,8 +114,8 @@ function parse_callback_response(raw: unknown, validate_bolt11: boolean): Paymen
   );
 
   if (pr) {
-    if (validate_bolt11) {
-      assert_probably_bolt11(pr);
+    if (options.validate_bolt11 ?? true) {
+      assert_bolt11_payment(pr, pay_request, options.amount_msat);
     }
 
     const instruction: Bolt11PaymentInstruction = {
@@ -247,7 +244,7 @@ export async function request_payment(
     });
   }
 
-  return parse_callback_response(raw, options.validate_bolt11 ?? true);
+  return parse_callback_response(raw, pay_request, options);
 }
 
 export async function pay(

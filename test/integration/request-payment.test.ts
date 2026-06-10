@@ -6,6 +6,7 @@ import {
   parse_pay_request_response,
   request_payment,
 } from "../../src";
+import { test_bolt11_invoice } from "../fixtures/bolt11";
 
 function json_response(body: unknown, init?: ResponseInit): Response {
   return new Response(JSON.stringify(body), {
@@ -37,7 +38,7 @@ describe("request_payment", () => {
       expect(url.searchParams.get("payerdata")).toBe(JSON.stringify({ name: "Alice" }));
 
       return json_response({
-        pr: "lnbc1qqqqqqqqqqqqqq",
+        pr: test_bolt11_invoice(2000, pay_request.metadata_hash),
         routes: [],
         verify: "https://example.com/verify/123",
         successAction: { tag: "message", message: "paid" },
@@ -53,7 +54,7 @@ describe("request_payment", () => {
 
     expect(payment.type).toBe("bolt11");
     if (payment.type === "bolt11") {
-      expect(payment.pr).toBe("lnbc1qqqqqqqqqqqqqq");
+      expect(payment.pr).toBe(test_bolt11_invoice(2000, pay_request.metadata_hash));
       expect(payment.verify_url).toBe("https://example.com/verify/123");
       expect(payment.success_action).toEqual({ tag: "message", message: "paid" });
     }
@@ -82,7 +83,8 @@ describe("request_payment", () => {
   });
 
   test("validates comments and mandatory payer data before callback", async () => {
-    const fetcher = async () => json_response({ pr: "lnbc1qqqqqqqqqqqqqq" });
+    const fetcher = async () =>
+      json_response({ pr: test_bolt11_invoice(2000, pay_request.metadata_hash) });
 
     await expect(
       request_payment(pay_request, {
@@ -119,12 +121,29 @@ describe("request_payment", () => {
     ).rejects.toThrow(InvalidCallbackResponseError);
   });
 
-  test("validates BOLT11 shape by default and can skip the shape check", async () => {
+  test("validates BOLT11 amount and metadata hash by default and can skip the check", async () => {
     await expect(
       request_payment(pay_request, {
         amount_msat: 2000,
         payer_data: { name: "Alice" },
         fetch: async () => json_response({ pr: "not-an-invoice" }),
+      }),
+    ).rejects.toThrow(InvalidCallbackResponseError);
+
+    await expect(
+      request_payment(pay_request, {
+        amount_msat: 2000,
+        payer_data: { name: "Alice" },
+        fetch: async () =>
+          json_response({ pr: test_bolt11_invoice(3000, pay_request.metadata_hash) }),
+      }),
+    ).rejects.toThrow(InvalidCallbackResponseError);
+
+    await expect(
+      request_payment(pay_request, {
+        amount_msat: 2000,
+        payer_data: { name: "Alice" },
+        fetch: async () => json_response({ pr: test_bolt11_invoice(2000, "00".repeat(32)) }),
       }),
     ).rejects.toThrow(InvalidCallbackResponseError);
 
@@ -154,7 +173,7 @@ describe("request_payment", () => {
         payer_data: { name: "Alice" },
         fetch: async () => {
           called = true;
-          return json_response({ pr: "lnbc1qqqqqqqqqqqqqq" });
+          return json_response({ pr: test_bolt11_invoice(2000, pay_request.metadata_hash) });
         },
       }),
     ).rejects.toThrow(InvalidCallbackResponseError);
@@ -169,11 +188,11 @@ describe("request_payment", () => {
       request_payment(onion_pay_request, {
         amount_msat: 2000,
         payer_data: { name: "Alice" },
-        fetch: async () => json_response({ pr: "lnbc1qqqqqqqqqqqqqq" }),
+        fetch: async () =>
+          json_response({ pr: test_bolt11_invoice(2000, pay_request.metadata_hash) }),
       }),
     ).resolves.toMatchObject({
       type: "bolt11",
-      pr: "lnbc1qqqqqqqqqqqqqq",
     });
   });
 });

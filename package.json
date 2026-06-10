@@ -46,6 +46,7 @@
     "release": "npm publish --access public"
   },
   "dependencies": {
+    "@noble/secp256k1": "^3.1.0",
     "zod": "^3.25.67"
   },
   "devDependencies": {

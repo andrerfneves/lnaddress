@@ -115,11 +115,11 @@ function stringify_payer_data(payer_data: Record<string, unknown>): string {
   }
 }
 
-function parse_callback_response(
+async function parse_callback_response(
   raw: unknown,
   pay_request: PayRequest,
   options: RequestPaymentOptions,
-): PaymentInstruction {
+): Promise<PaymentInstruction> {
   const record = unknown_to_record(raw);
   if (!record) {
     throw new InvalidCallbackResponseError("Payment callback response must be an object");
@@ -140,7 +140,7 @@ function parse_callback_response(
 
   if (pr) {
     if (options.validate_bolt11 ?? true) {
-      assert_bolt11_payment(pr, pay_request, options);
+      await assert_bolt11_payment(pr, pay_request, options);
     }
 
     const instruction: Bolt11PaymentInstruction = {

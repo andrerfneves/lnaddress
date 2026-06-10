@@ -1,5 +1,9 @@
+import { getPublicKey, signAsync } from "@noble/secp256k1";
+import { sha256 } from "../../src/sha256";
+
 const charset = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
 const generator = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
+const private_key = new Uint8Array(32).fill(1);
 
 function polymod(values: number[]): number {
   let chk = 1;
@@ -80,6 +84,19 @@ function hex_to_bytes(hex: string): number[] {
   return bytes;
 }
 
+function concat_bytes(...chunks: Uint8Array[]): Uint8Array {
+  const length = chunks.reduce((total, chunk) => total + chunk.length, 0);
+  const output = new Uint8Array(length);
+  let offset = 0;
+
+  for (const chunk of chunks) {
+    output.set(chunk, offset);
+    offset += chunk.length;
+  }
+
+  return output;
+}
+
 function int_to_words(value: number | bigint, word_count?: number): number[] {
   let remaining = typeof value === "bigint" ? value : BigInt(value);
   const words: number[] = [];
@@ -98,29 +115,57 @@ function int_to_words(value: number | bigint, word_count?: number): number[] {
   return words;
 }
 
-export function test_bolt11_invoice(
+export async function test_bolt11_invoice(
   amount_msat: number | bigint,
   metadata_hash: string,
   options: {
     network?: "bc" | "tb" | "bcrt" | "sb";
     timestamp?: number;
     expiry_seconds?: number;
+    mismatched_payee_node?: boolean;
   } = {},
-): string {
+): Promise<string> {
   const amount = typeof amount_msat === "bigint" ? amount_msat : BigInt(amount_msat);
   const hrp = `ln${options.network ?? "bc"}${(amount * 10n).toString()}p`;
   const timestamp = int_to_words(options.timestamp ?? Math.floor(Date.now() / 1000), 7);
   const hash_words = convert_bits(hex_to_bytes(metadata_hash), 8, 5, true);
   const h_tag = charset.indexOf("h");
   const h_length = [hash_words.length >> 5, hash_words.length & 31];
+  const node_key = options.mismatched_payee_node ? new Uint8Array(32).fill(2) : private_key;
+  const node_id_words = convert_bits([...getPublicKey(node_key)], 8, 5, true);
+  const node_id_field = [
+    charset.indexOf("n"),
+    node_id_words.length >> 5,
+    node_id_words.length & 31,
+    ...node_id_words,
+  ];
   const expiry_words =
     options.expiry_seconds === undefined ? [] : int_to_words(options.expiry_seconds);
   const expiry_field =
     expiry_words.length === 0
       ? []
       : [charset.indexOf("x"), expiry_words.length >> 5, expiry_words.length & 31, ...expiry_words];
-  const signature = new Array<number>(104).fill(0);
-  const data = [...timestamp, h_tag, ...h_length, ...hash_words, ...expiry_field, ...signature];
+  const signing_data = [
+    ...timestamp,
+    h_tag,
+    ...h_length,
+    ...hash_words,
+    ...node_id_field,
+    ...expiry_field,
+  ];
+  const signing_hash = sha256(
+    concat_bytes(
+      new TextEncoder().encode(hrp),
+      new Uint8Array(convert_bits(signing_data, 5, 8, true)),
+    ),
+  );
+  const recovered_signature = await signAsync(signing_hash, private_key, {
+    format: "recovered",
+    prehash: false,
+    lowS: false,
+  });
+  const signature = new Uint8Array([...recovered_signature.slice(1), recovered_signature[0] ?? 0]);
+  const data = [...signing_data, ...convert_bits([...signature], 8, 5, true)];
   const combined = [...data, ...create_checksum(hrp, data)];
 
   return `${hrp}1${combined.map((value) => charset[value]).join("")}`;

@@ -24,7 +24,7 @@ export function start_lnurl_test_server() {
 
   const server = Bun.serve({
     port: 0,
-    fetch(request) {
+    async fetch(request) {
       const url = new URL(request.url);
       const origin = `http://${url.host}`;
 
@@ -66,7 +66,7 @@ export function start_lnurl_test_server() {
 
         return json({
           status: "OK",
-          pr: test_bolt11_invoice(2500, get_metadata_hash(alice_metadata)),
+          pr: await test_bolt11_invoice(2500, get_metadata_hash(alice_metadata)),
           routes: [],
           verify: `${origin}/verify/bolt11`,
         });

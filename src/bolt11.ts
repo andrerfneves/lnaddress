@@ -1,5 +1,7 @@
+import { recoverPublicKeyAsync, verifyAsync } from "@noble/secp256k1";
 import { InvalidCallbackResponseError } from "./errors";
 import { amount_to_msat_string } from "./internal";
+import { sha256 } from "./sha256";
 import type { Bolt11Network, PayRequest, RequestPaymentOptions } from "./types";
 
 const charset = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
@@ -10,8 +12,11 @@ type DecodedInvoice = {
   network: Bolt11Network;
   timestamp: number;
   expiry_seconds: number;
+  signing_hash: Uint8Array;
+  signature: Uint8Array;
   amount_msat?: bigint;
   description_hash?: string;
+  payee_node_id?: string;
 };
 
 const hrp_networks: Record<string, Bolt11Network> = {
@@ -94,6 +99,19 @@ function bytes_to_hex(bytes: number[]): string {
   return bytes.map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
+function concat_bytes(...chunks: Uint8Array[]): Uint8Array {
+  const length = chunks.reduce((total, chunk) => total + chunk.length, 0);
+  const output = new Uint8Array(length);
+  let offset = 0;
+
+  for (const chunk of chunks) {
+    output.set(chunk, offset);
+    offset += chunk.length;
+  }
+
+  return output;
+}
+
 function words_to_int(words: number[]): bigint {
   return words.reduce((value, word) => (value << 5n) | BigInt(word), 0n);
 }
@@ -109,7 +127,7 @@ function now_seconds(now: RequestPaymentOptions["now"]): number {
   return Math.floor(Date.now() / 1000);
 }
 
-function parse_hrp(hrp: string): Omit<DecodedInvoice, "timestamp" | "expiry_seconds"> {
+function parse_hrp(hrp: string): Pick<DecodedInvoice, "network" | "amount_msat"> {
   const network_prefix = ["bcrt", "bc", "tb", "sb"].find((candidate) =>
     hrp.startsWith(`ln${candidate}`),
   );
@@ -187,15 +205,30 @@ function decode_bolt11(pr: string): DecodedInvoice {
     throw new InvalidCallbackResponseError("BOLT11 invoice payload is too short");
   }
 
+  const tagged_fields_end = payload.length - signature_word_count;
+  const signing_words = payload.slice(0, tagged_fields_end);
+  const signature_bytes = Uint8Array.from(
+    convert_bits(payload.slice(tagged_fields_end), 5, 8, false),
+  );
+  if (signature_bytes.length !== 65) {
+    throw new InvalidCallbackResponseError("BOLT11 invoice signature is invalid");
+  }
+
   const timestamp = Number(words_to_int(payload.slice(0, 7)));
   const invoice: DecodedInvoice = {
     ...parse_hrp(hrp),
     timestamp,
     expiry_seconds: 3600,
+    signing_hash: sha256(
+      concat_bytes(
+        new TextEncoder().encode(hrp),
+        Uint8Array.from(convert_bits(signing_words, 5, 8, true)),
+      ),
+    ),
+    signature: signature_bytes,
   };
 
   let offset = 7;
-  const tagged_fields_end = payload.length - signature_word_count;
 
   while (offset < tagged_fields_end) {
     const tag = payload[offset];
@@ -218,6 +251,14 @@ function decode_bolt11(pr: string): DecodedInvoice {
       invoice.expiry_seconds = Number(words_to_int(payload.slice(offset, end)));
     }
 
+    if (charset[tag ?? -1] === "n") {
+      const node_id_bytes = convert_bits(payload.slice(offset, end), 5, 8, false);
+      if (node_id_bytes.length !== 33) {
+        throw new InvalidCallbackResponseError("BOLT11 invoice payee node id is invalid");
+      }
+      invoice.payee_node_id = bytes_to_hex(node_id_bytes);
+    }
+
     offset = end;
   }
 
@@ -228,7 +269,7 @@ export function assert_bolt11_payment(
   pr: string,
   pay_request: PayRequest,
   options: RequestPaymentOptions,
-): void {
+): Promise<void> {
   const invoice = decode_bolt11(pr);
   const expected_amount = BigInt(amount_to_msat_string(options.amount_msat));
 
@@ -263,5 +304,39 @@ export function assert_bolt11_payment(
     if (expires_at <= now_seconds(options.now)) {
       throw new InvalidCallbackResponseError("BOLT11 invoice is expired");
     }
+  }
+
+  return assert_bolt11_signature(invoice);
+}
+
+async function assert_bolt11_signature(invoice: DecodedInvoice): Promise<void> {
+  const recovered_signature = new Uint8Array([
+    invoice.signature[64] ?? 0,
+    ...invoice.signature.slice(0, 64),
+  ]);
+  let public_key: Uint8Array;
+  try {
+    public_key = await recoverPublicKeyAsync(recovered_signature, invoice.signing_hash, {
+      prehash: false,
+    });
+  } catch (cause) {
+    throw new InvalidCallbackResponseError("BOLT11 invoice signature recovery failed", { cause });
+  }
+
+  const valid = await verifyAsync(
+    invoice.signature.slice(0, 64),
+    invoice.signing_hash,
+    public_key,
+    {
+      prehash: false,
+      lowS: false,
+    },
+  );
+  if (!valid) {
+    throw new InvalidCallbackResponseError("BOLT11 invoice signature is invalid");
+  }
+
+  if (invoice.payee_node_id && bytes_to_hex([...public_key]) !== invoice.payee_node_id) {
+    throw new InvalidCallbackResponseError("BOLT11 invoice signature does not match payee node id");
   }
 }

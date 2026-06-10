@@ -1,0 +1,24 @@
+{
+  "lightning_address": "alice@example.com",
+  "pay_request": {
+    "tag": "payRequest",
+    "callback": "https://example.com/lnurl/callback?k1=abcdef",
+    "minSendable": 1000,
+    "maxSendable": 100000,
+    "metadata": "[[\"text/plain\",\"LUD vector payment\"],[\"text/identifier\",\"alice@example.com\"]]",
+    "commentAllowed": 12,
+    "payerData": {
+      "name": { "mandatory": true },
+      "email": { "mandatory": false }
+    }
+  },
+  "success_actions": {
+    "message": { "tag": "message", "message": "paid" },
+    "url": { "tag": "url", "description": "receipt", "url": "https://example.com/receipt" }
+  },
+  "verify": {
+    "status": "OK",
+    "settled": true,
+    "preimage": "0000000000000000000000000000000000000000000000000000000000000000"
+  }
+}

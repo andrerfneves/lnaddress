@@ -34,7 +34,7 @@ export function parse_metadata(metadata_string: string): MetadataEntry[] {
   }
 
   return decoded.map((entry, index) => {
-    if (!Array.isArray(entry) || entry.length < 2) {
+    if (!Array.isArray(entry) || entry.length !== 2) {
       throw new InvalidPayRequestError(`Metadata entry ${index} must be a tuple`);
     }
 

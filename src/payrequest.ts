@@ -97,6 +97,11 @@ export function parse_pay_request_response(
   }
 
   const metadata = parse_metadata(parsed.data.metadata);
+  const description = get_description(metadata);
+  if (!description) {
+    throw new InvalidPayRequestError("Pay request metadata must include a text/plain description");
+  }
+
   const pay_request: PayRequest = {
     tag: "payRequest",
     callback: parsed.data.callback,
@@ -108,10 +113,7 @@ export function parse_pay_request_response(
     raw,
   };
 
-  const description = get_description(metadata);
-  if (description) {
-    pay_request.description = description;
-  }
+  pay_request.description = description;
 
   const image = get_image(metadata);
   if (image) {

@@ -15,6 +15,9 @@ describe("metadata utilities", () => {
   test("rejects malformed metadata", () => {
     expect(() => parse_metadata('{"text/plain":"hello"}')).toThrow(InvalidPayRequestError);
     expect(() => parse_metadata("[[1,2]]")).toThrow(InvalidPayRequestError);
+    expect(() => parse_metadata('[["text/plain","hello","extra"]]')).toThrow(
+      InvalidPayRequestError,
+    );
   });
 
   test("hashes metadata with SHA-256", () => {

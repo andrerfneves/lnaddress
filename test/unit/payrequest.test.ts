@@ -33,6 +33,15 @@ describe("pay request parsing", () => {
     ).toThrow(InvalidPayRequestError);
   });
 
+  test("rejects metadata without a text/plain description", () => {
+    expect(() =>
+      parse_pay_request_response({
+        ...base_response,
+        metadata: '[["image/png","abc123"]]',
+      }),
+    ).toThrow(InvalidPayRequestError);
+  });
+
   test("rejects invalid callback protocols", () => {
     expect(() =>
       parse_pay_request_response({

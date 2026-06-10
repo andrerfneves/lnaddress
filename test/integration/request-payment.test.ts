@@ -34,7 +34,7 @@ describe("request_payment", () => {
       const url = new URL(String(input));
       expect(url.searchParams.get("k1")).toBe("abc");
       expect(url.searchParams.get("amount")).toBe("2000");
-      expect(url.searchParams.get("comment")).toBe("thanks");
+      expect(url.searchParams.get("comment")).toBe("thanks ⚡");
       expect(url.searchParams.get("payerdata")).toBe(JSON.stringify({ name: "Alice" }));
 
       return json_response({
@@ -47,7 +47,7 @@ describe("request_payment", () => {
 
     const payment = await request_payment(pay_request, {
       amount_msat: 2000,
-      comment: "thanks",
+      comment: "thanks ⚡",
       payer_data: { name: "Alice" },
       fetch: fetcher,
     });
@@ -58,6 +58,33 @@ describe("request_payment", () => {
       expect(payment.verify_url).toBe("https://example.com/verify/123");
       expect(payment.success_action).toEqual({ tag: "message", message: "paid" });
     }
+  });
+
+  test("overwrites callback amount, comment, and payerdata query params", async () => {
+    const pay_request_with_query = {
+      ...pay_request,
+      callback: "https://example.com/callback?k1=abc&amount=1&comment=old&payerdata=%7B%7D",
+    };
+
+    const fetcher = async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      expect(url.searchParams.getAll("amount")).toEqual(["2000"]);
+      expect(url.searchParams.getAll("comment")).toEqual(["new"]);
+      expect(url.searchParams.getAll("payerdata")).toEqual([JSON.stringify({ name: "Alice" })]);
+
+      return json_response({
+        pr: test_bolt11_invoice(2000, pay_request.metadata_hash),
+      });
+    };
+
+    await expect(
+      request_payment(pay_request_with_query, {
+        amount_msat: 2000,
+        comment: "new",
+        payer_data: { name: "Alice" },
+        fetch: fetcher,
+      }),
+    ).resolves.toMatchObject({ type: "bolt11" });
   });
 
   test("returns destination instructions when no pr exists", async () => {
@@ -228,5 +255,18 @@ describe("request_payment", () => {
     ).resolves.toMatchObject({
       type: "bolt11",
     });
+  });
+
+  test("wraps non-serializable payer data errors", async () => {
+    const fetcher = async () =>
+      json_response({ pr: test_bolt11_invoice(2000, pay_request.metadata_hash) });
+
+    await expect(
+      request_payment(pay_request, {
+        amount_msat: 2000,
+        payer_data: { name: "Alice", unsupported: 1n },
+        fetch: fetcher,
+      }),
+    ).rejects.toThrow(InvalidCallbackResponseError);
   });
 });

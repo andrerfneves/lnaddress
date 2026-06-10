@@ -107,6 +107,14 @@ function read_verify_url(raw: Record<string, unknown>): string | undefined {
   }
 }
 
+function stringify_payer_data(payer_data: Record<string, unknown>): string {
+  try {
+    return JSON.stringify(payer_data);
+  } catch (cause) {
+    throw new InvalidCallbackResponseError("payer_data must be JSON serializable", { cause });
+  }
+}
+
 function parse_callback_response(
   raw: unknown,
   pay_request: PayRequest,
@@ -203,7 +211,7 @@ function build_callback_url(pay_request: PayRequest, options: RequestPaymentOpti
   }
 
   if (options.payer_data !== undefined) {
-    callback_url.searchParams.set("payerdata", JSON.stringify(options.payer_data));
+    callback_url.searchParams.set("payerdata", stringify_payer_data(options.payer_data));
   }
 
   return callback_url;

@@ -33,31 +33,21 @@ describe("pay request parsing", () => {
     ).toThrow(InvalidPayRequestError);
   });
 
-  test("rejects invalid callback protocols and onion callbacks by default", () => {
+  test("rejects invalid callback protocols", () => {
     expect(() =>
       parse_pay_request_response({
         ...base_response,
         callback: "ftp://example.com/callback",
       }),
     ).toThrow(InvalidPayRequestError);
+  });
 
-    expect(() =>
+  test("allows onion callbacks", () => {
+    expect(
       parse_pay_request_response({
         ...base_response,
         callback: "https://abcdefghijklmnop.onion/callback",
-      }),
-    ).toThrow(InvalidPayRequestError);
-  });
-
-  test("allows onion callbacks when explicitly enabled", () => {
-    expect(
-      parse_pay_request_response(
-        {
-          ...base_response,
-          callback: "https://abcdefghijklmnop.onion/callback",
-        },
-        { allow_onion: true },
-      ).callback,
+      }).callback,
     ).toBe("https://abcdefghijklmnop.onion/callback");
   });
 });

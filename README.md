@@ -250,7 +250,6 @@ Accepts a Lightning Address, LNURL bech32 string, `lnurlp://` URI, or HTTP(S) UR
 ```ts
 const pay_request = await resolve("alice@example.com", {
   fetch,
-  allow_onion: false,
 });
 ```
 
@@ -316,7 +315,6 @@ if (payment.type === "bolt11") {
 
 ## Security Notes
 
-- Onion URLs are rejected by default. Pass `allow_onion: true` if your runtime intentionally supports them.
 - `metadata_hash` is computed from the exact metadata string returned by the provider.
 - `validate_bolt11` performs basic invoice shape validation only. It is not a full BOLT11 decoder.
 - AES success actions are preserved, but synchronous AES decryption is not implemented in v0.1.0 because Web Crypto is asynchronous.

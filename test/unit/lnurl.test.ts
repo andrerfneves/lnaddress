@@ -22,11 +22,8 @@ describe("LNURL encode/decode", () => {
     expect(() => encode_lnurl("mailto:alice@example.com")).toThrow(InvalidLnurlError);
   });
 
-  test("rejects onion URLs by default and allows them explicitly", () => {
+  test("allows onion URLs", () => {
     const onion = "https://abcdefghijklmnop.onion/lnurlp/alice";
-    expect(() => encode_lnurl(onion)).toThrow(InvalidLnurlError);
-    expect(decode_lnurl(encode_lnurl(onion, { allow_onion: true }), { allow_onion: true })).toBe(
-      onion,
-    );
+    expect(decode_lnurl(encode_lnurl(onion))).toBe(onion);
   });
 });

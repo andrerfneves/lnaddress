@@ -74,29 +74,21 @@ describe("resolve", () => {
     );
   });
 
-  test("rejects onion URL inputs by default", async () => {
-    await expect(resolve("https://abcdefghijklmnop.onion/lnurlp/alice")).rejects.toThrow(
-      InvalidLnurlError,
-    );
-  });
+  test("allows onion URL, Lightning Address, and lnurlp URI inputs", async () => {
+    const seen_urls: string[] = [];
+    const fetcher = async (input: RequestInfo | URL) => {
+      seen_urls.push(String(input));
+      return json_response(pay_request_response);
+    };
 
-  test("rejects onion Lightning Address and lnurlp URI inputs by default", async () => {
-    await expect(resolve("alice@abcdefghijklmnop.onion")).rejects.toThrow(InvalidLnurlError);
-    await expect(resolve("lnurlp://abcdefghijklmnop.onion/alice")).rejects.toThrow(
-      InvalidLnurlError,
-    );
-  });
+    await resolve("https://abcdefghijklmnop.onion/lnurlp/alice", { fetch: fetcher });
+    await resolve("alice@abcdefghijklmnop.onion", { fetch: fetcher });
+    await resolve("lnurlp://abcdefghijklmnop.onion/alice", { fetch: fetcher });
 
-  test("allows onion URL inputs when explicitly enabled", async () => {
-    const fetcher = async () => json_response(pay_request_response);
-
-    await expect(
-      resolve("https://abcdefghijklmnop.onion/lnurlp/alice", {
-        allow_onion: true,
-        fetch: fetcher,
-      }),
-    ).resolves.toMatchObject({
-      callback: "https://example.com/callback",
-    });
+    expect(seen_urls).toEqual([
+      "https://abcdefghijklmnop.onion/lnurlp/alice",
+      "https://abcdefghijklmnop.onion/.well-known/lnurlp/alice",
+      "https://abcdefghijklmnop.onion/.well-known/lnurlp/alice",
+    ]);
   });
 });

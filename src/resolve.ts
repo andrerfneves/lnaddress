@@ -100,9 +100,6 @@ function input_to_url(
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
       throw new InvalidLnurlError("URL input must use http or https");
     }
-    if (!options.allow_onion && parsed.hostname.toLowerCase().endsWith(".onion")) {
-      throw new InvalidLnurlError("Onion URLs are disabled by default");
-    }
     return {
       url: parsed.toString(),
     };

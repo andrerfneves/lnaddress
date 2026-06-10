@@ -38,10 +38,6 @@ export async function verify_payment(
     throw new VerifyError("verify_url must use http or https");
   }
 
-  if (!options.allow_onion && parsed_url.hostname.toLowerCase().endsWith(".onion")) {
-    throw new VerifyError("Onion verify URLs are disabled by default");
-  }
-
   const fetcher = get_fetch(options.fetch);
   let response: Response;
 

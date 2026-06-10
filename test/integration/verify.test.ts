@@ -92,14 +92,9 @@ describe("verify_payment", () => {
     ).rejects.toThrow(VerifyError);
   });
 
-  test("rejects onion verify URLs by default and allows them explicitly", async () => {
-    await expect(verify_payment("https://abcdefghijklmnop.onion/verify")).rejects.toThrow(
-      VerifyError,
-    );
-
+  test("allows onion verify URLs", async () => {
     await expect(
       verify_payment("https://abcdefghijklmnop.onion/verify", {
-        allow_onion: true,
         fetch: async () => json_response({ status: "OK", settled: false }),
       }),
     ).resolves.toMatchObject({

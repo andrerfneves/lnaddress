@@ -142,14 +142,14 @@ describe("request_payment", () => {
   });
 
   test("enforces callback URL safety for PayRequest inputs", async () => {
-    const onion_pay_request = {
+    const invalid_pay_request = {
       ...pay_request,
-      callback: "https://abcdefghijklmnop.onion/callback",
+      callback: "ftp://example.com/callback",
     };
     let called = false;
 
     await expect(
-      request_payment(onion_pay_request, {
+      request_payment(invalid_pay_request, {
         amount_msat: 2000,
         payer_data: { name: "Alice" },
         fetch: async () => {
@@ -160,11 +160,15 @@ describe("request_payment", () => {
     ).rejects.toThrow(InvalidCallbackResponseError);
     expect(called).toBe(false);
 
+    const onion_pay_request = {
+      ...pay_request,
+      callback: "https://abcdefghijklmnop.onion/callback",
+    };
+
     await expect(
       request_payment(onion_pay_request, {
         amount_msat: 2000,
         payer_data: { name: "Alice" },
-        allow_onion: true,
         fetch: async () => json_response({ pr: "lnbc1qqqqqqqqqqqqqq" }),
       }),
     ).resolves.toMatchObject({

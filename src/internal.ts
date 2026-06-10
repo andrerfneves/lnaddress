@@ -59,7 +59,7 @@ export function read_unknown(raw: Record<string, unknown>, keys: string[]): unkn
   return undefined;
 }
 
-export function assert_http_url(url: string, options: UrlSafetyOptions = {}): URL {
+export function assert_http_url(url: string, _options: UrlSafetyOptions = {}): URL {
   let parsed: URL;
 
   try {
@@ -70,10 +70,6 @@ export function assert_http_url(url: string, options: UrlSafetyOptions = {}): UR
 
   if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
     throw new TypeError(`URL must use http or https: ${url}`);
-  }
-
-  if (!options.allow_onion && parsed.hostname.toLowerCase().endsWith(".onion")) {
-    throw new TypeError("Onion URLs are disabled by default");
   }
 
   return parsed;

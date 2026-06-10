@@ -221,6 +221,59 @@ describe("request_payment", () => {
     });
   });
 
+  test("validates BOLT11 network and expiry policy", async () => {
+    await expect(
+      request_payment(pay_request, {
+        amount_msat: 2000,
+        payer_data: { name: "Alice" },
+        expected_network: "testnet",
+        fetch: async () =>
+          json_response({ pr: test_bolt11_invoice(2000, pay_request.metadata_hash) }),
+      }),
+    ).rejects.toThrow(InvalidCallbackResponseError);
+
+    await expect(
+      request_payment(pay_request, {
+        amount_msat: 2000,
+        payer_data: { name: "Alice" },
+        expected_network: "bitcoin",
+        fetch: async () =>
+          json_response({ pr: test_bolt11_invoice(2000, pay_request.metadata_hash) }),
+      }),
+    ).resolves.toMatchObject({ type: "bolt11" });
+
+    await expect(
+      request_payment(pay_request, {
+        amount_msat: 2000,
+        payer_data: { name: "Alice" },
+        now: 2_000_000,
+        fetch: async () =>
+          json_response({
+            pr: test_bolt11_invoice(2000, pay_request.metadata_hash, {
+              timestamp: 1_000_000,
+              expiry_seconds: 60,
+            }),
+          }),
+      }),
+    ).rejects.toThrow(InvalidCallbackResponseError);
+
+    await expect(
+      request_payment(pay_request, {
+        amount_msat: 2000,
+        payer_data: { name: "Alice" },
+        validate_expiry: false,
+        now: 2_000_000,
+        fetch: async () =>
+          json_response({
+            pr: test_bolt11_invoice(2000, pay_request.metadata_hash, {
+              timestamp: 1_000_000,
+              expiry_seconds: 60,
+            }),
+          }),
+      }),
+    ).resolves.toMatchObject({ type: "bolt11" });
+  });
+
   test("enforces callback URL safety for PayRequest inputs", async () => {
     const invalid_pay_request = {
       ...pay_request,

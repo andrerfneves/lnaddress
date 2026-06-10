@@ -140,7 +140,7 @@ function parse_callback_response(
 
   if (pr) {
     if (options.validate_bolt11 ?? true) {
-      assert_bolt11_payment(pr, pay_request, options.amount_msat);
+      assert_bolt11_payment(pr, pay_request, options);
     }
 
     const instruction: Bolt11PaymentInstruction = {

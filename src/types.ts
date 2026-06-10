@@ -4,6 +4,8 @@ export type UrlSafetyOptions = {
   allow_onion?: boolean;
 };
 
+export type Bolt11Network = "bitcoin" | "testnet" | "regtest" | "signet";
+
 export type ResolveOptions = UrlSafetyOptions & {
   fetch?: FetchLike;
   headers?: HeadersInit;
@@ -16,6 +18,9 @@ export type RequestPaymentOptions = UrlSafetyOptions & {
   fetch?: FetchLike;
   headers?: HeadersInit;
   validate_bolt11?: boolean;
+  expected_network?: Bolt11Network;
+  validate_expiry?: boolean;
+  now?: Date | number | (() => Date | number);
 };
 
 export type VerifyPaymentOptions = UrlSafetyOptions & {

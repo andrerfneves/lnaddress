@@ -1,15 +1,24 @@
 import { InvalidCallbackResponseError } from "./errors";
 import { amount_to_msat_string } from "./internal";
-import type { PayRequest } from "./types";
+import type { Bolt11Network, PayRequest, RequestPaymentOptions } from "./types";
 
 const charset = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
 const generator = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
 const signature_word_count = 104;
 
 type DecodedInvoice = {
-  network: "bc" | "tb" | "bcrt" | "sb";
+  network: Bolt11Network;
+  timestamp: number;
+  expiry_seconds: number;
   amount_msat?: bigint;
   description_hash?: string;
+};
+
+const hrp_networks: Record<string, Bolt11Network> = {
+  bc: "bitcoin",
+  tb: "testnet",
+  bcrt: "regtest",
+  sb: "signet",
 };
 
 function polymod(values: number[]): number {
@@ -85,16 +94,36 @@ function bytes_to_hex(bytes: number[]): string {
   return bytes.map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-function parse_hrp(hrp: string): DecodedInvoice {
-  const network = ["bcrt", "bc", "tb", "sb"].find((candidate) =>
-    hrp.startsWith(`ln${candidate}`),
-  ) as DecodedInvoice["network"] | undefined;
+function words_to_int(words: number[]): bigint {
+  return words.reduce((value, word) => (value << 5n) | BigInt(word), 0n);
+}
 
+function now_seconds(now: RequestPaymentOptions["now"]): number {
+  const value = typeof now === "function" ? now() : now;
+  if (value instanceof Date) {
+    return Math.floor(value.getTime() / 1000);
+  }
+  if (typeof value === "number") {
+    return Math.floor(value);
+  }
+  return Math.floor(Date.now() / 1000);
+}
+
+function parse_hrp(hrp: string): Omit<DecodedInvoice, "timestamp" | "expiry_seconds"> {
+  const network_prefix = ["bcrt", "bc", "tb", "sb"].find((candidate) =>
+    hrp.startsWith(`ln${candidate}`),
+  );
+
+  if (!network_prefix) {
+    throw new InvalidCallbackResponseError("BOLT11 invoice network prefix is invalid");
+  }
+
+  const network = hrp_networks[network_prefix];
   if (!network) {
     throw new InvalidCallbackResponseError("BOLT11 invoice network prefix is invalid");
   }
 
-  const amount_part = hrp.slice(`ln${network}`.length);
+  const amount_part = hrp.slice(`ln${network_prefix}`.length);
   if (!amount_part) {
     return { network };
   }
@@ -153,11 +182,17 @@ function decode_bolt11(pr: string): DecodedInvoice {
     throw new InvalidCallbackResponseError("BOLT11 invoice checksum is invalid");
   }
 
-  const invoice = parse_hrp(hrp);
   const payload = data.slice(0, -6);
   if (payload.length < 7 + signature_word_count) {
     throw new InvalidCallbackResponseError("BOLT11 invoice payload is too short");
   }
+
+  const timestamp = Number(words_to_int(payload.slice(0, 7)));
+  const invoice: DecodedInvoice = {
+    ...parse_hrp(hrp),
+    timestamp,
+    expiry_seconds: 3600,
+  };
 
   let offset = 7;
   const tagged_fields_end = payload.length - signature_word_count;
@@ -179,6 +214,10 @@ function decode_bolt11(pr: string): DecodedInvoice {
       invoice.description_hash = bytes_to_hex(hash_bytes);
     }
 
+    if (charset[tag ?? -1] === "x") {
+      invoice.expiry_seconds = Number(words_to_int(payload.slice(offset, end)));
+    }
+
     offset = end;
   }
 
@@ -188,10 +227,16 @@ function decode_bolt11(pr: string): DecodedInvoice {
 export function assert_bolt11_payment(
   pr: string,
   pay_request: PayRequest,
-  amount_msat: number | bigint,
+  options: RequestPaymentOptions,
 ): void {
   const invoice = decode_bolt11(pr);
-  const expected_amount = BigInt(amount_to_msat_string(amount_msat));
+  const expected_amount = BigInt(amount_to_msat_string(options.amount_msat));
+
+  if (options.expected_network && invoice.network !== options.expected_network) {
+    throw new InvalidCallbackResponseError(
+      `BOLT11 invoice network ${invoice.network} does not match expected network ${options.expected_network}`,
+    );
+  }
 
   if (invoice.amount_msat === undefined) {
     throw new InvalidCallbackResponseError("BOLT11 invoice must include an amount");
@@ -211,5 +256,12 @@ export function assert_bolt11_payment(
     throw new InvalidCallbackResponseError(
       "BOLT11 invoice description hash does not match metadata",
     );
+  }
+
+  if (options.validate_expiry !== false) {
+    const expires_at = invoice.timestamp + invoice.expiry_seconds;
+    if (expires_at <= now_seconds(options.now)) {
+      throw new InvalidCallbackResponseError("BOLT11 invoice is expired");
+    }
   }
 }

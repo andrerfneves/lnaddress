@@ -80,15 +80,47 @@ function hex_to_bytes(hex: string): number[] {
   return bytes;
 }
 
-export function test_bolt11_invoice(amount_msat: number | bigint, metadata_hash: string): string {
+function int_to_words(value: number | bigint, word_count?: number): number[] {
+  let remaining = typeof value === "bigint" ? value : BigInt(value);
+  const words: number[] = [];
+
+  while (remaining > 0n) {
+    words.unshift(Number(remaining & 31n));
+    remaining >>= 5n;
+  }
+
+  if (word_count !== undefined) {
+    while (words.length < word_count) {
+      words.unshift(0);
+    }
+  }
+
+  return words;
+}
+
+export function test_bolt11_invoice(
+  amount_msat: number | bigint,
+  metadata_hash: string,
+  options: {
+    network?: "bc" | "tb" | "bcrt" | "sb";
+    timestamp?: number;
+    expiry_seconds?: number;
+  } = {},
+): string {
   const amount = typeof amount_msat === "bigint" ? amount_msat : BigInt(amount_msat);
-  const hrp = `lnbc${(amount * 10n).toString()}p`;
-  const timestamp = [0, 0, 0, 0, 0, 0, 0];
+  const hrp = `ln${options.network ?? "bc"}${(amount * 10n).toString()}p`;
+  const timestamp = int_to_words(options.timestamp ?? Math.floor(Date.now() / 1000), 7);
   const hash_words = convert_bits(hex_to_bytes(metadata_hash), 8, 5, true);
   const h_tag = charset.indexOf("h");
   const h_length = [hash_words.length >> 5, hash_words.length & 31];
+  const expiry_words =
+    options.expiry_seconds === undefined ? [] : int_to_words(options.expiry_seconds);
+  const expiry_field =
+    expiry_words.length === 0
+      ? []
+      : [charset.indexOf("x"), expiry_words.length >> 5, expiry_words.length & 31, ...expiry_words];
   const signature = new Array<number>(104).fill(0);
-  const data = [...timestamp, h_tag, ...h_length, ...hash_words, ...signature];
+  const data = [...timestamp, h_tag, ...h_length, ...hash_words, ...expiry_field, ...signature];
   const combined = [...data, ...create_checksum(hrp, data)];
 
   return `${hrp}1${combined.map((value) => charset[value]).join("")}`;

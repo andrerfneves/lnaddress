@@ -27,6 +27,7 @@ export { parse_success_action } from "./success-action";
 export { verify_payment } from "./verify";
 export type {
   Bolt11PaymentInstruction,
+  Bolt11Network,
   DestinationPaymentInstruction,
   FetchLike,
   LightningAddress,

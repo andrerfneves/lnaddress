@@ -1,16 +1,21 @@
 import { assertBolt11Payment } from "./bolt11";
 import {
+  amountToPositiveIntegerString,
+  assertCurrencyCodeForAmount,
+  callbackAmountValue,
+  findEffectiveCurrency,
+  validateCurrency,
+} from "./currencies";
+import {
   AmountOutOfRangeError,
   CommentNotAllowedError,
   CommentTooLongError,
   InvalidCallbackResponseError,
   InvalidPaymentOptionError,
-  InvalidRequestPaymentOptionsError,
   MissingMandatoryPayerDataError,
   NetworkError,
 } from "./errors";
 import {
-  amountToMsatString,
   assertHttpUrl,
   assertRedirectPolicy,
   fetchWithRedirectPolicy,
@@ -23,12 +28,12 @@ import {
   unknownToRecord,
 } from "./internal";
 import { isPayRequest } from "./payrequest";
+import { assertProviderPolicy } from "./provider-policy";
 import { resolve } from "./resolve";
 import { parseSuccessAction } from "./success-action";
 import type {
   Bolt11PaymentInstruction,
   ConvertedAmount,
-  Currency,
   DestinationPaymentInstruction,
   PayRequest,
   PaymentInstruction,
@@ -135,62 +140,6 @@ export function validatePaymentOption(payRequest: PayRequest, paymentOption?: st
   }
 }
 
-type CurrencyValidationOptions = {
-  requireConvertible?: boolean;
-};
-
-function effectiveCurrencies(
-  payRequest: PayRequest,
-  paymentOption?: string,
-): Currency[] | undefined {
-  if (paymentOption !== undefined && payRequest.paymentOptions) {
-    const option = payRequest.paymentOptions.find((candidate) => candidate.id === paymentOption);
-    if (option?.currencies) {
-      return option.currencies;
-    }
-  }
-
-  return payRequest.currencies;
-}
-
-function findEffectiveCurrency(
-  payRequest: PayRequest,
-  currency: string,
-  paymentOption?: string,
-): Currency | undefined {
-  return effectiveCurrencies(payRequest, paymentOption)?.find(
-    (candidate) => candidate.code === currency,
-  );
-}
-
-export function validateCurrency(
-  payRequest: PayRequest,
-  currency?: string,
-  paymentOption?: string,
-  options: CurrencyValidationOptions = {},
-): void {
-  if (currency === undefined) {
-    return;
-  }
-
-  const currencies = effectiveCurrencies(payRequest, paymentOption);
-  if (!currencies) {
-    throw new InvalidRequestPaymentOptionsError("Pay request does not support currencies");
-  }
-
-  const match = findEffectiveCurrency(payRequest, currency, paymentOption);
-  if (!match) {
-    const scope = paymentOption === undefined ? "pay request" : `paymentOption ${paymentOption}`;
-    throw new InvalidRequestPaymentOptionsError(
-      `Currency ${currency} is not available for ${scope}`,
-    );
-  }
-
-  if (options.requireConvertible && !match.convertible) {
-    throw new InvalidRequestPaymentOptionsError(`Currency ${currency} is not convertible`);
-  }
-}
-
 function callbackErrorMessage(raw: Record<string, unknown>): string {
   const reason = readString(raw, ["reason", "message", "error"]);
   return reason
@@ -202,7 +151,7 @@ function readVerifyUrl(
   raw: Record<string, unknown>,
   options: RequestPaymentOptions,
 ): string | undefined {
-  const verifyUrl = readString(raw, ["verify", "verifyUrl", "verifyUrl"]);
+  const verifyUrl = readString(raw, ["verify", "verifyUrl"]);
   if (!verifyUrl) {
     return undefined;
   }
@@ -214,94 +163,12 @@ function readVerifyUrl(
   }
 }
 
-function sameSite(hostname: string, expectedHostname: string): boolean {
-  return hostname === expectedHostname || hostname.endsWith(`.${expectedHostname}`);
-}
-
-function providerBase(payRequest: PayRequest): URL | undefined {
-  if (payRequest.sourceUrl) {
-    return new URL(payRequest.sourceUrl);
-  }
-  if (payRequest.lightningAddress) {
-    return new URL(`https://${payRequest.lightningAddress.domain}`);
-  }
-  return undefined;
-}
-
-function assertProviderPolicy(
-  payRequest: PayRequest,
-  url: string | URL,
-  options: RequestPaymentOptions,
-  label: string,
-): void {
-  const policy = options.providerPolicy ?? "off";
-  if (policy === "off") {
-    return;
-  }
-
-  const base = providerBase(payRequest);
-  if (!base) {
-    throw new InvalidCallbackResponseError(
-      `${label} providerPolicy requires a resolved PayRequest with sourceUrl or lightningAddress`,
-    );
-  }
-
-  const parsed = typeof url === "string" ? new URL(url) : url;
-  if (policy === "same-origin" && parsed.origin !== base.origin) {
-    throw new InvalidCallbackResponseError(`${label} does not match provider origin`);
-  }
-
-  if (policy === "same-site" && !sameSite(parsed.hostname, base.hostname)) {
-    throw new InvalidCallbackResponseError(`${label} does not match provider site`);
-  }
-}
-
 function stringifyPayerData(payerData: Record<string, unknown>): string {
   try {
     return JSON.stringify(payerData);
   } catch (cause) {
     throw new InvalidCallbackResponseError("payerData must be JSON serializable", { cause });
   }
-}
-
-function amountToPositiveIntegerString(amount: number | bigint, field: string): string {
-  if (typeof amount === "bigint") {
-    if (amount <= 0n) {
-      throw new AmountOutOfRangeError(`${field} must be a positive integer`);
-    }
-    return amount.toString();
-  }
-
-  if (!Number.isSafeInteger(amount) || amount <= 0) {
-    throw new AmountOutOfRangeError(`${field} must be a positive safe integer`);
-  }
-
-  return String(amount);
-}
-
-function assertCurrencyCodeForAmount(currency: string): void {
-  if (currency.length === 0 || currency.trim() !== currency || currency.includes(".")) {
-    throw new InvalidCallbackResponseError(
-      "denominatedAmount.currency must be a non-empty currency code without '.'",
-    );
-  }
-}
-
-function callbackAmountValue(options: RequestPaymentOptions): string {
-  if (options.denominatedAmount !== undefined) {
-    assertCurrencyCodeForAmount(options.denominatedAmount.currency);
-    const amount = amountToPositiveIntegerString(
-      options.denominatedAmount.amount,
-      "denominatedAmount.amount",
-    );
-    return `${amount}.${options.denominatedAmount.currency}`;
-  }
-
-  if (options.amountMsat === undefined) {
-    throw new AmountOutOfRangeError("amountMsat or denominatedAmount is required");
-  }
-
-  return amountToMsatString(options.amountMsat);
 }
 
 function validateCurrencyRequest(payRequest: PayRequest, options: RequestPaymentOptions): void {

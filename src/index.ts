@@ -23,6 +23,7 @@ export {
 } from "./destination";
 export type { DestinationRail } from "./destination";
 export { getMetadataHash, parseMetadata } from "./metadata";
+export { validateCurrency } from "./currencies";
 export { parsePayRequestResponse } from "./payrequest";
 export {
   requestPayment,
@@ -31,7 +32,6 @@ export {
   validateComment,
   validateMandatoryPayerData,
   validatePaymentOption,
-  validateCurrency,
 } from "./request-payment";
 export { resolve } from "./resolve";
 export { decryptSuccessAction, parseSuccessAction } from "./success-action";

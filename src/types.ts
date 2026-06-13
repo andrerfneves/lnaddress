@@ -61,12 +61,35 @@ export type PayerDataField = {
 
 export type PayerData = Record<string, PayerDataField>;
 
+export type CurrencyConvertible = {
+  min: number;
+  max: number;
+};
+
+export type Currency = {
+  code: string;
+  name: string;
+  symbol: string;
+  decimals: number;
+  multiplier: number;
+  convertible?: CurrencyConvertible;
+  raw: Record<string, unknown>;
+};
+
+export type ConvertedAmount = {
+  multiplier: number;
+  amount: number;
+  fee: number;
+  raw: Record<string, unknown>;
+};
+
 export type PaymentOption = {
   id: string;
   type: string;
   available?: boolean;
   minSendableMsat?: bigint;
   maxSendableMsat?: bigint;
+  currencies?: Currency[];
   raw: Record<string, unknown>;
 };
 
@@ -83,7 +106,7 @@ export type PayRequest = {
   commentAllowed?: number;
   payerData?: PayerData;
   paymentOptions?: PaymentOption[];
-  currencies?: unknown;
+  currencies?: Currency[];
   convert?: unknown;
   converted?: unknown;
   raw: unknown;

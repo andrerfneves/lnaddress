@@ -12,7 +12,7 @@ bun i lnaddress
 import { pay } from "lnaddress";
 
 const payment = await pay("alice@example.com", {
-  amount_msat: 10_000,
+  amountMsat: 10_000,
 });
 
 if (payment.type === "bolt11") {
@@ -41,7 +41,7 @@ if (payment.type === "bolt11") {
 | LUD-21 | verify URL | Supported |
 | LUD-XX | `paymentOptions` for multi-rail pay | Supported |
 
-`lnaddress` intentionally does not implement withdraw, auth, hosted channels, channel requests, NWC, UMA compliance, encrypted provider data, or keysend in v0.1.0.
+`lnaddress` intentionally does not implement withdraw, auth, hosted channels, channel requests, NWC, encrypted provider data, or keysend in v0.1.0.
 
 ## Quickstart: request a BOLT11 invoice
 
@@ -49,7 +49,7 @@ if (payment.type === "bolt11") {
 import { pay } from "lnaddress";
 
 const payment = await pay("alice@example.com", {
-  amount_msat: 25_000,
+  amountMsat: 25_000,
 });
 
 if (payment.type !== "bolt11") {
@@ -64,14 +64,14 @@ console.log(payment.pr);
 ```ts
 import { requestPayment, resolve } from "lnaddress";
 
-const pay_request = await resolve("alice@example.com");
+const payRequest = await resolve("alice@example.com");
 
-console.log(pay_request.description);
-console.log(pay_request.minSendableMsat);
-console.log(pay_request.maxSendableMsat);
+console.log(payRequest.description);
+console.log(payRequest.minSendableMsat);
+console.log(payRequest.maxSendableMsat);
 
-const payment = await requestPayment(pay_request, {
-  amount_msat: 50_000n,
+const payment = await requestPayment(payRequest, {
+  amountMsat: 50_000n,
 });
 ```
 
@@ -107,12 +107,12 @@ await resolve(url);
 ```ts
 import { requestPayment, resolve, validateComment } from "lnaddress";
 
-const pay_request = await resolve("alice@example.com");
+const payRequest = await resolve("alice@example.com");
 
-validateComment(pay_request, "thanks");
+validateComment(payRequest, "thanks");
 
-await requestPayment(pay_request, {
-  amount_msat: 10_000,
+await requestPayment(payRequest, {
+  amountMsat: 10_000,
   comment: "thanks",
 });
 ```
@@ -124,15 +124,15 @@ If the provider does not advertise `commentAllowed`, comments are rejected befor
 ```ts
 import { requestPayment, resolve, validateMandatoryPayerData } from "lnaddress";
 
-const pay_request = await resolve("merchant@example.com");
+const payRequest = await resolve("merchant@example.com");
 
-validateMandatoryPayerData(pay_request, {
+validateMandatoryPayerData(payRequest, {
   name: "Alice",
   email: "alice@example.com",
 });
 
-await requestPayment(pay_request, {
-  amount_msat: 100_000,
+await requestPayment(payRequest, {
+  amountMsat: 100_000,
   payerData: {
     name: "Alice",
     email: "alice@example.com",
@@ -148,7 +148,7 @@ await requestPayment(pay_request, {
 import { pay, verifyPayment } from "lnaddress";
 
 const payment = await pay("alice@example.com", {
-  amount_msat: 10_000,
+  amountMsat: 10_000,
 });
 
 const result = await verifyPayment(payment);
@@ -173,17 +173,17 @@ Providers may advertise multiple payment rails via `paymentOptions` in the LUD-0
 ```ts
 import { requestPayment, resolve, validatePaymentOption } from "lnaddress";
 
-const pay_request = await resolve("alice@example.com");
+const payRequest = await resolve("alice@example.com");
 
 // See available options
-console.log(pay_request.paymentOptions);
+console.log(payRequest.paymentOptions);
 // [{ id: "lightning", type: "lightning" }, { id: "liquid", type: "liquid" }]
 
 // Select a non-Lightning option
-validatePaymentOption(pay_request, "liquid");
+validatePaymentOption(payRequest, "liquid");
 
-const payment = await requestPayment(pay_request, {
-  amount_msat: 25_000,
+const payment = await requestPayment(payRequest, {
+  amountMsat: 25_000,
   paymentOption: "liquid",
 });
 
@@ -202,7 +202,7 @@ Some providers return payment destinations instead of BOLT11 invoices. `lnaddres
 
 ```ts
 const payment = await pay("liquid@example.com", {
-  amount_msat: 25_000,
+  amountMsat: 25_000,
 });
 
 if (payment.type === "destination") {
@@ -212,7 +212,7 @@ if (payment.type === "destination") {
 }
 ```
 
-The same shape works for BOLT12-style offers and destination rails such as onchain, Liquid, Ark, or Spark when a provider returns `paymentDestination`, `paymentURI`, and optionally `verify`.
+The same shape works for BOLT12-style offers and destination rails such as onchain, Liquid, Arkade, or Spark when a provider returns `paymentDestination`, `paymentURI`, and optionally `verify`.
 
 ## Examples
 
@@ -234,7 +234,7 @@ bun run dev
 ```ts
 import { resolve } from "lnaddress";
 
-const pay_request = await resolve("alice@example.com", {
+const payRequest = await resolve("alice@example.com", {
   fetch: async (input, init) => {
     return fetch(input, {
       ...init,
@@ -258,7 +258,7 @@ import {
 } from "lnaddress";
 
 try {
-  await pay("alice@example.com", { amount_msat: 1 });
+  await pay("alice@example.com", { amountMsat: 1 });
 } catch (error) {
   if (error instanceof AmountOutOfRangeError) {
     console.error("Choose a larger amount");
@@ -279,21 +279,21 @@ try {
 Accepts a Lightning Address, LNURL bech32 string, `lnurlp://` URI, or HTTP(S) URL and returns a `PayRequest`.
 
 ```ts
-const pay_request = await resolve("alice@example.com", {
+const payRequest = await resolve("alice@example.com", {
   fetch,
 });
 ```
 
-### `requestPayment(pay_request_or_input, options)`
+### `requestPayment(payRequestOrInput, options)`
 
 Accepts a resolved `PayRequest` or any `resolve` input and returns a `PaymentInstruction`.
 
 ```ts
 const payment = await requestPayment("alice@example.com", {
-  amount_msat: 10_000,
+  amountMsat: 10_000,
   comment: "hi",
   payerData: { name: "Alice" },
-  validate_bolt11: true,
+  validateBolt11: true,
 });
 ```
 
@@ -301,7 +301,7 @@ const payment = await requestPayment("alice@example.com", {
 
 One-shot `resolve` plus `requestPayment`.
 
-### `verifyPayment(payment_or_verifyUrl, options?)`
+### `verifyPayment(paymentOrVerifyUrl, options?)`
 
 Fetches a LUD-21 verify URL and returns a `VerifyResult`.
 
@@ -312,17 +312,17 @@ parseLightningAddress(address);
 isLightningAddress(value);
 decodeLnurl(lnurl);
 encodeLnurl(url);
-parseMetadata(metadata_string);
-getMetadataHash(metadata_string);
-validateCallbackAmount(pay_request, amount_msat);
-validateComment(pay_request, comment);
-validateMandatoryPayerData(pay_request, payerData);
-validatePaymentOption(pay_request, paymentOption);
+parseMetadata(metadataString);
+getMetadataHash(metadataString);
+validateCallbackAmount(payRequest, amountMsat);
+validateComment(payRequest, comment);
+validateMandatoryPayerData(payRequest, payerData);
+validatePaymentOption(payRequest, paymentOption);
 ```
 
 ## Types
 
-The public API uses snake_case for function names and object fields.
+The public API uses camelCase for function names and object fields.
 
 ```ts
 import type { PayRequest, PaymentInstruction, PaymentOption, VerifyResult } from "lnaddress";
@@ -348,7 +348,7 @@ if (payment.type === "bolt11") {
 ## Security Notes
 
 - `metadataHash` is computed from the exact metadata string returned by the provider.
-- `validate_bolt11` performs basic invoice shape validation only. It is not a full BOLT11 decoder.
+- `validateBolt11` performs basic invoice shape validation only. It is not a full BOLT11 decoder.
 - AES success actions are preserved, but synchronous AES decryption is not implemented in v0.1.0 because Web Crypto is asynchronous.
 - Always verify settlement with `verifyPayment` when the provider supplies a verify URL.
 

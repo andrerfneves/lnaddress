@@ -1,7 +1,7 @@
 import { InvalidLightningAddressError } from "./errors";
 import type { LightningAddress } from "./types";
 
-const usernamePattern = /^[A-Za-z0-9._~+-]+$/;
+const usernamePattern = /^[a-z0-9._+-]+$/;
 const domainLabelPattern = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 
 function isValidDomain(hostname: string): boolean {

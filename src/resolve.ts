@@ -16,10 +16,8 @@ import { decodeLnurl } from "./lnurl";
 import { parsePayRequestResponse } from "./payrequest";
 import type { LightningAddress, PayRequest, ResolveOptions } from "./types";
 
-function lightningAddress_to_url(lightningAddress: LightningAddress): string {
-  return `https://${lightningAddress.domain}/.well-known/lnurlp/${encodeURIComponent(
-    lightningAddress.username,
-  )}`;
+function lightningAddressToUrl(address: LightningAddress): string {
+  return `https://${address.domain}/.well-known/lnurlp/${address.username}`;
 }
 
 function assertResolveUrl(url: string, options: ResolveOptions): string {
@@ -46,7 +44,7 @@ function lnurlpUriToUrl(input: string): { url: string; lightningAddress?: Lightn
   if (parsed.username) {
     const lightningAddress = parseLightningAddress(`${parsed.username}@${parsed.hostname}`);
     return {
-      url: lightningAddress_to_url(lightningAddress),
+      url: lightningAddressToUrl(lightningAddress),
       lightningAddress,
     };
   }
@@ -101,7 +99,7 @@ function inputToUrl(
   if (!value.includes("://") && value.includes("@")) {
     const address = parseLightningAddress(value);
     return {
-      url: assertResolveUrl(lightningAddress_to_url(address), options),
+      url: assertResolveUrl(lightningAddressToUrl(address), options),
       address,
     };
   }

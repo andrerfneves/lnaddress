@@ -18,6 +18,12 @@ describe("Lightning Address parsing", () => {
     });
   });
 
+  test("generates correct URL for tagged addresses", () => {
+    const address = parseLightningAddress("alice+shop@example.com");
+    const url = `https://${address.domain}/.well-known/lnurlp/${address.username}`;
+    expect(url).toBe("https://example.com/.well-known/lnurlp/alice+shop");
+  });
+
   test("punycodes unicode domains through URL parsing", () => {
     expect(parseLightningAddress("alice@bücher.example").domain).toBe("xn--bcher-kva.example");
   });
@@ -29,6 +35,10 @@ describe("Lightning Address parsing", () => {
     "ali ce@example.com",
     "alice@example.com/path",
     "alice@example.com:443",
+    "Alice@example.com",
+    "ALICE@example.com",
+    "alice+Tag@example.com",
+    "user~name@example.com",
     "alice@-example.com",
     "alice@example-.com",
     "alice@example..com",

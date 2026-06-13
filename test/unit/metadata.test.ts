@@ -12,6 +12,16 @@ describe("metadata utilities", () => {
     ]);
   });
 
+  test("accepts non-string metadata values per LUD-06", () => {
+    expect(parseMetadata('[["text/plain","hello"],["text/number",42],["text/bool",true]]')).toEqual(
+      [
+        ["text/plain", "hello"],
+        ["text/number", 42],
+        ["text/bool", true],
+      ],
+    );
+  });
+
   test("rejects malformed metadata", () => {
     expect(() => parseMetadata('{"text/plain":"hello"}')).toThrow(InvalidPayRequestError);
     expect(() => parseMetadata("[[1,2]]")).toThrow(InvalidPayRequestError);

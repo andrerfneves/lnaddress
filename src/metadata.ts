@@ -25,8 +25,8 @@ export function parseMetadata(metadataString: string): MetadataEntry[] {
     }
 
     const [mimeType, value] = entry;
-    if (typeof mimeType !== "string" || typeof value !== "string") {
-      throw new InvalidPayRequestError(`Metadata entry ${index} must contain string values`);
+    if (typeof mimeType !== "string") {
+      throw new InvalidPayRequestError(`Metadata entry ${index} must have a string type`);
     }
 
     return [mimeType, value];
@@ -39,17 +39,20 @@ export function getMetadataHash(metadataString: string): string {
 }
 
 export function getDescription(metadata: MetadataEntry[]): string | undefined {
-  return metadata.find(([mimeType]) => mimeType === "text/plain")?.[1];
+  const entry = metadata.find(([mimeType]) => mimeType === "text/plain");
+  if (!entry) return undefined;
+  const value = entry[1];
+  return typeof value === "string" ? value : undefined;
 }
 
 export function getImage(metadata: MetadataEntry[]): MetadataImage | undefined {
   const entry = metadata.find(([mimeType]) => mimeType.startsWith("image/"));
+  if (!entry) return undefined;
 
-  if (!entry) {
-    return undefined;
-  }
+  const mimeType = entry[0];
+  const data = entry[1];
+  if (typeof data !== "string") return undefined;
 
-  const [mimeType, data] = entry;
   const dataUri_mimeType = mimeType.endsWith(";base64") ? mimeType : `${mimeType};base64`;
   return {
     mimeType,

@@ -44,7 +44,7 @@ export type LightningAddress = {
   address: string;
 };
 
-export type MetadataEntry = [mimeType: string, value: string];
+export type MetadataEntry = [mimeType: string, value: unknown];
 
 export type MetadataImage = {
   mimeType: string;

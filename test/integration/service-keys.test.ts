@@ -63,6 +63,34 @@ describe("fetchServiceKeys", () => {
     ).resolves.toMatchObject({ domain: "example.com" });
   });
 
+  test("keeps timeout active while reading a stalled response body", async () => {
+    const encoder = new TextEncoder();
+    const fetcher = async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(encoder.encode('{"domain":"example.com",'));
+          init?.signal?.addEventListener(
+            "abort",
+            () => controller.error(new DOMException("aborted", "AbortError")),
+            { once: true },
+          );
+        },
+      });
+
+      return new Response(body, { headers: { "content-type": "application/json" } });
+    };
+
+    const result = await Promise.race([
+      fetchServiceKeys("example.com", { fetch: fetcher, timeoutMs: 5 }).then(
+        () => "resolved",
+        (error: unknown) => error,
+      ),
+      new Promise<"stalled">((resolve) => setTimeout(() => resolve("stalled"), 100)),
+    ]);
+
+    expect(result).toBeInstanceOf(InvalidServiceKeysError);
+  });
+
   test("rejects domain mismatches in fetched documents", async () => {
     const fetcher = async () =>
       jsonResponse({ ...serviceKeysResponse, domain: "attacker.example" });

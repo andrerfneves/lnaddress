@@ -241,25 +241,28 @@ export async function fetchServiceKeys(
   try {
     response = await fetchWithRedirectPolicy(fetcher, url, init, options);
   } catch (cause) {
+    cleanup();
     throw new NetworkError(`Failed to fetch LNURL service keys: ${url.toString()}`, { cause });
+  }
+
+  try {
+    assertRedirectPolicy(url, response, options);
+
+    if (!response.ok) {
+      throw new NetworkError(
+        `Failed to fetch LNURL service keys: ${response.status} ${response.statusText}`,
+      );
+    }
+
+    let body: unknown;
+    try {
+      body = await readJsonResponse(response);
+    } catch (cause) {
+      throw new InvalidServiceKeysError("LNURL service keys response is not valid JSON", { cause });
+    }
+
+    return parseServiceKeysResponse(body, { sourceUrl: url.toString() });
   } finally {
     cleanup();
   }
-
-  assertRedirectPolicy(url, response, options);
-
-  if (!response.ok) {
-    throw new NetworkError(
-      `Failed to fetch LNURL service keys: ${response.status} ${response.statusText}`,
-    );
-  }
-
-  let body: unknown;
-  try {
-    body = await readJsonResponse(response);
-  } catch (cause) {
-    throw new InvalidServiceKeysError("LNURL service keys response is not valid JSON", { cause });
-  }
-
-  return parseServiceKeysResponse(body, { sourceUrl: url.toString() });
 }

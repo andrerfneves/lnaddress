@@ -24,8 +24,6 @@ const payRequestSchema = z
     payerData: z.record(z.unknown()).optional(),
     paymentOptions: z.array(z.unknown()).optional(),
     currencies: z.array(z.unknown()).optional(),
-    convert: z.unknown().optional(),
-    converted: z.unknown().optional(),
   })
   .passthrough();
 export type ParsePayRequestContext = UrlSafetyOptions & {
@@ -104,8 +102,14 @@ function parseCurrencies(raw: unknown): Currency[] | undefined {
       throw new InvalidPayRequestError(`currencies entry ${index} must have a string symbol`);
     }
 
-    if (typeof record.decimals !== "number" || !Number.isInteger(record.decimals) || record.decimals < 0) {
-      throw new InvalidPayRequestError(`currencies entry ${index} must have a non-negative integer decimals`);
+    if (
+      typeof record.decimals !== "number" ||
+      !Number.isInteger(record.decimals) ||
+      record.decimals < 0
+    ) {
+      throw new InvalidPayRequestError(
+        `currencies entry ${index} must have a non-negative integer decimals`,
+      );
     }
 
     if (typeof record.multiplier !== "number" || record.multiplier <= 0) {
@@ -307,14 +311,6 @@ export function parsePayRequestResponse(
   const currencies = parseCurrencies(parsed.data.currencies);
   if (currencies) {
     payRequest.currencies = currencies;
-  }
-
-  if (parsed.data.convert !== undefined) {
-    payRequest.convert = parsed.data.convert;
-  }
-
-  if (parsed.data.converted !== undefined) {
-    payRequest.converted = parsed.data.converted;
   }
 
   if (context.sourceUrl) {

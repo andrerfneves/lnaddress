@@ -19,12 +19,16 @@ export type ResolveOptions = UrlSafetyOptions & {
   headers?: HeadersInit;
 } & FetchControls;
 
-export type RequestPaymentOptions = UrlSafetyOptions & {
-  amountMsat: number | bigint;
+export type DenominatedAmount = {
+  amount: number | bigint;
+  currency: string;
+};
+
+type RequestPaymentBaseOptions = UrlSafetyOptions & {
   comment?: string;
   payerData?: Record<string, unknown>;
   paymentOption?: string;
-  currency?: string;
+  convert?: string;
   fetch?: FetchLike;
   headers?: HeadersInit;
   validateBolt11?: boolean;
@@ -33,6 +37,12 @@ export type RequestPaymentOptions = UrlSafetyOptions & {
   now?: Date | number | (() => Date | number);
   providerPolicy?: ProviderPolicy;
 } & FetchControls;
+
+export type RequestPaymentOptions = RequestPaymentBaseOptions &
+  (
+    | { amountMsat: number | bigint; denominatedAmount?: never }
+    | { amountMsat?: never; denominatedAmount: DenominatedAmount }
+  );
 
 export type VerifyPaymentOptions = UrlSafetyOptions & {
   fetch?: FetchLike;
@@ -108,8 +118,6 @@ export type PayRequest = {
   payerData?: PayerData;
   paymentOptions?: PaymentOption[];
   currencies?: Currency[];
-  convert?: unknown;
-  converted?: unknown;
   raw: unknown;
   sourceUrl?: string;
   lightningAddress?: LightningAddress;

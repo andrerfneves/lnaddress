@@ -41,6 +41,7 @@ export type {
   ConvertedAmount,
   Currency,
   CurrencyConvertible,
+  DenominatedAmount,
   DestinationPaymentInstruction,
   FetchLike,
   FetchControls,

@@ -1,504 +1,433 @@
 import { describe, expect, test } from "bun:test";
-import {
-  parsePayRequestResponse,
-  requestPayment,
-  validateCurrency,
-} from "../../src";
-import { InvalidCallbackResponseError } from "../../src/errors";
+import { parsePayRequestResponse, requestPayment, validateCurrency } from "../../src";
+import type { RequestPaymentOptions } from "../../src";
+import { AmountOutOfRangeError, InvalidCallbackResponseError } from "../../src/errors";
+
+function jsonResponse(body: unknown): Response {
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { "content-type": "application/json" },
+  });
+}
+
+const usd = {
+  code: "USD",
+  name: "US Dollar",
+  symbol: "$",
+  decimals: 2,
+  multiplier: 48_900,
+  convertible: { min: 100, max: 1_000_000 },
+};
+
+const eur = {
+  code: "EUR",
+  name: "Euro",
+  symbol: "€",
+  decimals: 2,
+  multiplier: 52_000,
+};
+
+const brl = {
+  code: "BRL",
+  name: "Brazilian Real",
+  symbol: "R$",
+  decimals: 2,
+  multiplier: 5_370,
+  convertible: { min: 100, max: 1_000_000 },
+};
+
+const usdt = {
+  code: "USDT",
+  name: "Tether",
+  symbol: "₮",
+  decimals: 6,
+  multiplier: 2.68,
+  convertible: { min: 1_000, max: 10_000_000_000 },
+};
+
+const baseResponse = {
+  tag: "payRequest",
+  callback: "https://example.com/lnurlp/alice/callback?k1=abc",
+  minSendable: 1000,
+  maxSendable: 1_000_000_000,
+  metadata: '[["text/plain","Pay to Alice"]]',
+};
 
 describe("LUD-22 currencies parsing", () => {
   test("parses currencies array from payRequest", () => {
-    const response = {
-      tag: "payRequest",
-      callback: "https://example.com/lnurlp/alice/callback",
-      minSendable: 1000,
-      maxSendable: 1000000000,
-      metadata: '[["text/plain","Pay to Alice"]]',
-      currencies: [
-        {
-          code: "USD",
-          name: "US Dollar",
-          symbol: "$",
-          decimals: 2,
-          multiplier: 48900,
-          convertible: { min: 100, max: 1000000 },
-        },
-        {
-          code: "EUR",
-          name: "Euro",
-          symbol: "€",
-          decimals: 2,
-          multiplier: 52000,
-        },
-      ],
-    };
+    const payRequest = parsePayRequestResponse({
+      ...baseResponse,
+      currencies: [usd, eur],
+    });
 
-    const payRequest = parsePayRequestResponse(response);
-    expect(payRequest.currencies).toBeDefined();
     expect(payRequest.currencies).toHaveLength(2);
-    
-    const currencies = payRequest.currencies!;
-    expect(currencies[0]!.code).toBe("USD");
-    expect(currencies[0]!.name).toBe("US Dollar");
-    expect(currencies[0]!.symbol).toBe("$");
-    expect(currencies[0]!.decimals).toBe(2);
-    expect(currencies[0]!.multiplier).toBe(48900);
-    expect(currencies[0]!.convertible).toEqual({ min: 100, max: 1000000 });
-    expect(currencies[1]!.code).toBe("EUR");
-    expect(currencies[1]!.convertible).toBeUndefined();
+    const currencies = payRequest.currencies ?? [];
+    expect(currencies[0]).toMatchObject(usd);
+    expect(currencies[1]).toMatchObject(eur);
+    expect(currencies[0]?.raw).toMatchObject(usd);
   });
 
   test("rejects duplicate currency codes", () => {
-    const response = {
-      tag: "payRequest",
-      callback: "https://example.com/lnurlp/alice/callback",
-      minSendable: 1000,
-      maxSendable: 1000000000,
-      metadata: '[["text/plain","Pay to Alice"]]',
-      currencies: [
-        { code: "USD", name: "US Dollar", symbol: "$", decimals: 2, multiplier: 48900 },
-        { code: "USD", name: "US Dollar", symbol: "$", decimals: 2, multiplier: 49000 },
-      ],
-    };
-
-    expect(() => parsePayRequestResponse(response)).toThrow(/currencies contains duplicate code/i);
+    expect(() =>
+      parsePayRequestResponse({
+        ...baseResponse,
+        currencies: [usd, { ...usd, multiplier: 49_000 }],
+      }),
+    ).toThrow(/currencies contains duplicate code/i);
   });
 
   test("rejects currency with missing required fields", () => {
-    const response = {
-      tag: "payRequest",
-      callback: "https://example.com/lnurlp/alice/callback",
-      minSendable: 1000,
-      maxSendable: 1000000000,
-      metadata: '[["text/plain","Pay to Alice"]]',
-      currencies: [
-        { code: "USD", name: "US Dollar", symbol: "$" }, // missing decimals and multiplier
-      ],
-    };
-
-    expect(() => parsePayRequestResponse(response)).toThrow(/currencies entry 0 must have a non-negative integer decimals/i);
+    expect(() =>
+      parsePayRequestResponse({
+        ...baseResponse,
+        currencies: [{ code: "USD", name: "US Dollar", symbol: "$" }],
+      }),
+    ).toThrow(/currencies entry 0 must have a non-negative integer decimals/i);
   });
 
   test("rejects currency with negative decimals", () => {
-    const response = {
-      tag: "payRequest",
-      callback: "https://example.com/lnurlp/alice/callback",
-      minSendable: 1000,
-      maxSendable: 1000000000,
-      metadata: '[["text/plain","Pay to Alice"]]',
-      currencies: [
-        { code: "USD", name: "US Dollar", symbol: "$", decimals: -1, multiplier: 48900 },
-      ],
-    };
-
-    expect(() => parsePayRequestResponse(response)).toThrow(/currencies entry 0 must have a non-negative integer decimals/i);
+    expect(() =>
+      parsePayRequestResponse({
+        ...baseResponse,
+        currencies: [{ ...usd, decimals: -1 }],
+      }),
+    ).toThrow(/currencies entry 0 must have a non-negative integer decimals/i);
   });
 
   test("rejects currency with non-positive multiplier", () => {
-    const response = {
-      tag: "payRequest",
-      callback: "https://example.com/lnurlp/alice/callback",
-      minSendable: 1000,
-      maxSendable: 1000000000,
-      metadata: '[["text/plain","Pay to Alice"]]',
-      currencies: [
-        { code: "USD", name: "US Dollar", symbol: "$", decimals: 2, multiplier: 0 },
-      ],
-    };
-
-    expect(() => parsePayRequestResponse(response)).toThrow(/currencies entry 0 must have a positive multiplier/i);
+    expect(() =>
+      parsePayRequestResponse({
+        ...baseResponse,
+        currencies: [{ ...usd, multiplier: 0 }],
+      }),
+    ).toThrow(/currencies entry 0 must have a positive multiplier/i);
   });
 
   test("rejects convertible with min > max", () => {
-    const response = {
-      tag: "payRequest",
-      callback: "https://example.com/lnurlp/alice/callback",
-      minSendable: 1000,
-      maxSendable: 1000000000,
-      metadata: '[["text/plain","Pay to Alice"]]',
-      currencies: [
-        {
-          code: "USD",
-          name: "US Dollar",
-          symbol: "$",
-          decimals: 2,
-          multiplier: 48900,
-          convertible: { min: 1000, max: 100 },
-        },
-      ],
-    };
-
-    expect(() => parsePayRequestResponse(response)).toThrow(/convertible.*min.*max/i);
+    expect(() =>
+      parsePayRequestResponse({
+        ...baseResponse,
+        currencies: [{ ...usd, convertible: { min: 1000, max: 100 } }],
+      }),
+    ).toThrow(/convertible.*min.*max/i);
   });
 });
 
 describe("LUD-22 nested currencies in paymentOptions", () => {
   test("parses currencies nested in paymentOption", () => {
-    const response = {
-      tag: "payRequest",
-      callback: "https://example.com/lnurlp/alice/callback",
-      minSendable: 1000,
-      maxSendable: 1000000000,
-      metadata: '[["text/plain","Pay to Alice"]]',
+    const payRequest = parsePayRequestResponse({
+      ...baseResponse,
       paymentOptions: [
         {
           id: "lightning",
           type: "lightning",
           available: true,
-          minSendableMsat: 1000,
-          maxSendableMsat: 1000000000,
-          currencies: [
-            { code: "BTC", name: "Bitcoin", symbol: "₿", decimals: 0, multiplier: 1000 },
-            { code: "USD", name: "US Dollar", symbol: "$", decimals: 2, multiplier: 48900 },
-          ],
+          minSendable: 1000,
+          maxSendable: 1_000_000_000,
+          currencies: [usd, brl],
         },
         {
           id: "liquid",
           type: "liquid",
           available: true,
-          minSendableMsat: 1000,
-          maxSendableMsat: 1000000000,
-          currencies: [
-            { code: "USD", name: "US Dollar", symbol: "$", decimals: 2, multiplier: 48900 },
-            { code: "EUR", name: "Euro", symbol: "€", decimals: 2, multiplier: 52000 },
-          ],
+          minSendable: 1000,
+          maxSendable: 1_000_000_000,
+          currencies: [brl, usdt],
         },
-      ],
-    };
-
-    const payRequest = parsePayRequestResponse(response);
-    expect(payRequest.paymentOptions).toHaveLength(2);
-    
-    const lightning = payRequest.paymentOptions![0]!;
-    expect(lightning.currencies).toHaveLength(2);
-    const lightningCurrencies = lightning.currencies!;
-    expect(lightningCurrencies[0]!.code).toBe("BTC");
-    expect(lightningCurrencies[1]!.code).toBe("USD");
-
-    const liquid = payRequest.paymentOptions![1]!;
-    expect(liquid.currencies).toHaveLength(2);
-    const liquidCurrencies = liquid.currencies!;
-    expect(liquidCurrencies[0]!.code).toBe("USD");
-    expect(liquidCurrencies[1]!.code).toBe("EUR");
-  });
-
-  test("paymentOption without currencies inherits from top level", () => {
-    const response = {
-      tag: "payRequest",
-      callback: "https://example.com/lnurlp/alice/callback",
-      minSendable: 1000,
-      maxSendable: 1000000000,
-      metadata: '[["text/plain","Pay to Alice"]]',
-      currencies: [
-        { code: "USD", name: "US Dollar", symbol: "$", decimals: 2, multiplier: 48900 },
-      ],
-      paymentOptions: [
-        {
-          id: "lightning",
-          type: "lightning",
-          available: true,
-          minSendableMsat: 1000,
-          maxSendableMsat: 1000000000,
-          // No currencies - should inherit from top level
-        },
-      ],
-    };
-
-    const payRequest = parsePayRequestResponse(response);
-    expect(payRequest.currencies).toHaveLength(1);
-    expect(payRequest.paymentOptions![0]!.currencies).toBeUndefined();
-  });
-});
-
-describe("LUD-22 currency validation", () => {
-  test("validateCurrency passes for valid top-level currency", () => {
-    const payRequest = parsePayRequestResponse({
-      tag: "payRequest",
-      callback: "https://example.com/lnurlp/alice/callback",
-      minSendable: 1000,
-      maxSendable: 1000000000,
-      metadata: '[["text/plain","Pay to Alice"]]',
-      currencies: [
-        { code: "USD", name: "US Dollar", symbol: "$", decimals: 2, multiplier: 48900 },
       ],
     });
 
+    expect(payRequest.paymentOptions).toHaveLength(2);
+
+    const lightning = payRequest.paymentOptions?.[0];
+    expect(lightning?.currencies).toHaveLength(2);
+    expect(lightning?.currencies?.[0]).toMatchObject(usd);
+    expect(lightning?.currencies?.[1]).toMatchObject(brl);
+
+    const liquid = payRequest.paymentOptions?.[1];
+    expect(liquid?.currencies).toHaveLength(2);
+    expect(liquid?.currencies?.[0]).toMatchObject(brl);
+    expect(liquid?.currencies?.[1]).toMatchObject(usdt);
+  });
+
+  test("paymentOption without currencies inherits from top-level currencies", () => {
+    const payRequest = parsePayRequestResponse({
+      ...baseResponse,
+      currencies: [usd],
+      paymentOptions: [{ id: "lightning", type: "lightning", available: true }],
+    });
+
+    expect(payRequest.currencies).toHaveLength(1);
+    expect(payRequest.paymentOptions?.[0]?.currencies).toBeUndefined();
+    expect(() =>
+      validateCurrency(payRequest, "USD", "lightning", { requireConvertible: false }),
+    ).not.toThrow();
+  });
+});
+
+describe("LUD-22 effective currency validation", () => {
+  test("passes for valid top-level denomination currency", () => {
+    const payRequest = parsePayRequestResponse({ ...baseResponse, currencies: [usd] });
     expect(() => validateCurrency(payRequest, "USD")).not.toThrow();
   });
 
-  test("validateCurrency throws for unknown currency", () => {
-    const payRequest = parsePayRequestResponse({
-      tag: "payRequest",
-      callback: "https://example.com/lnurlp/alice/callback",
-      minSendable: 1000,
-      maxSendable: 1000000000,
-      metadata: '[["text/plain","Pay to Alice"]]',
-      currencies: [
-        { code: "USD", name: "US Dollar", symbol: "$", decimals: 2, multiplier: 48900 },
-      ],
-    });
-
+  test("throws for unknown top-level currency", () => {
+    const payRequest = parsePayRequestResponse({ ...baseResponse, currencies: [usd] });
     expect(() => validateCurrency(payRequest, "EUR")).toThrow(InvalidCallbackResponseError);
   });
 
-  test("validateCurrency checks paymentOption-specific currencies", () => {
+  test("checks paymentOption-specific currencies before falling back", () => {
     const payRequest = parsePayRequestResponse({
-      tag: "payRequest",
-      callback: "https://example.com/lnurlp/alice/callback",
-      minSendable: 1000,
-      maxSendable: 1000000000,
-      metadata: '[["text/plain","Pay to Alice"]]',
+      ...baseResponse,
+      currencies: [usd, eur],
       paymentOptions: [
         {
-          id: "lightning",
-          type: "lightning",
+          id: "liquid",
+          type: "liquid",
           available: true,
-          minSendableMsat: 1000,
-          maxSendableMsat: 1000000000,
-          currencies: [
-            { code: "USD", name: "US Dollar", symbol: "$", decimals: 2, multiplier: 48900 },
-          ],
+          currencies: [brl, usdt],
         },
       ],
     });
 
-    expect(() => validateCurrency(payRequest, "USD", "lightning")).not.toThrow();
-    expect(() => validateCurrency(payRequest, "EUR", "lightning")).toThrow(/not available for payment option/i);
+    expect(() => validateCurrency(payRequest, "BRL", "liquid")).not.toThrow();
+    expect(() => validateCurrency(payRequest, "USD", "liquid")).toThrow(
+      /not available for paymentOption/i,
+    );
   });
 
-  test("validateCurrency falls back to top-level when paymentOption has no currencies", () => {
-    const payRequest = parsePayRequestResponse({
-      tag: "payRequest",
-      callback: "https://example.com/lnurlp/alice/callback",
-      minSendable: 1000,
-      maxSendable: 1000000000,
-      metadata: '[["text/plain","Pay to Alice"]]',
-      currencies: [
-        { code: "USD", name: "US Dollar", symbol: "$", decimals: 2, multiplier: 48900 },
-      ],
-      paymentOptions: [
-        {
-          id: "lightning",
-          type: "lightning",
-          available: true,
-          minSendableMsat: 1000,
-          maxSendableMsat: 1000000000,
-        },
-      ],
-    });
-
-    expect(() => validateCurrency(payRequest, "USD", "lightning")).not.toThrow();
+  test("requires convertible metadata for convert targets", () => {
+    const payRequest = parsePayRequestResponse({ ...baseResponse, currencies: [usd, eur] });
+    expect(() =>
+      validateCurrency(payRequest, "USD", undefined, { requireConvertible: true }),
+    ).not.toThrow();
+    expect(() =>
+      validateCurrency(payRequest, "EUR", undefined, { requireConvertible: true }),
+    ).toThrow(/not convertible/i);
   });
 
-  test("validateCurrency passes when no currency specified", () => {
-    const payRequest = parsePayRequestResponse({
-      tag: "payRequest",
-      callback: "https://example.com/lnurlp/alice/callback",
-      minSendable: 1000,
-      maxSendable: 1000000000,
-      metadata: '[["text/plain","Pay to Alice"]]',
-    });
-
+  test("allows no currency when request uses base millisatoshi amount", () => {
+    const payRequest = parsePayRequestResponse(baseResponse);
     expect(() => validateCurrency(payRequest)).not.toThrow();
-    expect(() => validateCurrency(payRequest, undefined)).not.toThrow();
   });
 });
 
-describe("LUD-22 currency in callback URL", () => {
-  test("includes currency parameter in callback URL", async () => {
-    const payRequest = parsePayRequestResponse({
-      tag: "payRequest",
-      callback: "https://example.com/lnurlp/alice/callback",
-      minSendable: 1000,
-      maxSendable: 1000000000,
-      metadata: '[["text/plain","Pay to Alice"]]',
-      currencies: [
-        { code: "USD", name: "US Dollar", symbol: "$", decimals: 2, multiplier: 48900 },
-      ],
-    });
-
-    const mockFetch = async (url: string | URL | Request) => {
-      const urlStr = url.toString();
-      expect(urlStr).toContain("currency=USD");
-      expect(urlStr).toContain("amount=100000");
-      
-      return new Response(
-        JSON.stringify({
-          pr: "lnbc1...",
-          routes: [],
-        }),
-        { status: 200, headers: { "content-type": "application/json" } }
-      );
-    };
+describe("LUD-22 callback parameters", () => {
+  test("uses base LUD-06 amount when only amountMsat is provided", async () => {
+    const payRequest = parsePayRequestResponse({ ...baseResponse, currencies: [brl] });
 
     await requestPayment(payRequest, {
-      amountMsat: 100000,
-      currency: "USD",
+      amountMsat: 538_000,
       validateBolt11: false,
-      fetch: mockFetch as any,
+      fetch: async (input) => {
+        const url = new URL(input.toString());
+        expect(url.searchParams.get("amount")).toBe("538000");
+        expect(url.searchParams.has("convert")).toBe(false);
+        expect(url.searchParams.has("currency")).toBe(false);
+        return jsonResponse({ pr: "lnbc1...", routes: [] });
+      },
     });
   });
 
-  test("includes both paymentOption and currency in callback URL", async () => {
+  test("uses LUD-22 amount=<units>.<code> for denominated amounts", async () => {
+    const payRequest = parsePayRequestResponse({ ...baseResponse, currencies: [brl] });
+
+    await requestPayment(payRequest, {
+      denominatedAmount: { amount: 100, currency: "BRL" },
+      validateBolt11: false,
+      fetch: async (input) => {
+        const url = new URL(input.toString());
+        expect(url.searchParams.get("amount")).toBe("100.BRL");
+        expect(url.searchParams.has("currency")).toBe(false);
+        expect(url.searchParams.has("convert")).toBe(false);
+        return jsonResponse({ pr: "lnbc1...", routes: [] });
+      },
+    });
+  });
+
+  test("uses LUD-22 convert=<code> for receiver-side conversion", async () => {
+    const payRequest = parsePayRequestResponse({ ...baseResponse, currencies: [brl] });
+
+    await requestPayment(payRequest, {
+      amountMsat: 538_000,
+      convert: "BRL",
+      validateBolt11: false,
+      fetch: async (input) => {
+        const url = new URL(input.toString());
+        expect(url.searchParams.get("amount")).toBe("538000");
+        expect(url.searchParams.get("convert")).toBe("BRL");
+        expect(url.searchParams.has("currency")).toBe(false);
+        return jsonResponse({
+          pr: "lnbc1...",
+          routes: [],
+          converted: { amount: 100, fee: 1000, multiplier: 5370 },
+        });
+      },
+    });
+  });
+
+  test("combines paymentOption, denominated amount, and convert without non-spec currency param", async () => {
     const payRequest = parsePayRequestResponse({
-      tag: "payRequest",
-      callback: "https://example.com/lnurlp/alice/callback",
-      minSendable: 1000,
-      maxSendable: 1000000000,
-      metadata: '[["text/plain","Pay to Alice"]]',
+      ...baseResponse,
       paymentOptions: [
         {
-          id: "lightning",
-          type: "lightning",
+          id: "liquid",
+          type: "liquid",
           available: true,
-          minSendableMsat: 1000,
-          maxSendableMsat: 1000000000,
-          currencies: [
-            { code: "USD", name: "US Dollar", symbol: "$", decimals: 2, multiplier: 48900 },
-          ],
+          currencies: [brl, usdt],
         },
       ],
     });
 
-    const mockFetch = async (url: string | URL | Request) => {
-      const urlStr = url.toString();
-      expect(urlStr).toContain("paymentOption=lightning");
-      expect(urlStr).toContain("currency=USD");
-      
-      return new Response(
-        JSON.stringify({
-          pr: "lnbc1...",
-          routes: [],
-        }),
-        { status: 200, headers: { "content-type": "application/json" } }
-      );
-    };
-
     await requestPayment(payRequest, {
-      amountMsat: 100000,
-      paymentOption: "lightning",
-      currency: "USD",
+      paymentOption: "liquid",
+      denominatedAmount: { amount: 100, currency: "BRL" },
+      convert: "USDT",
       validateBolt11: false,
-      fetch: mockFetch as any,
+      fetch: async (input) => {
+        const url = new URL(input.toString());
+        expect(url.searchParams.get("paymentOption")).toBe("liquid");
+        expect(url.searchParams.get("amount")).toBe("100.BRL");
+        expect(url.searchParams.get("convert")).toBe("USDT");
+        expect(url.searchParams.has("currency")).toBe(false);
+        return jsonResponse({
+          paymentOption: "liquid",
+          paymentDestination: "lq1...",
+          converted: { amount: 200_000, fee: 2000, multiplier: 2.68 },
+        });
+      },
     });
+  });
+
+  test("rejects requests with both amountMsat and denominatedAmount", async () => {
+    const payRequest = parsePayRequestResponse({ ...baseResponse, currencies: [brl] });
+
+    await expect(
+      requestPayment(payRequest, {
+        amountMsat: 538_000,
+        denominatedAmount: { amount: 100, currency: "BRL" },
+        validateBolt11: false,
+        fetch: async () => jsonResponse({ pr: "lnbc1..." }),
+      } as unknown as RequestPaymentOptions),
+    ).rejects.toThrow(/amountMsat and denominatedAmount are mutually exclusive/i);
+  });
+
+  test("rejects denominated amounts that are not positive integers", async () => {
+    const payRequest = parsePayRequestResponse({ ...baseResponse, currencies: [brl] });
+
+    await expect(
+      requestPayment(payRequest, {
+        denominatedAmount: { amount: 1.5, currency: "BRL" },
+        validateBolt11: false,
+        fetch: async () => jsonResponse({ pr: "lnbc1..." }),
+      }),
+    ).rejects.toThrow(AmountOutOfRangeError);
+  });
+
+  test("rejects convert targets that are unavailable on the selected payment option", async () => {
+    const payRequest = parsePayRequestResponse({
+      ...baseResponse,
+      currencies: [usd],
+      paymentOptions: [{ id: "liquid", type: "liquid", available: true, currencies: [brl] }],
+    });
+
+    await expect(
+      requestPayment(payRequest, {
+        amountMsat: 538_000,
+        paymentOption: "liquid",
+        convert: "USD",
+        validateBolt11: false,
+        fetch: async () => jsonResponse({ pr: "lnbc1..." }),
+      }),
+    ).rejects.toThrow(/not available for paymentOption/i);
   });
 });
 
 describe("LUD-22 converted amount parsing", () => {
-  test("parses converted object from callback response", async () => {
-    const payRequest = parsePayRequestResponse({
-      tag: "payRequest",
-      callback: "https://example.com/lnurlp/alice/callback",
-      minSendable: 1000,
-      maxSendable: 1000000000,
-      metadata: '[["text/plain","Pay to Alice"]]',
-      currencies: [
-        { code: "USD", name: "US Dollar", symbol: "$", decimals: 2, multiplier: 48900 },
-      ],
-    });
+  test("requires converted object when convert is requested", async () => {
+    const payRequest = parsePayRequestResponse({ ...baseResponse, currencies: [brl] });
 
-    const mockFetch = async () => {
-      return new Response(
-        JSON.stringify({
-          pr: "lnbc1...",
-          routes: [],
-          converted: {
-            multiplier: 48900,
-            amount: 1000, // $10.00
-            fee: 50000, // 50,000 msats fee
-          },
-        }),
-        { status: 200, headers: { "content-type": "application/json" } }
-      );
-    };
+    await expect(
+      requestPayment(payRequest, {
+        amountMsat: 538_000,
+        convert: "BRL",
+        validateBolt11: false,
+        fetch: async () => jsonResponse({ pr: "lnbc1...", routes: [] }),
+      }),
+    ).rejects.toThrow(/converted/i);
+  });
+
+  test("parses converted object from BOLT11 callback response", async () => {
+    const payRequest = parsePayRequestResponse({ ...baseResponse, currencies: [brl] });
 
     const result = await requestPayment(payRequest, {
-      amountMsat: 100000,
-      currency: "USD",
+      amountMsat: 538_000,
+      convert: "BRL",
       validateBolt11: false,
-      fetch: mockFetch as any,
+      fetch: async () =>
+        jsonResponse({
+          pr: "lnbc1...",
+          routes: [],
+          converted: { multiplier: 5370, amount: 100, fee: 1000 },
+        }),
     });
 
     expect(result.type).toBe("bolt11");
-    expect(result.converted).toBeDefined();
-    expect(result.converted!.multiplier).toBe(48900);
-    expect(result.converted!.amount).toBe(1000);
-    expect(result.converted!.fee).toBe(50000);
+    expect(result.converted).toEqual({
+      multiplier: 5370,
+      amount: 100,
+      fee: 1000,
+      raw: { multiplier: 5370, amount: 100, fee: 1000 },
+    });
   });
 
-  test("parses converted object from destination payment", async () => {
+  test("parses converted object from destination payment response", async () => {
     const payRequest = parsePayRequestResponse({
-      tag: "payRequest",
-      callback: "https://example.com/lnurlp/alice/callback",
-      minSendable: 1000,
-      maxSendable: 1000000000,
-      metadata: '[["text/plain","Pay to Alice"]]',
-      paymentOptions: [
-        {
-          id: "liquid",
-          type: "liquid",
-          available: true,
-          minSendableMsat: 1000,
-          maxSendableMsat: 1000000000,
-          currencies: [
-            { code: "USD", name: "US Dollar", symbol: "$", decimals: 2, multiplier: 48900 },
-          ],
-        },
-      ],
+      ...baseResponse,
+      paymentOptions: [{ id: "liquid", type: "liquid", available: true, currencies: [brl] }],
     });
 
-    const mockFetch = async () => {
-      return new Response(
-        JSON.stringify({
+    const result = await requestPayment(payRequest, {
+      amountMsat: 538_000,
+      paymentOption: "liquid",
+      convert: "BRL",
+      fetch: async () =>
+        jsonResponse({
           paymentOption: "liquid",
           paymentDestination: "lq1...",
-          converted: {
-            multiplier: 48900,
-            amount: 500,
-            fee: 25000,
-          },
+          converted: { multiplier: 5370, amount: 100, fee: 1000 },
         }),
-        { status: 200, headers: { "content-type": "application/json" } }
-      );
-    };
-
-    const result = await requestPayment(payRequest, {
-      amountMsat: 100000,
-      paymentOption: "liquid",
-      currency: "USD",
-      fetch: mockFetch as any,
     });
 
     expect(result.type).toBe("destination");
-    expect(result.converted).toBeDefined();
-    expect(result.converted!.multiplier).toBe(48900);
-    expect(result.converted!.amount).toBe(500);
-    expect(result.converted!.fee).toBe(25000);
+    expect(result.converted).toMatchObject({ multiplier: 5370, amount: 100, fee: 1000 });
   });
 
-  test("handles callback response without converted object", async () => {
-    const payRequest = parsePayRequestResponse({
-      tag: "payRequest",
-      callback: "https://example.com/lnurlp/alice/callback",
-      minSendable: 1000,
-      maxSendable: 1000000000,
-      metadata: '[["text/plain","Pay to Alice"]]',
-    });
+  test("rejects malformed converted object instead of silently ignoring it", async () => {
+    const payRequest = parsePayRequestResponse({ ...baseResponse, currencies: [brl] });
 
-    const mockFetch = async () => {
-      return new Response(
-        JSON.stringify({
-          pr: "lnbc1...",
-          routes: [],
-        }),
-        { status: 200, headers: { "content-type": "application/json" } }
-      );
-    };
+    await expect(
+      requestPayment(payRequest, {
+        amountMsat: 538_000,
+        convert: "BRL",
+        validateBolt11: false,
+        fetch: async () =>
+          jsonResponse({
+            pr: "lnbc1...",
+            routes: [],
+            converted: { multiplier: 5370, amount: "100", fee: 1000 },
+          }),
+      }),
+    ).rejects.toThrow(/converted.amount/i);
+  });
+
+  test("handles callback response without converted object when no conversion was requested", async () => {
+    const payRequest = parsePayRequestResponse(baseResponse);
 
     const result = await requestPayment(payRequest, {
-      amountMsat: 100000,
+      amountMsat: 100_000,
       validateBolt11: false,
-      fetch: mockFetch as any,
+      fetch: async () => jsonResponse({ pr: "lnbc1...", routes: [] }),
     });
 
     expect(result.type).toBe("bolt11");

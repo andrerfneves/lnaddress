@@ -269,7 +269,6 @@ export function assertBolt11Payment(
   options: RequestPaymentOptions,
 ): Promise<void> {
   const invoice = decodeBolt11(pr);
-  const expectedAmount = BigInt(amountToMsatString(options.amountMsat));
 
   if (options.expectedNetwork && invoice.network !== options.expectedNetwork) {
     throw new InvalidCallbackResponseError(
@@ -281,10 +280,13 @@ export function assertBolt11Payment(
     throw new InvalidCallbackResponseError("BOLT11 invoice must include an amount");
   }
 
-  if (invoice.amountMsat !== expectedAmount) {
-    throw new InvalidCallbackResponseError(
-      `BOLT11 invoice amount ${invoice.amountMsat.toString()} does not match requested amount ${expectedAmount.toString()}`,
-    );
+  if (options.amountMsat !== undefined) {
+    const expectedAmount = BigInt(amountToMsatString(options.amountMsat));
+    if (invoice.amountMsat !== expectedAmount) {
+      throw new InvalidCallbackResponseError(
+        `BOLT11 invoice amount ${invoice.amountMsat.toString()} does not match requested amount ${expectedAmount.toString()}`,
+      );
+    }
   }
 
   if (options.validateExpiry !== false) {

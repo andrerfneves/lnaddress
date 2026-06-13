@@ -11,6 +11,7 @@ export {
   LnAddressError,
   MissingMandatoryPayerDataError,
   NetworkError,
+  NodePubkeyMismatchError,
   VerifyError,
 } from "./errors";
 export { isLightningAddress, parseLightningAddress } from "./lightning-address";
@@ -39,6 +40,7 @@ export { verifyPayment } from "./verify";
 export type {
   Bolt11PaymentInstruction,
   Bolt11Network,
+  Bolt11PayeeNodeIdSource,
   ConvertedAmount,
   Currency,
   CurrencyConvertible,
@@ -49,6 +51,9 @@ export type {
   LightningAddress,
   MetadataEntry,
   MetadataImage,
+  NodePubkey,
+  NodePubkeyPolicy,
+  NodePubkeyVerification,
   PayRequest,
   PayerData,
   PayerDataField,

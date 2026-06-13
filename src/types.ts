@@ -8,6 +8,8 @@ export type UrlSafetyOptions = {
 export type Bolt11Network = "bitcoin" | "testnet" | "regtest" | "signet";
 export type RedirectPolicy = "follow" | "error" | "same-origin" | "no-downgrade";
 export type ProviderPolicy = "off" | "same-origin" | "same-site";
+export type NodePubkeyPolicy = "warn" | "enforce" | "off";
+export type Bolt11PayeeNodeIdSource = "n" | "signature";
 
 export type FetchControls = {
   signal?: AbortSignal;
@@ -38,6 +40,7 @@ type RequestPaymentBaseOptions = UrlSafetyOptions & {
   validateExpiry?: boolean;
   now?: Date | number | (() => Date | number);
   providerPolicy?: ProviderPolicy;
+  nodePubkeyPolicy?: NodePubkeyPolicy;
 } & FetchControls;
 
 export type RequestPaymentOptions = RequestPaymentBaseOptions &
@@ -106,6 +109,27 @@ export type PaymentOption = {
   raw: Record<string, unknown>;
 };
 
+export type NodePubkey = {
+  pubkey: string;
+  raw: Record<string, unknown>;
+};
+
+export type NodePubkeyVerification =
+  | {
+      status: "verified";
+      payeeNodeId: string;
+      payeeNodeIdSource: Bolt11PayeeNodeIdSource;
+      expectedPubkeys: string[];
+      matchedPubkey: string;
+    }
+  | {
+      status: "mismatch";
+      payeeNodeId: string;
+      payeeNodeIdSource: Bolt11PayeeNodeIdSource;
+      expectedPubkeys: string[];
+      warning: string;
+    };
+
 export type PayRequest = {
   tag: "payRequest";
   callback: string;
@@ -120,6 +144,7 @@ export type PayRequest = {
   payerData?: PayerData;
   paymentOptions?: PaymentOption[];
   currencies?: Currency[];
+  nodePubkeys?: NodePubkey[];
   raw: unknown;
   sourceUrl?: string;
   lightningAddress?: LightningAddress;
@@ -135,6 +160,7 @@ export type Bolt11PaymentInstruction = {
   verifyUrl?: string;
   successAction?: SuccessAction;
   converted?: ConvertedAmount;
+  nodePubkeyVerification?: NodePubkeyVerification;
   raw: unknown;
 };
 

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { InvalidPayRequestError, parsePayRequestResponse } from "../../src";
+import { testNodePubkey } from "../fixtures/bolt11";
 
 const baseResponse = {
   tag: "payRequest",
@@ -89,5 +90,37 @@ describe("pay request parsing", () => {
         { allowPrivateNetwork: true },
       ).callback,
     ).toBe("http://127.0.0.1/callback");
+  });
+
+  test("parses nodePubkeys and preserves forward-compatible fields", () => {
+    const raw = {
+      ...baseResponse,
+      nodePubkeys: [{ pubkey: testNodePubkey.toUpperCase(), alias: "primary" }],
+    };
+
+    const payRequest = parsePayRequestResponse(raw);
+
+    expect(payRequest.nodePubkeys).toEqual([
+      { pubkey: testNodePubkey, raw: { pubkey: testNodePubkey.toUpperCase(), alias: "primary" } },
+    ]);
+    expect(payRequest.raw).toEqual(raw);
+  });
+
+  test("rejects malformed nodePubkeys", () => {
+    for (const nodePubkeys of [
+      [],
+      ["not-an-object"],
+      [{}],
+      [{ pubkey: "not-a-pubkey" }],
+      [{ pubkey: `04${"00".repeat(64)}` }],
+      [{ pubkey: testNodePubkey }, { pubkey: testNodePubkey.toUpperCase() }],
+    ]) {
+      expect(() =>
+        parsePayRequestResponse({
+          ...baseResponse,
+          nodePubkeys,
+        }),
+      ).toThrow(InvalidPayRequestError);
+    }
   });
 });

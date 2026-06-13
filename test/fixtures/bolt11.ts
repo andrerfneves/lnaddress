@@ -4,6 +4,7 @@ import { sha256 } from "../../src/sha256";
 const charset = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
 const generator = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
 const privateKey = new Uint8Array(32).fill(1);
+const alternatePrivateKey = new Uint8Array(32).fill(2);
 
 function polymod(values: number[]): number {
   let chk = 1;
@@ -84,6 +85,13 @@ function hexToBytes(hex: string): number[] {
   return bytes;
 }
 
+function bytesToHex(bytes: Uint8Array | number[]): string {
+  return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+export const testNodePubkey = bytesToHex(getPublicKey(privateKey));
+export const alternateTestNodePubkey = bytesToHex(getPublicKey(alternatePrivateKey));
+
 function concatBytes(...chunks: Uint8Array[]): Uint8Array {
   const length = chunks.reduce((total, chunk) => total + chunk.length, 0);
   const output = new Uint8Array(length);
@@ -123,6 +131,8 @@ export async function testBolt11Invoice(
     timestamp?: number;
     expirySeconds?: number;
     mismatchedPayeeNode?: boolean;
+    signer?: "default" | "alternate";
+    omitPayeeNode?: boolean;
   } = {},
 ): Promise<string> {
   const amount = typeof amountMsat === "bigint" ? amountMsat : BigInt(amountMsat);
@@ -131,14 +141,12 @@ export async function testBolt11Invoice(
   const hashWords = convertBits(hexToBytes(metadataHash), 8, 5, true);
   const hTag = charset.indexOf("h");
   const hLength = [hashWords.length >> 5, hashWords.length & 31];
-  const nodeKey = options.mismatchedPayeeNode ? new Uint8Array(32).fill(2) : privateKey;
+  const signingKey = options.signer === "alternate" ? alternatePrivateKey : privateKey;
+  const nodeKey = options.mismatchedPayeeNode ? alternatePrivateKey : signingKey;
   const nodeIdWords = convertBits([...getPublicKey(nodeKey)], 8, 5, true);
-  const nodeIdField = [
-    charset.indexOf("n"),
-    nodeIdWords.length >> 5,
-    nodeIdWords.length & 31,
-    ...nodeIdWords,
-  ];
+  const nodeIdField = options.omitPayeeNode
+    ? []
+    : [charset.indexOf("n"), nodeIdWords.length >> 5, nodeIdWords.length & 31, ...nodeIdWords];
   const expiryWords = options.expirySeconds === undefined ? [] : intToWords(options.expirySeconds);
   const expiryField =
     expiryWords.length === 0
@@ -158,7 +166,7 @@ export async function testBolt11Invoice(
       new Uint8Array(convertBits(signingData, 5, 8, true)),
     ),
   );
-  const recoveredSignature = await signAsync(signingHash, privateKey, {
+  const recoveredSignature = await signAsync(signingHash, signingKey, {
     format: "recovered",
     prehash: false,
     lowS: false,

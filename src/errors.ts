@@ -10,6 +10,7 @@ export type LnAddressErrorCode =
   | "INVALID_CALLBACK_RESPONSE"
   | "INVALID_PAYMENT_OPTION"
   | "INVALID_REQUEST_PAYMENT_OPTIONS"
+  | "NODE_PUBKEY_MISMATCH"
   | "VERIFY_ERROR";
 
 export class LnAddressError extends Error {
@@ -97,6 +98,15 @@ export class InvalidPaymentOptionError extends LnAddressError {
 export class InvalidRequestPaymentOptionsError extends LnAddressError {
   constructor(message = "Invalid request payment options", options?: { cause?: unknown }) {
     super("INVALID_REQUEST_PAYMENT_OPTIONS", message, options);
+  }
+}
+
+export class NodePubkeyMismatchError extends LnAddressError {
+  constructor(
+    message = "BOLT11 invoice payee node does not match advertised nodePubkeys",
+    options?: { cause?: unknown },
+  ) {
+    super("NODE_PUBKEY_MISMATCH", message, options);
   }
 }
 

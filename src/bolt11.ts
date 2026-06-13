@@ -1,6 +1,7 @@
 import { recoverPublicKeyAsync, verifyAsync } from "@noble/secp256k1";
 import { InvalidCallbackResponseError } from "./errors";
 import { amountToMsatString } from "./internal";
+import type { Bolt11PayeeNodeInfo } from "./node-pubkeys";
 import { sha256 } from "./sha256";
 import type { Bolt11Network, ConvertedAmount, PayRequest, RequestPaymentOptions } from "./types";
 
@@ -275,12 +276,12 @@ function convertedAmountMsat(converted: ConvertedAmount): bigint {
   return BigInt(rounded);
 }
 
-export function assertBolt11Payment(
+export async function assertBolt11Payment(
   pr: string,
   payRequest: PayRequest,
   options: RequestPaymentOptions,
   converted?: ConvertedAmount,
-): Promise<void> {
+): Promise<Bolt11PayeeNodeInfo> {
   const invoice = decodeBolt11(pr);
 
   if (options.expectedNetwork && invoice.network !== options.expectedNetwork) {
@@ -332,7 +333,7 @@ export function assertBolt11Payment(
   return assertBolt11Signature(invoice);
 }
 
-async function assertBolt11Signature(invoice: DecodedInvoice): Promise<void> {
+async function assertBolt11Signature(invoice: DecodedInvoice): Promise<Bolt11PayeeNodeInfo> {
   const recoveredSignature = new Uint8Array([
     invoice.signature[64] ?? 0,
     ...invoice.signature.slice(0, 64),
@@ -354,7 +355,14 @@ async function assertBolt11Signature(invoice: DecodedInvoice): Promise<void> {
     throw new InvalidCallbackResponseError("BOLT11 invoice signature is invalid");
   }
 
-  if (invoice.payeeNodeId && bytesToHex([...publicKey]) !== invoice.payeeNodeId) {
+  const recoveredPayeeNodeId = bytesToHex([...publicKey]);
+
+  if (invoice.payeeNodeId && recoveredPayeeNodeId !== invoice.payeeNodeId) {
     throw new InvalidCallbackResponseError("BOLT11 invoice signature does not match payee node id");
   }
+
+  return {
+    payeeNodeId: invoice.payeeNodeId ?? recoveredPayeeNodeId,
+    payeeNodeIdSource: invoice.payeeNodeId ? "n" : "signature",
+  };
 }

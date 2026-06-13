@@ -12,8 +12,10 @@ it does not make remote providers trusted.
   comments, mandatory payer data, and optional provider identity policy.
 - BOLT11 invoice checksum, amount, expected network, expiry, ECDSA signature
   recovery and verification, and payee node id matching when the invoice includes
-  an `n` tag. Metadata description-hash validation is available as an opt-in
-  strict mode with `validateMetadataHash: true`.
+  an `n` tag. If a payRequest advertises `nodePubkeys`, the invoice payee is
+  compared with the advertised nodes and returned as non-blocking verification
+  metadata by default. Metadata description-hash validation is available as an
+  opt-in strict mode with `validateMetadataHash: true`.
 - Callback `verify` URLs as HTTP(S) URLs, with optional provider identity policy.
 - LUD-09 `successAction` message, URL, and AES shapes. URL actions must use
   HTTP(S), and AES actions can be decrypted with `decryptSuccessAction`.
@@ -67,12 +69,19 @@ where possible, especially `ok`, `status`, `statusText`, `url`, `redirected`, an
 `json()`. If you enforce redirects inside custom fetch, document how that
 interacts with `redirectPolicy`.
 
+## nodePubkeys Invoice-Origin Checks
+
+When a payRequest includes `nodePubkeys`, `lnaddress` compares the BOLT11 invoice payee node id against the advertised compressed secp256k1 pubkeys. If the BOLT11 `n` field is absent, the library recovers the signer pubkey from the invoice signature and uses that value.
+
+The default `nodePubkeyPolicy: "warn"` follows the proposal's wallet UX: mismatches return `payment.nodePubkeyVerification.status === "mismatch"` with a warning string, but payment is not blocked. Use `nodePubkeyPolicy: "enforce"` only for strict policy callers that intentionally want `NodePubkeyMismatchError` on mismatch; use `"off"` to skip this comparison while keeping the other BOLT11 validation checks.
+
 ## BOLT11 Notes
 
 `validateBolt11` is enabled by default. It verifies invoice structure, amount,
-network policy, expiry, signature, and `n` payee node id when present. Metadata
-description-hash validation is opt-in with `validateMetadataHash: true`. It does
-not establish that the provider is honest or that the invoice will settle. Always
+network policy, expiry, signature, `n` payee node id when present, and optional
+`nodePubkeys` invoice-origin comparison. Metadata description-hash validation is
+opt-in with `validateMetadataHash: true`. These checks do not establish that the
+provider is honest or that the invoice will settle. Always
 use `verifyPayment` when the provider supplies a verify URL.
 
 ## Reporting Vulnerabilities

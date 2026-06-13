@@ -2,6 +2,7 @@ import { z } from "zod";
 import { InvalidPayRequestError, InvalidPaymentOptionError } from "./errors";
 import { assertHttpUrl, toMsatBigint, unknownToRecord } from "./internal";
 import { getDescription, getImage, getMetadataHash, parseMetadata } from "./metadata";
+import { parseNodePubkeys } from "./node-pubkeys";
 import type {
   Currency,
   CurrencyConvertible,
@@ -24,6 +25,7 @@ const payRequestSchema = z
     payerData: z.record(z.unknown()).optional(),
     paymentOptions: z.array(z.unknown()).optional(),
     currencies: z.array(z.unknown()).optional(),
+    nodePubkeys: z.unknown().optional(),
   })
   .passthrough();
 export type ParsePayRequestContext = UrlSafetyOptions & {
@@ -331,6 +333,11 @@ export function parsePayRequestResponse(
   const currencies = parseCurrencies(parsed.data.currencies);
   if (currencies) {
     payRequest.currencies = currencies;
+  }
+
+  const nodePubkeys = parseNodePubkeys(parsed.data.nodePubkeys);
+  if (nodePubkeys) {
+    payRequest.nodePubkeys = nodePubkeys;
   }
 
   if (context.sourceUrl) {

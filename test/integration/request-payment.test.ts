@@ -182,7 +182,7 @@ describe("requestPayment", () => {
     ).rejects.toThrow(InvalidCallbackResponseError);
   });
 
-  test("validates BOLT11 amount and metadata hash by default and can skip the check", async () => {
+  test("validates BOLT11 amount and accepts invoices without metadata hash", async () => {
     await expect(
       requestPayment(payRequest, {
         amountMsat: 2000,
@@ -200,13 +200,16 @@ describe("requestPayment", () => {
       }),
     ).rejects.toThrow(InvalidCallbackResponseError);
 
+    // Metadata hash validation is no longer required (LUDs PR #234)
     await expect(
       requestPayment(payRequest, {
         amountMsat: 2000,
         payerData: { name: "Alice" },
         fetch: async () => jsonResponse({ pr: await testBolt11Invoice(2000, "00".repeat(32)) }),
       }),
-    ).rejects.toThrow(InvalidCallbackResponseError);
+    ).resolves.toMatchObject({
+      type: "bolt11",
+    });
 
     await expect(
       requestPayment(payRequest, {

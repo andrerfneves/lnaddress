@@ -287,16 +287,6 @@ export function assertBolt11Payment(
     );
   }
 
-  if (!invoice.descriptionHash) {
-    throw new InvalidCallbackResponseError("BOLT11 invoice must include a description hash");
-  }
-
-  if (invoice.descriptionHash !== payRequest.metadataHash) {
-    throw new InvalidCallbackResponseError(
-      "BOLT11 invoice description hash does not match metadata",
-    );
-  }
-
   if (options.validateExpiry !== false) {
     const expiresAt = invoice.timestamp + invoice.expirySeconds;
     if (expiresAt <= nowSeconds(options.now)) {

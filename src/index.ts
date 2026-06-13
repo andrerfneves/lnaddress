@@ -6,6 +6,7 @@ export {
   InvalidLightningAddressError,
   InvalidLnurlError,
   InvalidPaymentOptionError,
+  InvalidRequestPaymentOptionsError,
   InvalidPayRequestError,
   LnAddressError,
   MissingMandatoryPayerDataError,

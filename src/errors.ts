@@ -9,6 +9,7 @@ export type LnAddressErrorCode =
   | "MISSING_MANDATORY_PAYER_DATA"
   | "INVALID_CALLBACK_RESPONSE"
   | "INVALID_PAYMENT_OPTION"
+  | "INVALID_REQUEST_PAYMENT_OPTIONS"
   | "VERIFY_ERROR";
 
 export class LnAddressError extends Error {
@@ -90,6 +91,12 @@ export class InvalidCallbackResponseError extends LnAddressError {
 export class InvalidPaymentOptionError extends LnAddressError {
   constructor(message = "Invalid payment option", options?: { cause?: unknown }) {
     super("INVALID_PAYMENT_OPTION", message, options);
+  }
+}
+
+export class InvalidRequestPaymentOptionsError extends LnAddressError {
+  constructor(message = "Invalid request payment options", options?: { cause?: unknown }) {
+    super("INVALID_REQUEST_PAYMENT_OPTIONS", message, options);
   }
 }
 

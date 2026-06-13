@@ -2,7 +2,7 @@ import { recoverPublicKeyAsync, verifyAsync } from "@noble/secp256k1";
 import { InvalidCallbackResponseError } from "./errors";
 import { amountToMsatString } from "./internal";
 import { sha256 } from "./sha256";
-import type { Bolt11Network, PayRequest, RequestPaymentOptions } from "./types";
+import type { Bolt11Network, ConvertedAmount, PayRequest, RequestPaymentOptions } from "./types";
 
 const charset = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
 const generator = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
@@ -263,10 +263,23 @@ function decodeBolt11(pr: string): DecodedInvoice {
   return invoice;
 }
 
+function convertedAmountMsat(converted: ConvertedAmount): bigint {
+  const calculated = converted.amount * converted.multiplier + converted.fee;
+  const rounded = Math.round(calculated);
+  if (!Number.isSafeInteger(rounded) || Math.abs(calculated - rounded) > 1e-6) {
+    throw new InvalidCallbackResponseError(
+      "converted amount formula must produce a safe integer millisatoshi amount",
+    );
+  }
+
+  return BigInt(rounded);
+}
+
 export function assertBolt11Payment(
   pr: string,
   payRequest: PayRequest,
   options: RequestPaymentOptions,
+  converted?: ConvertedAmount,
 ): Promise<void> {
   const invoice = decodeBolt11(pr);
 
@@ -285,6 +298,26 @@ export function assertBolt11Payment(
     if (invoice.amountMsat !== expectedAmount) {
       throw new InvalidCallbackResponseError(
         `BOLT11 invoice amount ${invoice.amountMsat.toString()} does not match requested amount ${expectedAmount.toString()}`,
+      );
+    }
+  }
+
+  if (converted) {
+    const expectedConvertedAmount = convertedAmountMsat(converted);
+    if (invoice.amountMsat !== expectedConvertedAmount) {
+      throw new InvalidCallbackResponseError(
+        `BOLT11 invoice amount ${invoice.amountMsat.toString()} does not match converted amount ${expectedConvertedAmount.toString()}`,
+      );
+    }
+  }
+
+  if (options.validateMetadataHash) {
+    if (!invoice.descriptionHash) {
+      throw new InvalidCallbackResponseError("BOLT11 invoice description hash is missing");
+    }
+    if (invoice.descriptionHash !== payRequest.metadataHash) {
+      throw new InvalidCallbackResponseError(
+        "BOLT11 invoice description hash does not match payRequest metadata",
       );
     }
   }

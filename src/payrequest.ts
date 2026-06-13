@@ -63,17 +63,38 @@ function parsePayerData(raw: unknown): PayerData | undefined {
   return payerData;
 }
 
-function parseCurrencyConvertible(raw: unknown): CurrencyConvertible | undefined {
+function assertCurrencyCode(code: string, label: string): void {
+  if (code.length === 0 || code.trim() !== code || code.includes(".")) {
+    throw new InvalidPayRequestError(
+      `${label} must be a non-empty currency code without whitespace or '.'`,
+    );
+  }
+}
+
+function parseCurrencyInteger(value: unknown, label: string): number {
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
+    throw new InvalidPayRequestError(`${label} must be a non-negative safe integer`);
+  }
+
+  return value;
+}
+
+function parseCurrencyConvertible(raw: unknown, index: number): CurrencyConvertible {
   const record = unknownToRecord(raw);
   if (!record) {
-    return undefined;
+    throw new InvalidPayRequestError(`currencies entry ${index} convertible must be an object`);
   }
 
-  if (typeof record.min !== "number" || typeof record.max !== "number") {
-    return undefined;
+  const min = parseCurrencyInteger(record.min, `currencies entry ${index} convertible.min`);
+  const max = parseCurrencyInteger(record.max, `currencies entry ${index} convertible.max`);
+
+  if (min > max) {
+    throw new InvalidPayRequestError(
+      `currencies entry ${index} convertible min must be less than or equal to max`,
+    );
   }
 
-  return { min: record.min, max: record.max };
+  return { min, max };
 }
 
 function parseCurrencies(raw: unknown): Currency[] | undefined {
@@ -93,6 +114,7 @@ function parseCurrencies(raw: unknown): Currency[] | undefined {
     if (typeof record.code !== "string") {
       throw new InvalidPayRequestError(`currencies entry ${index} must have a string code`);
     }
+    assertCurrencyCode(record.code, `currencies entry ${index} currency code`);
 
     if (typeof record.name !== "string") {
       throw new InvalidPayRequestError(`currencies entry ${index} must have a string name`);
@@ -104,16 +126,22 @@ function parseCurrencies(raw: unknown): Currency[] | undefined {
 
     if (
       typeof record.decimals !== "number" ||
-      !Number.isInteger(record.decimals) ||
+      !Number.isSafeInteger(record.decimals) ||
       record.decimals < 0
     ) {
       throw new InvalidPayRequestError(
-        `currencies entry ${index} must have a non-negative integer decimals`,
+        `currencies entry ${index} must have non-negative safe integer decimals`,
       );
     }
 
-    if (typeof record.multiplier !== "number" || record.multiplier <= 0) {
-      throw new InvalidPayRequestError(`currencies entry ${index} must have a positive multiplier`);
+    if (
+      typeof record.multiplier !== "number" ||
+      !Number.isFinite(record.multiplier) ||
+      record.multiplier <= 0
+    ) {
+      throw new InvalidPayRequestError(
+        `currencies entry ${index} must have a positive finite multiplier`,
+      );
     }
 
     if (seenCodes.has(record.code)) {
@@ -131,15 +159,7 @@ function parseCurrencies(raw: unknown): Currency[] | undefined {
     };
 
     if (record.convertible !== undefined) {
-      const convertible = parseCurrencyConvertible(record.convertible);
-      if (convertible) {
-        if (convertible.min > convertible.max) {
-          throw new InvalidPayRequestError(
-            `currencies entry ${index} convertible min must be less than or equal to max`,
-          );
-        }
-        currency.convertible = convertible;
-      }
+      currency.convertible = parseCurrencyConvertible(record.convertible, index);
     }
 
     currencies.push(currency);

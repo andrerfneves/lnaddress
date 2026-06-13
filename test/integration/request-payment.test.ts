@@ -154,6 +154,18 @@ describe("requestPayment", () => {
         fetch: async () => jsonResponse({ status: "OK" }),
       }),
     ).rejects.toThrow(InvalidCallbackResponseError);
+
+    await expect(
+      requestPayment(payRequest, {
+        amountMsat: 2000,
+        payerData: { name: "Alice" },
+        fetch: async () =>
+          jsonResponse({
+            status: "FAILED",
+            pr: await testBolt11Invoice(2000, payRequest.metadataHash),
+          }),
+      }),
+    ).rejects.toThrow(/status/i);
   });
 
   test("rejects invalid callback verify URLs", async () => {
@@ -200,7 +212,8 @@ describe("requestPayment", () => {
       }),
     ).rejects.toThrow(InvalidCallbackResponseError);
 
-    // Metadata hash validation is no longer required (LUDs PR #234)
+    // Metadata hash validation is no longer required by default (LUDs PR #234),
+    // but strict clients can opt back in.
     await expect(
       requestPayment(payRequest, {
         amountMsat: 2000,
@@ -210,6 +223,15 @@ describe("requestPayment", () => {
     ).resolves.toMatchObject({
       type: "bolt11",
     });
+
+    await expect(
+      requestPayment(payRequest, {
+        amountMsat: 2000,
+        payerData: { name: "Alice" },
+        validateMetadataHash: true,
+        fetch: async () => jsonResponse({ pr: await testBolt11Invoice(2000, "00".repeat(32)) }),
+      }),
+    ).rejects.toThrow(/description hash/i);
 
     await expect(
       requestPayment(payRequest, {

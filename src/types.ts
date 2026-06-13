@@ -33,6 +33,7 @@ type RequestPaymentBaseOptions = UrlSafetyOptions & {
   fetch?: FetchLike;
   headers?: HeadersInit;
   validateBolt11?: boolean;
+  validateMetadataHash?: boolean;
   expectedNetwork?: Bolt11Network;
   validateExpiry?: boolean;
   now?: Date | number | (() => Date | number);

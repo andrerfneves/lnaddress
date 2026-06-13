@@ -197,23 +197,36 @@ describe("requestPayment with paymentOption", () => {
   test("callback response with BOLT11 includes paymentOption", async () => {
     const payRequest = parsePayRequestResponse({
       ...basePayRequest,
-      paymentOptions,
+      paymentOptions: [{ id: "lightning", type: "lightning", available: true }],
     });
 
     const payment = await requestPayment(payRequest, {
-      amountMsat: 10_000,
+      amountMsat: 2000,
       paymentOption: "lightning",
       validateBolt11: false,
-      fetch: async () =>
-        jsonResponse({
-          status: "OK",
-          paymentOption: "lightning",
-          pr: "lnbc100n1p3qgxcqpp5...",
-        }),
+      fetch: async () => jsonResponse({ pr: "lnbc1...", paymentOption: "lightning" }),
     });
 
-    expect(payment.type).toBe("bolt11");
-    expect(payment.paymentOption).toBe("lightning");
+    expect(payment).toMatchObject({ type: "bolt11", paymentOption: "lightning" });
+  });
+
+  test("rejects callback paymentOption that does not match requested option", async () => {
+    const payRequest = parsePayRequestResponse({
+      ...basePayRequest,
+      paymentOptions: [
+        { id: "lightning", type: "lightning", available: true },
+        { id: "liquid", type: "liquid", available: true },
+      ],
+    });
+
+    await expect(
+      requestPayment(payRequest, {
+        amountMsat: 2000,
+        paymentOption: "liquid",
+        validateBolt11: false,
+        fetch: async () => jsonResponse({ pr: "lnbc1...", paymentOption: "lightning" }),
+      }),
+    ).rejects.toThrow(/paymentOption/i);
   });
 });
 

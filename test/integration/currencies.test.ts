@@ -1,7 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { parsePayRequestResponse, requestPayment, validateCurrency } from "../../src";
 import type { RequestPaymentOptions } from "../../src";
-import { AmountOutOfRangeError, InvalidCallbackResponseError } from "../../src/errors";
+import {
+  AmountOutOfRangeError,
+  InvalidCallbackResponseError,
+  InvalidPayRequestError,
+  InvalidRequestPaymentOptionsError,
+} from "../../src/errors";
+import { testBolt11Invoice } from "../fixtures/bolt11";
 
 function jsonResponse(body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -82,7 +88,7 @@ describe("LUD-22 currencies parsing", () => {
         ...baseResponse,
         currencies: [{ code: "USD", name: "US Dollar", symbol: "$" }],
       }),
-    ).toThrow(/currencies entry 0 must have a non-negative integer decimals/i);
+    ).toThrow(/non-negative safe integer decimals/i);
   });
 
   test("rejects currency with negative decimals", () => {
@@ -91,7 +97,7 @@ describe("LUD-22 currencies parsing", () => {
         ...baseResponse,
         currencies: [{ ...usd, decimals: -1 }],
       }),
-    ).toThrow(/currencies entry 0 must have a non-negative integer decimals/i);
+    ).toThrow(/non-negative safe integer decimals/i);
   });
 
   test("rejects currency with non-positive multiplier", () => {
@@ -100,7 +106,7 @@ describe("LUD-22 currencies parsing", () => {
         ...baseResponse,
         currencies: [{ ...usd, multiplier: 0 }],
       }),
-    ).toThrow(/currencies entry 0 must have a positive multiplier/i);
+    ).toThrow(/positive finite multiplier/i);
   });
 
   test("rejects convertible with min > max", () => {
@@ -110,6 +116,49 @@ describe("LUD-22 currencies parsing", () => {
         currencies: [{ ...usd, convertible: { min: 1000, max: 100 } }],
       }),
     ).toThrow(/convertible.*min.*max/i);
+  });
+
+  test("rejects malformed convertible objects instead of silently ignoring them", () => {
+    expect(() =>
+      parsePayRequestResponse({
+        ...baseResponse,
+        currencies: [{ ...usd, convertible: { min: "100", max: 1000 } }],
+      }),
+    ).toThrow(InvalidPayRequestError);
+  });
+
+  test("rejects non-finite or unsafe currency numeric fields", () => {
+    expect(() =>
+      parsePayRequestResponse({
+        ...baseResponse,
+        currencies: [{ ...usd, multiplier: Number.POSITIVE_INFINITY }],
+      }),
+    ).toThrow(/positive finite multiplier/i);
+
+    expect(() =>
+      parsePayRequestResponse({
+        ...baseResponse,
+        currencies: [{ ...usd, decimals: Number.MAX_SAFE_INTEGER + 1 }],
+      }),
+    ).toThrow(/safe integer decimals/i);
+
+    expect(() =>
+      parsePayRequestResponse({
+        ...baseResponse,
+        currencies: [{ ...usd, convertible: { min: Number.NaN, max: 1000 } }],
+      }),
+    ).toThrow(/convertible.*min/i);
+  });
+
+  test("rejects unusable currency codes", () => {
+    for (const code of ["", "US.D", " USD", "USD "]) {
+      expect(() =>
+        parsePayRequestResponse({
+          ...baseResponse,
+          currencies: [{ ...usd, code }],
+        }),
+      ).toThrow(/currency code/i);
+    }
   });
 });
 
@@ -173,7 +222,7 @@ describe("LUD-22 effective currency validation", () => {
 
   test("throws for unknown top-level currency", () => {
     const payRequest = parsePayRequestResponse({ ...baseResponse, currencies: [usd] });
-    expect(() => validateCurrency(payRequest, "EUR")).toThrow(InvalidCallbackResponseError);
+    expect(() => validateCurrency(payRequest, "EUR")).toThrow(InvalidRequestPaymentOptionsError);
   });
 
   test("checks paymentOption-specific currencies before falling back", () => {
@@ -379,6 +428,54 @@ describe("LUD-22 converted amount parsing", () => {
       fee: 1000,
       raw: { multiplier: 5370, amount: 100, fee: 1000 },
     });
+  });
+
+  test("validates BOLT11 amount against LUD-22 converted formula", async () => {
+    const payRequest = parsePayRequestResponse({ ...baseResponse, currencies: [brl] });
+
+    await expect(
+      requestPayment(payRequest, {
+        amountMsat: 538_000,
+        convert: "BRL",
+        fetch: async () =>
+          jsonResponse({
+            pr: await testBolt11Invoice(538_000, payRequest.metadataHash),
+            routes: [],
+            converted: { multiplier: 5370, amount: 100, fee: 1000 },
+          }),
+      }),
+    ).resolves.toMatchObject({ type: "bolt11" });
+
+    await expect(
+      requestPayment(payRequest, {
+        amountMsat: 538_000,
+        convert: "BRL",
+        fetch: async () =>
+          jsonResponse({
+            pr: await testBolt11Invoice(538_000, payRequest.metadataHash),
+            routes: [],
+            converted: { multiplier: 5370, amount: 101, fee: 1000 },
+          }),
+      }),
+    ).rejects.toThrow(/converted amount/i);
+  });
+
+  test("validates converted amount against convertible bounds", async () => {
+    const payRequest = parsePayRequestResponse({ ...baseResponse, currencies: [brl] });
+
+    await expect(
+      requestPayment(payRequest, {
+        amountMsat: 538_000,
+        convert: "BRL",
+        validateBolt11: false,
+        fetch: async () =>
+          jsonResponse({
+            pr: "lnbc1...",
+            routes: [],
+            converted: { multiplier: 5370, amount: 99, fee: 1000 },
+          }),
+      }),
+    ).rejects.toThrow(/convertible/i);
   });
 
   test("parses converted object from destination payment response", async () => {

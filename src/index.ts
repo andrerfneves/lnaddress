@@ -30,6 +30,7 @@ export {
   validateComment,
   validateMandatoryPayerData,
   validatePaymentOption,
+  validateCurrency,
 } from "./request-payment";
 export { resolve } from "./resolve";
 export { decryptSuccessAction, parseSuccessAction } from "./success-action";
@@ -37,6 +38,9 @@ export { verifyPayment } from "./verify";
 export type {
   Bolt11PaymentInstruction,
   Bolt11Network,
+  ConvertedAmount,
+  Currency,
+  CurrencyConvertible,
   DestinationPaymentInstruction,
   FetchLike,
   FetchControls,

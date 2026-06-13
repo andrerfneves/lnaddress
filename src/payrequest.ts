@@ -13,20 +13,6 @@ import type {
   UrlSafetyOptions,
 } from "./types";
 
-const currencyConvertibleSchema = z.object({
-  min: z.number(),
-  max: z.number(),
-});
-
-const currencySchema = z.object({
-  code: z.string(),
-  name: z.string(),
-  symbol: z.string(),
-  decimals: z.number().int().nonnegative(),
-  multiplier: z.number().positive(),
-  convertible: currencyConvertibleSchema.optional(),
-}).passthrough();
-
 const payRequestSchema = z
   .object({
     tag: z.literal("payRequest"),
@@ -37,7 +23,7 @@ const payRequestSchema = z
     commentAllowed: z.number().int().nonnegative().optional(),
     payerData: z.record(z.unknown()).optional(),
     paymentOptions: z.array(z.unknown()).optional(),
-    currencies: z.array(currencySchema).optional(),
+    currencies: z.array(z.unknown()).optional(),
     convert: z.unknown().optional(),
     converted: z.unknown().optional(),
   })

@@ -24,6 +24,7 @@ export type RequestPaymentOptions = UrlSafetyOptions & {
   comment?: string;
   payerData?: Record<string, unknown>;
   paymentOption?: string;
+  currency?: string;
   fetch?: FetchLike;
   headers?: HeadersInit;
   validateBolt11?: boolean;
@@ -73,7 +74,7 @@ export type Currency = {
   decimals: number;
   multiplier: number;
   convertible?: CurrencyConvertible;
-  raw: Record<string, unknown>;
+  raw?: Record<string, unknown>;
 };
 
 export type ConvertedAmount = {
@@ -123,6 +124,7 @@ export type Bolt11PaymentInstruction = {
   paymentUri?: string;
   verifyUrl?: string;
   successAction?: SuccessAction;
+  converted?: ConvertedAmount;
   raw: unknown;
 };
 
@@ -132,6 +134,7 @@ export type DestinationPaymentInstruction = {
   paymentDestination: string;
   paymentUri?: string;
   verifyUrl?: string;
+  converted?: ConvertedAmount;
   raw: unknown;
 };
 

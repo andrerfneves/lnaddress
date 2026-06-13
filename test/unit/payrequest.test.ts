@@ -13,12 +13,12 @@ describe("pay request parsing", () => {
   test("preserves currency conversion extension fields", () => {
     const payRequest = parsePayRequestResponse({
       ...baseResponse,
-      currencies: [{ code: "USD", symbol: "$" }],
+      currencies: [{ code: "USD", name: "US Dollar", symbol: "$", decimals: 2, multiplier: 1000 }],
       convert: { USD: 1 },
       converted: { currency: "USD", amount: "0.01" },
     });
 
-    expect(payRequest.currencies).toEqual([{ code: "USD", symbol: "$" }]);
+    expect(payRequest.currencies).toMatchObject([{ code: "USD", name: "US Dollar", symbol: "$", decimals: 2, multiplier: 1000 }]);
     expect(payRequest.convert).toEqual({ USD: 1 });
     expect(payRequest.converted).toEqual({ currency: "USD", amount: "0.01" });
   });

@@ -25,6 +25,7 @@ import { resolve } from "./resolve";
 import { parseSuccessAction } from "./success-action";
 import type {
   Bolt11PaymentInstruction,
+  ConvertedAmount,
   DestinationPaymentInstruction,
   PayRequest,
   PaymentInstruction,
@@ -131,6 +132,41 @@ export function validatePaymentOption(payRequest: PayRequest, paymentOption?: st
   }
 }
 
+export function validateCurrency(
+  payRequest: PayRequest,
+  currency?: string,
+  paymentOption?: string,
+): void {
+  if (!currency) {
+    return;
+  }
+
+  // Check if currency is available in the selected payment option
+  if (paymentOption && payRequest.paymentOptions) {
+    const option = payRequest.paymentOptions.find((o) => o.id === paymentOption);
+    if (option?.currencies) {
+      const currencyObj = option.currencies.find((c) => c.code === currency);
+      if (!currencyObj) {
+        throw new InvalidCallbackResponseError(
+          `Currency ${currency} is not available for payment option ${paymentOption}`,
+        );
+      }
+      return;
+    }
+  }
+
+  // Check if currency is available at the top level
+  if (payRequest.currencies) {
+    const currencyObj = payRequest.currencies.find((c) => c.code === currency);
+    if (!currencyObj) {
+      throw new InvalidCallbackResponseError(`Unknown currency: ${currency}`);
+    }
+    return;
+  }
+
+  throw new InvalidCallbackResponseError("Pay request does not support currencies");
+}
+
 function callbackErrorMessage(raw: Record<string, unknown>): string {
   const reason = readString(raw, ["reason", "message", "error"]);
   return reason
@@ -201,6 +237,23 @@ function stringifyPayerData(payerData: Record<string, unknown>): string {
   }
 }
 
+function parseConvertedAmount(raw: unknown): ConvertedAmount | undefined {
+  const record = unknownToRecord(raw);
+  if (!record) {
+    return undefined;
+  }
+
+  const multiplier = record.multiplier;
+  const amount = record.amount;
+  const fee = record.fee;
+
+  if (typeof multiplier !== "number" || typeof amount !== "number" || typeof fee !== "number") {
+    return undefined;
+  }
+
+  return { multiplier, amount, fee, raw: record };
+}
+
 async function parseCallbackResponse(
   raw: unknown,
   payRequest: PayRequest,
@@ -220,6 +273,7 @@ async function parseCallbackResponse(
   const paymentDestination = readString(record, ["paymentDestination"]);
   const paymentUri = readString(record, ["paymentURI", "paymentUri"]);
   const paymentOption = readString(record, ["paymentOption"]);
+  const converted = parseConvertedAmount(readUnknown(record, ["converted"]));
   const verifyUrl = readVerifyUrl(record);
   if (verifyUrl) {
     assertProviderPolicy(payRequest, verifyUrl, options, "Payment callback verify URL");
@@ -261,6 +315,10 @@ async function parseCallbackResponse(
       instruction.successAction = successAction;
     }
 
+    if (converted) {
+      instruction.converted = converted;
+    }
+
     return instruction;
   }
 
@@ -281,6 +339,10 @@ async function parseCallbackResponse(
 
     if (verifyUrl) {
       instruction.verifyUrl = verifyUrl;
+    }
+
+    if (converted) {
+      instruction.converted = converted;
     }
 
     return instruction;
@@ -314,6 +376,10 @@ function buildCallbackUrl(payRequest: PayRequest, options: RequestPaymentOptions
     callbackUrl.searchParams.set("paymentOption", options.paymentOption);
   }
 
+  if (options.currency !== undefined) {
+    callbackUrl.searchParams.set("currency", options.currency);
+  }
+
   return callbackUrl;
 }
 
@@ -340,6 +406,7 @@ export async function requestPayment(
   validateComment(payRequest, options.comment);
   validateMandatoryPayerData(payRequest, options.payerData);
   validatePaymentOption(payRequest, options.paymentOption);
+  validateCurrency(payRequest, options.currency, options.paymentOption);
 
   const callbackUrl = buildCallbackUrl(payRequest, options);
   assertProviderPolicy(payRequest, callbackUrl, options, "Pay request callback URL");

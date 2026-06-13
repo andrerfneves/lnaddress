@@ -23,7 +23,7 @@ if (payment.type === "bolt11") {
 ## Why lnaddress
 
 - Lightning Address first, LNURL-pay underneath.
-- Small API surface: resolve, request, pay, verify.
+- Small API surface: resolve, request, pay, verify, and service-key discovery.
 - Native `fetch`, with custom fetch injection for apps, tests, and edge runtimes.
 - Strict TypeScript types with discriminated payment instructions.
 - Runtime validation for provider responses.
@@ -42,6 +42,7 @@ if (payment.type === "bolt11") {
 | LUD-22 | currency-denominated amounts and conversion quotes | Supported |
 | LUD-XX | `paymentOptions` for multi-rail pay | Supported |
 | LUD-XX | `nodePubkeys` invoice-origin checks for `payRequest` | Supported |
+| LUD-XX | domain service-key discovery at `/.well-known/lnurl-service` | Supported |
 
 `lnaddress` intentionally does not implement withdraw, auth, hosted channels, channel requests, NWC, encrypted provider data, or keysend in v0.1.0.
 
@@ -269,6 +270,39 @@ await requestPayment(payRequest, {
 
 `nodePubkeyPolicy` defaults to `"warn"`: mismatches are returned as `payment.nodePubkeyVerification.status === "mismatch"` and the payment instruction is still returned. Use `"enforce"` to throw `NodePubkeyMismatchError`, or `"off"` to skip comparison while keeping the other BOLT11 checks. If an invoice omits the BOLT11 `n` tag, `lnaddress` recovers the signer pubkey from the invoice signature and marks `payeeNodeIdSource: "signature"`.
 
+## Domain service-key discovery
+
+The draft Domain Service Keys LUD-XX proposal lets a domain publish service-level signing and encryption public keys at `/.well-known/lnurl-service`. `lnaddress` can build the well-known URL, parse the document, and fetch it with the same network controls used by the LNURL-pay APIs.
+
+```ts
+import { fetchServiceKeys, parseServiceKeysResponse, serviceKeysUrl } from "lnaddress";
+
+console.log(serviceKeysUrl("example.com").toString());
+// https://example.com/.well-known/lnurl-service
+
+const serviceKeys = await fetchServiceKeys("example.com");
+
+for (const key of serviceKeys.signingKeys ?? []) {
+  console.log(key.id, key.publicKey);
+}
+
+const parsed = parseServiceKeysResponse({
+  domain: "example.com",
+  signingKeys: [
+    {
+      id: "2026-q1-primary",
+      algorithm: "secp256k1",
+      publicKey: "031b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
+      certChain: ["-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----"],
+    },
+  ],
+});
+
+console.log(parsed.signingKeys?.[0]?.certChain);
+```
+
+The base trust model is HTTPS origin binding plus required raw `publicKey` values. Optional per-key `certChain` values are preserved and lightly validated as PEM certificate strings, but certificate trust decisions remain caller/local-policy responsibilities. This LUD only discovers keys; companion LUDs define how those keys are used for signed LNURL messages or encrypted provider payloads.
+
 ## Destination Instructions
 
 Some providers return payment destinations instead of BOLT11 invoices. `lnaddress` preserves those responses as a typed destination instruction. Treat destination strings and `paymentUri` as provider data until your application validates the target rail.
@@ -291,7 +325,7 @@ The same shape works for BOLT12-style offers and destination rails such as oncha
 
 This repository includes copy-pasteable examples and a richer mocked playground:
 
-- `examples/basic`: small scripts for resolve, BOLT11 requests, comments, payer data, verify, and destination payments.
+- `examples/basic`: small scripts for resolve, BOLT11 requests, comments, payer data, verify, destination payments, nodePubkeys, and domain service keys.
 - `examples/payment-options`: standalone multi-rail `paymentOptions` explainer and mock provider.
 - `examples/playground`: a Vite React playground with shadcn-style local components that exercises the library end to end against mocked provider flows.
 
@@ -323,7 +357,7 @@ const payRequest = await resolve("alice@example.com", {
 
 ## Network and provider controls
 
-`resolve`, `requestPayment`, `pay`, and `verifyPayment` accept the same fetch controls:
+`resolve`, `requestPayment`, `pay`, `verifyPayment`, and `fetchServiceKeys` accept the same fetch controls:
 
 ```ts
 await pay("alice@example.com", {
@@ -418,6 +452,9 @@ validateComment(payRequest, comment);
 validateMandatoryPayerData(payRequest, payerData);
 validatePaymentOption(payRequest, paymentOption);
 validateCurrency(payRequest, currencyCode);
+serviceKeysUrl(domainOrUrl);
+parseServiceKeysResponse(raw, context);
+fetchServiceKeys(domainOrUrl, options);
 ```
 
 ## Types
@@ -430,6 +467,8 @@ import type {
   Currency,
   CurrencyConvertible,
   DenominatedAmount,
+  DomainServiceKey,
+  DomainServiceKeys,
   PayRequest,
   PaymentInstruction,
   PaymentOption,
@@ -461,6 +500,7 @@ if (payment.type === "bolt11") {
 - `validateBolt11` is enabled by default and checks invoice structure, amount, network, expiry, signature, and payee node id when present.
 - BOLT11 description-hash validation is opt-in with `validateMetadataHash: true` because current LUD-06 behavior no longer requires it by default.
 - If a provider advertises `nodePubkeys`, BOLT11 payments include `nodePubkeyVerification` so wallets can show invoice-origin warnings. Mismatches are non-blocking by default (`nodePubkeyPolicy: "warn"`) and can be made strict with `"enforce"`.
+- Domain service-key discovery validates flat `signingKeys` / `encryptionKeys` documents from `/.well-known/lnurl-service`; optional `certChain` metadata is preserved but not trusted beyond caller policy.
 - LUD-09 AES success actions can be decrypted asynchronously with `decryptSuccessAction`.
 - LUD-09 URL success actions and destination `paymentUri` values are untrusted provider data; do not fetch/open them without app-level policy.
 - Always verify settlement with `verifyPayment` when the provider supplies a verify URL.

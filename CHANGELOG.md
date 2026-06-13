@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added draft Domain Service Keys LUD-XX support for `/.well-known/lnurl-service` URL construction, parsing, fetching, validation, optional per-key `certChain`, docs, and examples.
 - Added draft LUD-XX `nodePubkeys` support for payRequest parsing, BOLT11 invoice-origin verification metadata, non-blocking mismatch warnings, and opt-in strict enforcement.
 - Added nodePubkeys tests, docs, and a runnable local example.
 

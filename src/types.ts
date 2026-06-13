@@ -54,6 +54,34 @@ export type VerifyPaymentOptions = UrlSafetyOptions & {
   headers?: HeadersInit;
 } & FetchControls;
 
+export type FetchServiceKeysOptions = UrlSafetyOptions & {
+  fetch?: FetchLike;
+  headers?: HeadersInit;
+} & FetchControls;
+
+export type ParseServiceKeysContext = UrlSafetyOptions & {
+  sourceUrl?: string;
+};
+
+export type DomainServiceKeyAlgorithm = "secp256k1";
+
+export type DomainServiceKey = {
+  id: string;
+  algorithm: DomainServiceKeyAlgorithm;
+  publicKey: string;
+  expiresAt?: number;
+  certChain?: string[];
+  raw: Record<string, unknown>;
+};
+
+export type DomainServiceKeys = {
+  domain?: string;
+  signingKeys?: DomainServiceKey[];
+  encryptionKeys?: DomainServiceKey[];
+  sourceUrl?: string;
+  raw: Record<string, unknown>;
+};
+
 export type LightningAddress = {
   username: string;
   domain: string;

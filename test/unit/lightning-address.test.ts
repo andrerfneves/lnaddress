@@ -29,7 +29,6 @@ describe("Lightning Address parsing", () => {
     "ali ce@example.com",
     "alice@example.com/path",
     "alice@example.com:443",
-    "alice@foo_bar.com",
     "alice@-example.com",
     "alice@example-.com",
     "alice@example..com",

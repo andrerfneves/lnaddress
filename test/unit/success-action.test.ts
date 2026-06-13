@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { InvalidCallbackResponseError, decryptSuccessAction, parseSuccessAction } from "../../src";
 
-function bytes_to_base64(bytes: Uint8Array): string {
+function bytesToBase64(bytes: Uint8Array): string {
   let value = "";
   for (const byte of bytes) {
     value += String.fromCharCode(byte);
@@ -9,7 +9,7 @@ function bytes_to_base64(bytes: Uint8Array): string {
   return btoa(value);
 }
 
-function hex_to_bytes(value: string): Uint8Array {
+function hexToBytes(value: string): Uint8Array {
   const bytes = new Uint8Array(value.length / 2);
   for (let i = 0; i < bytes.length; i += 1) {
     bytes[i] = Number.parseInt(value.slice(i * 2, i * 2 + 2), 16);
@@ -17,7 +17,7 @@ function hex_to_bytes(value: string): Uint8Array {
   return bytes;
 }
 
-function to_array_buffer(bytes: Uint8Array): ArrayBuffer {
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 }
 
@@ -49,14 +49,14 @@ describe("successAction parsing", () => {
     const iv = new Uint8Array(16).fill(2);
     const key = await crypto.subtle.importKey(
       "raw",
-      to_array_buffer(hex_to_bytes(preimage)),
+      toArrayBuffer(hexToBytes(preimage)),
       "AES-CBC",
       false,
       ["encrypt"],
     );
     const ciphertext = new Uint8Array(
       await crypto.subtle.encrypt(
-        { name: "AES-CBC", iv: to_array_buffer(iv) },
+        { name: "AES-CBC", iv: toArrayBuffer(iv) },
         key,
         new TextEncoder().encode("paid"),
       ),
@@ -65,8 +65,8 @@ describe("successAction parsing", () => {
     const action = parseSuccessAction({
       tag: "aes",
       description: "secret",
-      ciphertext: bytes_to_base64(ciphertext),
-      iv: bytes_to_base64(iv),
+      ciphertext: bytesToBase64(ciphertext),
+      iv: bytesToBase64(iv),
     });
 
     expect(action?.tag).toBe("aes");

@@ -1,13 +1,13 @@
 import { InvalidCallbackResponseError } from "./errors";
 import type { DestinationPaymentInstruction, PaymentInstruction } from "./types";
 
-export type DestinationRail = "lightning" | "bitcoin" | "liquid" | "ark" | "spark";
+export type DestinationRail = "lightning" | "bitcoin" | "liquid" | "arkade" | "spark";
 
-const rail_schemes: Record<DestinationRail, string[]> = {
+const railSchemes: Record<DestinationRail, string[]> = {
   lightning: ["lightning:"],
   bitcoin: ["bitcoin:"],
   liquid: ["liquidnetwork:", "liquid:"],
-  ark: ["ark:"],
+  arkade: ["arkade:"],
   spark: ["spark:"],
 };
 
@@ -31,16 +31,16 @@ export function destinationMatchesRail(
   payment: DestinationPaymentInstruction,
   rail: DestinationRail,
 ): boolean {
-  if (!payment.payment_destination) {
+  if (!payment.paymentDestination) {
     return false;
   }
 
-  const schemes = rail_schemes[rail];
-  if (!payment.payment_uri) {
+  const schemes = railSchemes[rail];
+  if (!payment.paymentUri) {
     return false;
   }
 
-  return schemes.some((scheme) => payment.payment_uri?.toLowerCase().startsWith(scheme));
+  return schemes.some((scheme) => payment.paymentUri?.toLowerCase().startsWith(scheme));
 }
 
 export function assertDestinationRail(

@@ -20,8 +20,8 @@ function pick(random: () => number, alphabet: string): string {
   return alphabet[Math.floor(random() * alphabet.length)] ?? "";
 }
 
-function random_string(random: () => number, alphabet: string, max_length: number): string {
-  const length = Math.floor(random() * max_length);
+function randomString(random: () => number, alphabet: string, maxLength: number): string {
+  const length = Math.floor(random() * maxLength);
   let value = "";
 
   for (let i = 0; i < length; i += 1) {
@@ -37,7 +37,7 @@ describe("deterministic fuzz coverage", () => {
     const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._~+-@:/[] ";
 
     for (let i = 0; i < 500; i += 1) {
-      const input = random_string(random, alphabet, 80);
+      const input = randomString(random, alphabet, 80);
 
       try {
         const parsed = parseLightningAddress(input);
@@ -51,11 +51,11 @@ describe("deterministic fuzz coverage", () => {
 
   test("LNURL encode and decode round-trip generated HTTP URLs", () => {
     const random = lcg(0x1066);
-    const path_alphabet = "abcdefghijklmnopqrstuvwxyz0123456789-._~";
+    const pathAlphabet = "abcdefghijklmnopqrstuvwxyz0123456789-._~";
 
     for (let i = 0; i < 200; i += 1) {
-      const label = random_string(random, "abcdefghijklmnopqrstuvwxyz0123456789", 20) || "a";
-      const path = random_string(random, path_alphabet, 40);
+      const label = randomString(random, "abcdefghijklmnopqrstuvwxyz0123456789", 20) || "a";
+      const path = randomString(random, pathAlphabet, 40);
       const url = `https://${label}.example/.well-known/lnurlp/${path || "alice"}`;
 
       expect(decodeLnurl(encodeLnurl(url))).toBe(url);
@@ -84,7 +84,7 @@ describe("deterministic fuzz coverage", () => {
         const parsed = parseMetadata(JSON.stringify(entries));
         expect(
           parsed.every(
-            ([mime_type, value]) => typeof mime_type === "string" && typeof value === "string",
+            ([mimeType, value]) => typeof mimeType === "string" && typeof value === "string",
           ),
         ).toBe(true);
       } catch (error) {

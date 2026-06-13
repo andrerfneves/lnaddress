@@ -8,6 +8,7 @@ export type LnAddressErrorCode =
   | "COMMENT_TOO_LONG"
   | "MISSING_MANDATORY_PAYER_DATA"
   | "INVALID_CALLBACK_RESPONSE"
+  | "INVALID_PAYMENT_OPTION"
   | "VERIFY_ERROR";
 
 export class LnAddressError extends Error {
@@ -68,21 +69,27 @@ export class CommentTooLongError extends LnAddressError {
 }
 
 export class MissingMandatoryPayerDataError extends LnAddressError {
-  readonly missing_fields: string[];
+  readonly missingFields: string[];
 
-  constructor(missing_fields: string[], options?: { cause?: unknown }) {
+  constructor(missingFields: string[], options?: { cause?: unknown }) {
     super(
       "MISSING_MANDATORY_PAYER_DATA",
-      `Missing mandatory payer data: ${missing_fields.join(", ")}`,
+      `Missing mandatory payer data: ${missingFields.join(", ")}`,
       options,
     );
-    this.missing_fields = missing_fields;
+    this.missingFields = missingFields;
   }
 }
 
 export class InvalidCallbackResponseError extends LnAddressError {
   constructor(message = "Invalid payment callback response", options?: { cause?: unknown }) {
     super("INVALID_CALLBACK_RESPONSE", message, options);
+  }
+}
+
+export class InvalidPaymentOptionError extends LnAddressError {
+  constructor(message = "Invalid payment option", options?: { cause?: unknown }) {
+    super("INVALID_PAYMENT_OPTION", message, options);
   }
 }
 

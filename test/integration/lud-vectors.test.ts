@@ -8,12 +8,12 @@ import {
   validateMandatoryPayerData,
   verifyPayment,
 } from "../../src";
-import { test_bolt11_invoice } from "../fixtures/bolt11";
+import { testBolt11Invoice } from "../fixtures/bolt11";
 
 type LudVectors = {
-  lightning_address: string;
-  pay_request: Record<string, unknown>;
-  success_actions: {
+  lightningAddress: string;
+  payRequest: Record<string, unknown>;
+  successActions: {
     message: Record<string, unknown>;
     url: Record<string, unknown>;
   };
@@ -24,7 +24,7 @@ const vectors = (await Bun.file(
   new URL("../vectors/lud-vectors.json", import.meta.url),
 ).json()) as LudVectors;
 
-function json_response(body: unknown): Response {
+function jsonResponse(body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status: 200,
     headers: { "content-type": "application/json" },
@@ -33,17 +33,17 @@ function json_response(body: unknown): Response {
 
 describe("LUD compliance vectors", () => {
   test("covers LUD-06 payRequest, LUD-12 comments, and LUD-18 payerData", () => {
-    const pay_request = parsePayRequestResponse(vectors.pay_request);
+    const payRequest = parsePayRequestResponse(vectors.payRequest);
 
-    expect(pay_request.description).toBe("LUD vector payment");
-    expect(pay_request.min_sendable_msat).toBe(1000n);
-    expect(pay_request.max_sendable_msat).toBe(100000n);
-    expect(() => validateComment(pay_request, "hello")).not.toThrow();
-    expect(() => validateMandatoryPayerData(pay_request, { name: "Alice" })).not.toThrow();
+    expect(payRequest.description).toBe("LUD vector payment");
+    expect(payRequest.minSendableMsat).toBe(1000n);
+    expect(payRequest.maxSendableMsat).toBe(100000n);
+    expect(() => validateComment(payRequest, "hello")).not.toThrow();
+    expect(() => validateMandatoryPayerData(payRequest, { name: "Alice" })).not.toThrow();
   });
 
   test("covers LUD-16 Lightning Address URL construction", async () => {
-    const address = parseLightningAddress(vectors.lightning_address);
+    const address = parseLightningAddress(vectors.lightningAddress);
     expect(address).toEqual({
       username: "alice",
       domain: "example.com",
@@ -52,11 +52,11 @@ describe("LUD compliance vectors", () => {
   });
 
   test("covers LUD-09 successAction parsing", () => {
-    expect(parseSuccessAction(vectors.success_actions.message)).toEqual({
+    expect(parseSuccessAction(vectors.successActions.message)).toEqual({
       tag: "message",
       message: "paid",
     });
-    expect(parseSuccessAction(vectors.success_actions.url)).toEqual({
+    expect(parseSuccessAction(vectors.successActions.url)).toEqual({
       tag: "url",
       description: "receipt",
       url: "https://example.com/receipt",
@@ -64,13 +64,13 @@ describe("LUD compliance vectors", () => {
   });
 
   test("covers payment callback and LUD-21 verification", async () => {
-    const pay_request = parsePayRequestResponse(vectors.pay_request);
-    const payment = await requestPayment(pay_request, {
-      amount_msat: 2000,
-      payer_data: { name: "Alice" },
+    const payRequest = parsePayRequestResponse(vectors.payRequest);
+    const payment = await requestPayment(payRequest, {
+      amountMsat: 2000,
+      payerData: { name: "Alice" },
       fetch: async () =>
-        json_response({
-          pr: await test_bolt11_invoice(2000, pay_request.metadata_hash),
+        jsonResponse({
+          pr: await testBolt11Invoice(2000, payRequest.metadataHash),
           verify: "https://example.com/verify?k1=abcdef",
         }),
     });
@@ -78,7 +78,7 @@ describe("LUD compliance vectors", () => {
     expect(payment.type).toBe("bolt11");
     await expect(
       verifyPayment(payment, {
-        fetch: async () => json_response(vectors.verify),
+        fetch: async () => jsonResponse(vectors.verify),
       }),
     ).resolves.toMatchObject({
       status: "OK",

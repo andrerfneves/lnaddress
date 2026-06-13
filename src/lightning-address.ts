@@ -1,43 +1,43 @@
 import { InvalidLightningAddressError } from "./errors";
 import type { LightningAddress } from "./types";
 
-const username_pattern = /^[A-Za-z0-9._~+-]+$/;
-const domain_label_pattern = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+const usernamePattern = /^[A-Za-z0-9._~+-]+$/;
+const domainLabelPattern = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 
-function is_valid_domain(hostname: string): boolean {
+function isValidDomain(hostname: string): boolean {
   if (hostname.length > 253) {
     return false;
   }
 
   const labels = hostname.split(".");
   const tld = labels.at(-1);
-  return !!tld && /[a-z]/.test(tld) && labels.every((label) => domain_label_pattern.test(label));
+  return !!tld && /[a-z]/.test(tld) && labels.every((label) => domainLabelPattern.test(label));
 }
 
 export function parseLightningAddress(address: string): LightningAddress {
   const value = address.trim();
-  const at_index = value.indexOf("@");
+  const atIndex = value.indexOf("@");
 
-  if (at_index <= 0 || at_index !== value.lastIndexOf("@") || at_index === value.length - 1) {
+  if (atIndex <= 0 || atIndex !== value.lastIndexOf("@") || atIndex === value.length - 1) {
     throw new InvalidLightningAddressError("Lightning Address must be in username@domain form");
   }
 
-  const username = value.slice(0, at_index);
-  const domain_input = value.slice(at_index + 1);
+  const username = value.slice(0, atIndex);
+  const domainInput = value.slice(atIndex + 1);
 
-  if (!username_pattern.test(username)) {
+  if (!usernamePattern.test(username)) {
     throw new InvalidLightningAddressError(
       "Lightning Address username contains invalid characters",
     );
   }
 
-  if (domain_input.includes(":")) {
+  if (domainInput.includes(":")) {
     throw new InvalidLightningAddressError("Lightning Address domain is invalid");
   }
 
   let url: URL;
   try {
-    url = new URL(`https://${domain_input}`);
+    url = new URL(`https://${domainInput}`);
   } catch (cause) {
     throw new InvalidLightningAddressError("Lightning Address domain is invalid", { cause });
   }
@@ -50,7 +50,7 @@ export function parseLightningAddress(address: string): LightningAddress {
     url.pathname !== "/" ||
     url.search ||
     url.hash ||
-    !is_valid_domain(url.hostname.toLowerCase())
+    !isValidDomain(url.hostname.toLowerCase())
   ) {
     throw new InvalidLightningAddressError("Lightning Address domain is invalid");
   }

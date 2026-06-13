@@ -21,7 +21,7 @@ function polymod(values: number[]): number {
   return chk;
 }
 
-function hrp_expand(hrp: string): number[] {
+function hrpExpand(hrp: string): number[] {
   const expanded: number[] = [];
 
   for (let i = 0; i < hrp.length; i += 1) {
@@ -37,8 +37,8 @@ function hrp_expand(hrp: string): number[] {
   return expanded;
 }
 
-function bech32_with_payload(hrp: string, payload: number[]): string {
-  const values = [...hrp_expand(hrp), ...payload, 0, 0, 0, 0, 0, 0];
+function bech32WithPayload(hrp: string, payload: number[]): string {
+  const values = [...hrpExpand(hrp), ...payload, 0, 0, 0, 0, 0, 0];
   const mod = polymod(values) ^ 1;
   const checksum: number[] = [];
 
@@ -77,12 +77,12 @@ describe("LNURL encode/decode", () => {
 
   test("rejects malformed bech32 inputs", () => {
     const encoded = encodeLnurl("https://example.com/alice");
-    const mixed_case = `${encoded.slice(0, 6).toUpperCase()}${encoded.slice(6)}`;
+    const mixedCase = `${encoded.slice(0, 6).toUpperCase()}${encoded.slice(6)}`;
 
-    expect(() => decodeLnurl(mixed_case)).toThrow(InvalidLnurlError);
+    expect(() => decodeLnurl(mixedCase)).toThrow(InvalidLnurlError);
     expect(() => decodeLnurl("lnurx1qqqqqq")).toThrow(InvalidLnurlError);
     expect(() => decodeLnurl("lnurl1")).toThrow(InvalidLnurlError);
-    expect(() => decodeLnurl(bech32_with_payload("lnurl", [1]))).toThrow(InvalidLnurlError);
+    expect(() => decodeLnurl(bech32WithPayload("lnurl", [1]))).toThrow(InvalidLnurlError);
   });
 
   test("rejects invalid URLs", () => {

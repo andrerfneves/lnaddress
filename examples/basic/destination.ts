@@ -1,9 +1,9 @@
 import { pay, verifyPayment } from "../../src";
-import { create_mock_lnurl_fetch, liquid } from "./mock-provider";
+import { createMockLnurlFetch, liquid } from "./mock-provider";
 
-const fetch = create_mock_lnurl_fetch();
+const fetch = createMockLnurlFetch();
 const payment = await pay(liquid, {
-  amount_msat: 10_000,
+  amountMsat: 10_000,
   fetch,
 });
 
@@ -14,7 +14,7 @@ if (payment.type !== "destination") {
 const verified = await verifyPayment(payment, { fetch });
 
 console.log({
-  payment_destination: payment.payment_destination,
-  payment_uri: payment.payment_uri,
+  paymentDestination: payment.paymentDestination,
+  paymentUri: payment.paymentUri,
   settled: verified.settled,
 });

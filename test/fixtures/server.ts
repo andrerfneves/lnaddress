@@ -1,12 +1,12 @@
 import { getMetadataHash } from "../../src";
-import { test_bolt11_invoice } from "./bolt11";
+import { testBolt11Invoice } from "./bolt11";
 
 type ServerState = {
-  liquid_settled: boolean;
-  bolt12_settled: boolean;
+  liquidSettled: boolean;
+  bolt12Settled: boolean;
 };
 
-const alice_metadata = '[["text/plain","Alice test payment"]]';
+const aliceMetadata = '[["text/plain","Alice test payment"]]';
 
 function json(body: unknown, init?: ResponseInit): Response {
   return new Response(JSON.stringify(body), {
@@ -16,10 +16,10 @@ function json(body: unknown, init?: ResponseInit): Response {
   });
 }
 
-export function start_lnurl_test_server() {
+export function startLnurlTestServer() {
   const state: ServerState = {
-    liquid_settled: false,
-    bolt12_settled: false,
+    liquidSettled: false,
+    bolt12Settled: false,
   };
 
   const server = Bun.serve({
@@ -34,7 +34,7 @@ export function start_lnurl_test_server() {
           callback: `${origin}/callback/bolt11`,
           minSendable: 1000,
           maxSendable: 100_000,
-          metadata: alice_metadata,
+          metadata: aliceMetadata,
           commentAllowed: 20,
         });
       }
@@ -66,7 +66,7 @@ export function start_lnurl_test_server() {
 
         return json({
           status: "OK",
-          pr: await test_bolt11_invoice(2500, getMetadataHash(alice_metadata)),
+          pr: await testBolt11Invoice(2500, getMetadataHash(aliceMetadata)),
           routes: [],
           verify: `${origin}/verify/bolt11`,
         });
@@ -95,8 +95,8 @@ export function start_lnurl_test_server() {
       }
 
       if (url.pathname === "/verify/liquid") {
-        const settled = state.liquid_settled;
-        state.liquid_settled = true;
+        const settled = state.liquidSettled;
+        state.liquidSettled = true;
         return json({
           status: "OK",
           settled,
@@ -106,8 +106,8 @@ export function start_lnurl_test_server() {
       }
 
       if (url.pathname === "/verify/bolt12") {
-        const settled = state.bolt12_settled;
-        state.bolt12_settled = true;
+        const settled = state.bolt12Settled;
+        state.bolt12Settled = true;
         return json({
           status: "OK",
           settled,

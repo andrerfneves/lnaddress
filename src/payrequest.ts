@@ -1,16 +1,17 @@
 import { z } from "zod";
-import { InvalidPayRequestError } from "./errors";
-import { assert_http_url, to_msat_bigint, unknown_to_record } from "./internal";
-import { getMetadataHash, get_description, get_image, parseMetadata } from "./metadata";
+import { InvalidPayRequestError, InvalidPaymentOptionError } from "./errors";
+import { assertHttpUrl, toMsatBigint, unknownToRecord } from "./internal";
+import { getDescription, getImage, getMetadataHash, parseMetadata } from "./metadata";
 import type {
   LightningAddress,
   PayRequest,
   PayerData,
   PayerDataField,
+  PaymentOption,
   UrlSafetyOptions,
 } from "./types";
 
-const pay_request_schema = z
+const payRequestSchema = z
   .object({
     tag: z.literal("payRequest"),
     callback: z.string(),
@@ -26,47 +27,128 @@ const pay_request_schema = z
   .passthrough();
 
 export type ParsePayRequestContext = UrlSafetyOptions & {
-  source_url?: string;
-  lightning_address?: LightningAddress;
+  sourceUrl?: string;
+  lightningAddress?: LightningAddress;
 };
 
-function parse_payer_data(raw: unknown): PayerData | undefined {
-  const record = unknown_to_record(raw);
+function parsePayerData(raw: unknown): PayerData | undefined {
+  const record = unknownToRecord(raw);
   if (!record) {
     return undefined;
   }
 
-  const payer_data: PayerData = {};
+  const payerData: PayerData = {};
 
   for (const [field, config] of Object.entries(record)) {
-    const config_record = unknown_to_record(config) ?? {};
-    const parsed_field: PayerDataField = {
-      raw: config_record,
+    const configRecord = unknownToRecord(config) ?? {};
+    const parsedField: PayerDataField = {
+      raw: configRecord,
     };
 
-    if (typeof config_record.mandatory === "boolean") {
-      parsed_field.mandatory = config_record.mandatory;
+    if (typeof configRecord.mandatory === "boolean") {
+      parsedField.mandatory = configRecord.mandatory;
     }
 
-    if (typeof config_record.name === "string") {
-      parsed_field.name = config_record.name;
+    if (typeof configRecord.name === "string") {
+      parsedField.name = configRecord.name;
     }
 
-    if (typeof config_record.k1 === "string") {
-      parsed_field.k1 = config_record.k1;
+    if (typeof configRecord.k1 === "string") {
+      parsedField.k1 = configRecord.k1;
     }
 
-    payer_data[field] = parsed_field;
+    payerData[field] = parsedField;
   }
 
-  return payer_data;
+  return payerData;
+}
+
+function parsePaymentOptions(raw: unknown): PaymentOption[] | undefined {
+  if (!Array.isArray(raw)) {
+    return undefined;
+  }
+
+  const paymentOptions: PaymentOption[] = [];
+  const seenIds = new Set<string>();
+
+  for (const [index, entry] of raw.entries()) {
+    const record = unknownToRecord(entry);
+    if (!record) {
+      throw new InvalidPaymentOptionError(`paymentOptions entry ${index} must be an object`);
+    }
+
+    if (typeof record.id !== "string") {
+      throw new InvalidPaymentOptionError(`paymentOptions entry ${index} must have a string id`);
+    }
+
+    if (typeof record.type !== "string") {
+      throw new InvalidPaymentOptionError(`paymentOptions entry ${index} must have a string type`);
+    }
+
+    if (seenIds.has(record.id)) {
+      throw new InvalidPaymentOptionError(`paymentOptions contains duplicate id: ${record.id}`);
+    }
+    seenIds.add(record.id);
+
+    const option: PaymentOption = {
+      id: record.id,
+      type: record.type,
+      raw: record,
+    };
+
+    if (typeof record.available === "boolean") {
+      option.available = record.available;
+    }
+
+    if (record.minSendable !== undefined) {
+      try {
+        option.minSendableMsat = toMsatBigint(
+          record.minSendable,
+          `paymentOptions[${index}].minSendable`,
+        );
+      } catch (cause) {
+        throw new InvalidPaymentOptionError(
+          `paymentOptions entry ${index} has invalid minSendable`,
+          { cause },
+        );
+      }
+    }
+
+    if (record.maxSendable !== undefined) {
+      try {
+        option.maxSendableMsat = toMsatBigint(
+          record.maxSendable,
+          `paymentOptions[${index}].maxSendable`,
+        );
+      } catch (cause) {
+        throw new InvalidPaymentOptionError(
+          `paymentOptions entry ${index} has invalid maxSendable`,
+          { cause },
+        );
+      }
+    }
+
+    if (
+      option.minSendableMsat !== undefined &&
+      option.maxSendableMsat !== undefined &&
+      option.minSendableMsat > option.maxSendableMsat
+    ) {
+      throw new InvalidPaymentOptionError(
+        `paymentOptions entry ${index} minSendable must be less than or equal to maxSendable`,
+      );
+    }
+
+    paymentOptions.push(option);
+  }
+
+  return paymentOptions;
 }
 
 export function parsePayRequestResponse(
   raw: unknown,
   context: ParsePayRequestContext = {},
 ): PayRequest {
-  const parsed = pay_request_schema.safeParse(raw);
+  const parsed = payRequestSchema.safeParse(raw);
 
   if (!parsed.success) {
     throw new InvalidPayRequestError("Resolved response is not a valid LUD-06 payRequest", {
@@ -75,84 +157,89 @@ export function parsePayRequestResponse(
   }
 
   try {
-    assert_http_url(parsed.data.callback, context);
+    assertHttpUrl(parsed.data.callback, context);
   } catch (cause) {
     throw new InvalidPayRequestError("Pay request callback URL is invalid", { cause });
   }
 
-  let min_sendable_msat: bigint;
-  let max_sendable_msat: bigint;
+  let minSendableMsat: bigint;
+  let maxSendableMsat: bigint;
 
   try {
-    min_sendable_msat = to_msat_bigint(parsed.data.minSendable, "minSendable");
-    max_sendable_msat = to_msat_bigint(parsed.data.maxSendable, "maxSendable");
+    minSendableMsat = toMsatBigint(parsed.data.minSendable, "minSendable");
+    maxSendableMsat = toMsatBigint(parsed.data.maxSendable, "maxSendable");
   } catch (cause) {
     throw new InvalidPayRequestError("Pay request amount bounds are invalid", { cause });
   }
 
-  if (min_sendable_msat > max_sendable_msat) {
+  if (minSendableMsat > maxSendableMsat) {
     throw new InvalidPayRequestError(
       "Pay request minSendable must be less than or equal to maxSendable",
     );
   }
 
   const metadata = parseMetadata(parsed.data.metadata);
-  const description = get_description(metadata);
+  const description = getDescription(metadata);
   if (!description) {
     throw new InvalidPayRequestError("Pay request metadata must include a text/plain description");
   }
 
-  const pay_request: PayRequest = {
+  const payRequest: PayRequest = {
     tag: "payRequest",
     callback: parsed.data.callback,
-    min_sendable_msat,
-    max_sendable_msat,
+    minSendableMsat,
+    maxSendableMsat,
     metadata,
-    metadata_raw: parsed.data.metadata,
-    metadata_hash: getMetadataHash(parsed.data.metadata),
+    metadataRaw: parsed.data.metadata,
+    metadataHash: getMetadataHash(parsed.data.metadata),
     raw,
   };
 
-  pay_request.description = description;
+  payRequest.description = description;
 
-  const image = get_image(metadata);
+  const image = getImage(metadata);
   if (image) {
-    pay_request.image = image;
+    payRequest.image = image;
   }
 
   if (parsed.data.commentAllowed !== undefined) {
-    pay_request.comment_allowed = parsed.data.commentAllowed;
+    payRequest.commentAllowed = parsed.data.commentAllowed;
   }
 
-  const payer_data = parse_payer_data(parsed.data.payerData);
-  if (payer_data) {
-    pay_request.payer_data = payer_data;
+  const payerData = parsePayerData(parsed.data.payerData);
+  if (payerData) {
+    payRequest.payerData = payerData;
+  }
+
+  const paymentOptions = parsePaymentOptions(parsed.data.paymentOptions);
+  if (paymentOptions) {
+    payRequest.paymentOptions = paymentOptions;
   }
 
   if (parsed.data.currencies !== undefined) {
-    pay_request.currencies = parsed.data.currencies;
+    payRequest.currencies = parsed.data.currencies;
   }
 
   if (parsed.data.convert !== undefined) {
-    pay_request.convert = parsed.data.convert;
+    payRequest.convert = parsed.data.convert;
   }
 
   if (parsed.data.converted !== undefined) {
-    pay_request.converted = parsed.data.converted;
+    payRequest.converted = parsed.data.converted;
   }
 
-  if (context.source_url) {
-    pay_request.source_url = context.source_url;
+  if (context.sourceUrl) {
+    payRequest.sourceUrl = context.sourceUrl;
   }
 
-  if (context.lightning_address) {
-    pay_request.lightning_address = context.lightning_address;
+  if (context.lightningAddress) {
+    payRequest.lightningAddress = context.lightningAddress;
   }
 
-  return pay_request;
+  return payRequest;
 }
 
-export function is_pay_request(value: unknown): value is PayRequest {
+export function isPayRequest(value: unknown): value is PayRequest {
   if (!value || typeof value !== "object") {
     return false;
   }
@@ -161,8 +248,8 @@ export function is_pay_request(value: unknown): value is PayRequest {
   return (
     candidate.tag === "payRequest" &&
     typeof candidate.callback === "string" &&
-    typeof candidate.min_sendable_msat === "bigint" &&
-    typeof candidate.max_sendable_msat === "bigint" &&
+    typeof candidate.minSendableMsat === "bigint" &&
+    typeof candidate.maxSendableMsat === "bigint" &&
     Array.isArray(candidate.metadata)
   );
 }

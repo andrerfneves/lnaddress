@@ -1,6 +1,6 @@
 {
-  "lightning_address": "alice@example.com",
-  "pay_request": {
+  "lightningAddress": "alice@example.com",
+  "payRequest": {
     "tag": "payRequest",
     "callback": "https://example.com/lnurl/callback?k1=abcdef",
     "minSendable": 1000,
@@ -12,7 +12,7 @@
       "email": { "mandatory": false }
     }
   },
-  "success_actions": {
+  "successActions": {
     "message": { "tag": "message", "message": "paid" },
     "url": { "tag": "url", "description": "receipt", "url": "https://example.com/receipt" }
   },

@@ -89,8 +89,18 @@ describe("LNURL encode/decode", () => {
     expect(() => encodeLnurl("mailto:alice@example.com")).toThrow(InvalidLnurlError);
   });
 
-  test("allows onion URLs", () => {
+  test("requires explicit allowOnion for onion URLs", () => {
     const onion = "https://abcdefghijklmnop.onion/lnurlp/alice";
-    expect(decodeLnurl(encodeLnurl(onion))).toBe(onion);
+    expect(() => encodeLnurl(onion)).toThrow(InvalidLnurlError);
+    expect(decodeLnurl(encodeLnurl(onion, { allowOnion: true }), { allowOnion: true })).toBe(onion);
+    expect(() => decodeLnurl(encodeLnurl(onion, { allowOnion: true }))).toThrow(InvalidLnurlError);
+  });
+
+  test("requires explicit allowPrivateNetwork for private URLs", () => {
+    const local = "http://127.0.0.1/lnurlp/alice";
+    expect(() => encodeLnurl(local)).toThrow(InvalidLnurlError);
+    expect(
+      decodeLnurl(encodeLnurl(local, { allowPrivateNetwork: true }), { allowPrivateNetwork: true }),
+    ).toBe(local);
   });
 });

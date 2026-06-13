@@ -1,6 +1,8 @@
 import { NetworkError, VerifyError } from "./errors";
 import {
+  assertHttpUrl,
   assertRedirectPolicy,
+  fetchWithRedirectPolicy,
   getFetch,
   readBoolean,
   readJsonResponse,
@@ -30,13 +32,9 @@ export async function verifyPayment(
 
   let parsedUrl: URL;
   try {
-    parsedUrl = new URL(verifyUrl);
+    parsedUrl = assertHttpUrl(verifyUrl, options);
   } catch (cause) {
     throw new VerifyError("verifyUrl is invalid", { cause });
-  }
-
-  if (parsedUrl.protocol !== "https:" && parsedUrl.protocol !== "http:") {
-    throw new VerifyError("verifyUrl must use http or https");
   }
 
   const fetcher = getFetch(options.fetch);
@@ -44,7 +42,7 @@ export async function verifyPayment(
   const { init, cleanup } = requestInit(options.headers, options);
 
   try {
-    response = await fetcher(parsedUrl, init);
+    response = await fetchWithRedirectPolicy(fetcher, parsedUrl, init, options);
   } catch (cause) {
     throw new NetworkError(`Failed to verify payment: ${parsedUrl.toString()}`, { cause });
   } finally {

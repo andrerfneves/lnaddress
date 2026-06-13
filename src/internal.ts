@@ -26,6 +26,11 @@ export function requestInit(
   const init: RequestInit = {
     headers: mergeHeaders(headers),
   };
+
+  if ((options.redirectPolicy ?? "follow") !== "follow") {
+    init.redirect = "manual";
+  }
+
   const cleanupCallbacks: Array<() => void> = [];
 
   if (options.timeoutMs !== undefined) {
@@ -59,6 +64,79 @@ export function requestInit(
       }
     },
   };
+}
+
+function isRedirectStatus(status: number): boolean {
+  return status >= 300 && status < 400;
+}
+
+function redirectLocation(requestUrl: URL | string, response: Response): URL | undefined {
+  if (!isRedirectStatus(response.status)) {
+    return undefined;
+  }
+
+  const location = response.headers.get("location");
+  if (!location) {
+    return undefined;
+  }
+
+  return new URL(location, String(requestUrl));
+}
+
+function assertRedirectTarget(
+  originalUrl: URL,
+  targetUrl: URL,
+  policy: NonNullable<FetchControls["redirectPolicy"]>,
+): void {
+  if (policy === "error") {
+    throw new NetworkError("Redirected responses are disabled by redirectPolicy");
+  }
+
+  if (policy === "same-origin" && targetUrl.origin !== originalUrl.origin) {
+    throw new NetworkError("Redirect target changed origin");
+  }
+
+  if (
+    policy === "no-downgrade" &&
+    originalUrl.protocol === "https:" &&
+    targetUrl.protocol === "http:"
+  ) {
+    throw new NetworkError("Redirect target downgraded from https to http");
+  }
+}
+
+export async function fetchWithRedirectPolicy(
+  fetcher: FetchLike,
+  requestUrl: URL | string,
+  init: RequestInit,
+  options: FetchControls & UrlSafetyOptions,
+): Promise<Response> {
+  const policy = options.redirectPolicy ?? "follow";
+  if (policy === "follow") {
+    return fetcher(requestUrl, init);
+  }
+
+  const original = new URL(String(requestUrl));
+  let current = original;
+
+  for (let redirects = 0; redirects <= 20; redirects += 1) {
+    const response = await fetcher(current, init);
+    const target = redirectLocation(current, response);
+
+    if (!target) {
+      if (response.redirected && response.url) {
+        const final = assertHttpUrl(response.url, options);
+        assertRedirectTarget(original, final, policy);
+      }
+      return response;
+    }
+
+    const safeTarget = assertHttpUrl(target.toString(), options);
+    assertRedirectTarget(original, safeTarget, policy);
+    current = safeTarget;
+  }
+
+  throw new NetworkError("Too many redirects");
 }
 
 export function assertRedirectPolicy(
@@ -127,7 +205,78 @@ export function readUnknown(raw: Record<string, unknown>, keys: string[]): unkno
   return undefined;
 }
 
-export function assertHttpUrl(url: string, _options: UrlSafetyOptions = {}): URL {
+function normalizedHostname(hostname: string): string {
+  return hostname.toLowerCase().replace(/\.$/, "");
+}
+
+function parseIpv4(hostname: string): [number, number, number, number] | undefined {
+  const parts = hostname.split(".");
+  if (parts.length !== 4) {
+    return undefined;
+  }
+
+  const octets = parts.map((part) => {
+    if (!/^\d+$/.test(part)) {
+      return Number.NaN;
+    }
+    const value = Number(part);
+    return value >= 0 && value <= 255 ? value : Number.NaN;
+  });
+
+  if (octets.some((value) => Number.isNaN(value))) {
+    return undefined;
+  }
+
+  return octets as [number, number, number, number];
+}
+
+function isPrivateIpv4([first, second]: [number, number, number, number]): boolean {
+  return (
+    first === 0 ||
+    first === 10 ||
+    first === 127 ||
+    (first === 169 && second === 254) ||
+    (first === 172 && second >= 16 && second <= 31) ||
+    (first === 192 && second === 168) ||
+    (first === 100 && second >= 64 && second <= 127) ||
+    (first === 198 && (second === 18 || second === 19))
+  );
+}
+
+function isPrivateIpv6(hostname: string): boolean {
+  const value = hostname.replace(/^\[/, "").replace(/\]$/, "").toLowerCase();
+  return (
+    value === "::" ||
+    value === "::1" ||
+    value.startsWith("fe80:") ||
+    value.startsWith("fc") ||
+    value.startsWith("fd") ||
+    value.startsWith("::ffff:127.") ||
+    value.startsWith("::ffff:10.") ||
+    value.startsWith("::ffff:192.168.")
+  );
+}
+
+function isPrivateNetworkHost(hostname: string): boolean {
+  const host = normalizedHostname(hostname);
+  if (host === "localhost" || host.endsWith(".localhost")) {
+    return true;
+  }
+
+  const ipv4 = parseIpv4(host);
+  if (ipv4) {
+    return isPrivateIpv4(ipv4);
+  }
+
+  return host.includes(":") && isPrivateIpv6(host);
+}
+
+function isOnionHost(hostname: string): boolean {
+  const host = normalizedHostname(hostname);
+  return host === "onion" || host.endsWith(".onion");
+}
+
+export function assertHttpUrl(url: string, options: UrlSafetyOptions = {}): URL {
   let parsed: URL;
 
   try {
@@ -138,6 +287,14 @@ export function assertHttpUrl(url: string, _options: UrlSafetyOptions = {}): URL
 
   if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
     throw new TypeError(`URL must use http or https: ${url}`);
+  }
+
+  if (!options.allowOnion && isOnionHost(parsed.hostname)) {
+    throw new TypeError(`Onion URLs require allowOnion: ${url}`);
+  }
+
+  if (!options.allowPrivateNetwork && isPrivateNetworkHost(parsed.hostname)) {
+    throw new TypeError(`Private or local network URLs require allowPrivateNetwork: ${url}`);
   }
 
   return parsed;

@@ -93,22 +93,56 @@ describe("resolve", () => {
     );
   });
 
-  test("allows onion URL, Lightning Address, and lnurlp URI inputs", async () => {
+  test("requires explicit allowOnion for onion URL, Lightning Address, and lnurlp URI inputs", async () => {
     const seenUrls: string[] = [];
     const fetcher = async (input: RequestInfo | URL) => {
       seenUrls.push(String(input));
       return jsonResponse(payRequestResponse);
     };
 
-    await resolve("https://abcdefghijklmnop.onion/lnurlp/alice", { fetch: fetcher });
-    await resolve("alice@abcdefghijklmnop.onion", { fetch: fetcher });
-    await resolve("lnurlp://abcdefghijklmnop.onion/alice", { fetch: fetcher });
+    await expect(
+      resolve("https://abcdefghijklmnop.onion/lnurlp/alice", { fetch: fetcher }),
+    ).rejects.toThrow(InvalidLnurlError);
+    await expect(resolve("alice@abcdefghijklmnop.onion", { fetch: fetcher })).rejects.toThrow(
+      InvalidLnurlError,
+    );
+    await expect(
+      resolve("lnurlp://abcdefghijklmnop.onion/alice", { fetch: fetcher }),
+    ).rejects.toThrow(InvalidLnurlError);
+
+    await resolve("https://abcdefghijklmnop.onion/lnurlp/alice", {
+      allowOnion: true,
+      fetch: fetcher,
+    });
+    await resolve("alice@abcdefghijklmnop.onion", { allowOnion: true, fetch: fetcher });
+    await resolve("lnurlp://abcdefghijklmnop.onion/alice", {
+      allowOnion: true,
+      fetch: fetcher,
+    });
 
     expect(seenUrls).toEqual([
       "https://abcdefghijklmnop.onion/lnurlp/alice",
       "https://abcdefghijklmnop.onion/.well-known/lnurlp/alice",
       "https://abcdefghijklmnop.onion/.well-known/lnurlp/alice",
     ]);
+  });
+
+  test("requires explicit allowPrivateNetwork for local and private URL inputs", async () => {
+    const fetcher = async () => jsonResponse(payRequestResponse);
+
+    await expect(resolve("http://127.0.0.1/lnurlp/alice", { fetch: fetcher })).rejects.toThrow(
+      InvalidLnurlError,
+    );
+    await expect(resolve("http://localhost/lnurlp/alice", { fetch: fetcher })).rejects.toThrow(
+      InvalidLnurlError,
+    );
+    await expect(resolve("http://10.0.0.5/lnurlp/alice", { fetch: fetcher })).rejects.toThrow(
+      InvalidLnurlError,
+    );
+
+    await expect(
+      resolve("http://127.0.0.1/lnurlp/alice", { allowPrivateNetwork: true, fetch: fetcher }),
+    ).resolves.toMatchObject({ callback: "https://example.com/callback" });
   });
 
   test("passes AbortSignal to fetch", async () => {
@@ -139,12 +173,14 @@ describe("resolve", () => {
     );
   });
 
-  test("enforces redirect policy", async () => {
+  test("enforces redirect policy before following redirects", async () => {
     await expect(
       resolve("https://example.com/lnurlp/alice", {
         redirectPolicy: "same-origin",
-        fetch: async () =>
-          redirectedResponse(payRequestResponse, "https://pay.example.net/lnurlp/alice"),
+        fetch: async (_input, init) => {
+          expect(init?.redirect).toBe("manual");
+          return redirectedResponse(payRequestResponse, "https://pay.example.net/lnurlp/alice");
+        },
       }),
     ).rejects.toThrow(NetworkError);
   });

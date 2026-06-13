@@ -92,14 +92,36 @@ describe("verifyPayment", () => {
     ).rejects.toThrow(VerifyError);
   });
 
-  test("allows onion verify URLs", async () => {
+  test("requires explicit allowOnion for onion verify URLs", async () => {
     await expect(
       verifyPayment("https://abcdefghijklmnop.onion/verify", {
+        fetch: async () => jsonResponse({ status: "OK", settled: false }),
+      }),
+    ).rejects.toThrow(VerifyError);
+
+    await expect(
+      verifyPayment("https://abcdefghijklmnop.onion/verify", {
+        allowOnion: true,
         fetch: async () => jsonResponse({ status: "OK", settled: false }),
       }),
     ).resolves.toMatchObject({
       status: "OK",
       settled: false,
     });
+  });
+
+  test("requires explicit allowPrivateNetwork for private verify URLs", async () => {
+    await expect(
+      verifyPayment("http://127.0.0.1/verify", {
+        fetch: async () => jsonResponse({ status: "OK", settled: false }),
+      }),
+    ).rejects.toThrow(VerifyError);
+
+    await expect(
+      verifyPayment("http://127.0.0.1/verify", {
+        allowPrivateNetwork: true,
+        fetch: async () => jsonResponse({ status: "OK", settled: false }),
+      }),
+    ).resolves.toMatchObject({ status: "OK" });
   });
 });

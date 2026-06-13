@@ -14,22 +14,26 @@ describe("local LNURL-pay server", () => {
   });
 
   test("resolves and requests a BOLT11 payment", async () => {
-    const payRequest = await resolve(`${server.origin}/.well-known/lnurlp/alice`);
+    const payRequest = await resolve(`${server.origin}/.well-known/lnurlp/alice`, {
+      allowPrivateNetwork: true,
+    });
     expect(payRequest.description).toBe("Alice test payment");
 
     const payment = await pay(`${server.origin}/.well-known/lnurlp/alice`, {
       amountMsat: 2500,
       comment: "hello",
+      allowPrivateNetwork: true,
     });
 
     expect(payment.type).toBe("bolt11");
-    const verified = await verifyPayment(payment);
+    const verified = await verifyPayment(payment, { allowPrivateNetwork: true });
     expect(verified.settled).toBe(true);
   });
 
   test("requests and verifies a Liquid-style destination", async () => {
     const payment = await pay(`${server.origin}/.well-known/lnurlp/liquid`, {
       amountMsat: 2500,
+      allowPrivateNetwork: true,
     });
 
     expect(payment).toMatchObject({
@@ -37,8 +41,8 @@ describe("local LNURL-pay server", () => {
       paymentDestination: "liquid-address",
     });
 
-    const first = await verifyPayment(payment);
-    const second = await verifyPayment(payment);
+    const first = await verifyPayment(payment, { allowPrivateNetwork: true });
+    const second = await verifyPayment(payment, { allowPrivateNetwork: true });
 
     expect(first).toMatchObject({ settled: false, paymentReference: null });
     expect(second).toMatchObject({ settled: true, paymentReference: "liquid-txid" });
@@ -47,6 +51,7 @@ describe("local LNURL-pay server", () => {
   test("requests and verifies a BOLT12-style destination", async () => {
     const payment = await pay(`${server.origin}/.well-known/lnurlp/bolt12`, {
       amountMsat: 2500,
+      allowPrivateNetwork: true,
     });
 
     expect(payment).toMatchObject({
@@ -54,8 +59,8 @@ describe("local LNURL-pay server", () => {
       paymentDestination: "lno1pg257enxv4ezqcneypekxarpw3jxj",
     });
 
-    const first = await verifyPayment(payment);
-    const second = await verifyPayment(payment);
+    const first = await verifyPayment(payment, { allowPrivateNetwork: true });
+    const second = await verifyPayment(payment, { allowPrivateNetwork: true });
 
     expect(first).toMatchObject({ settled: false, paymentReference: null });
     expect(second).toMatchObject({

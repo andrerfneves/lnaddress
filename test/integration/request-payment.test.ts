@@ -321,9 +321,41 @@ describe("requestPayment", () => {
         fetch: async () =>
           jsonResponse({ pr: await testBolt11Invoice(2000, payRequest.metadataHash) }),
       }),
-    ).resolves.toMatchObject({
-      type: "bolt11",
-    });
+    ).rejects.toThrow(InvalidCallbackResponseError);
+
+    await expect(
+      requestPayment(onionPayRequest, {
+        amountMsat: 2000,
+        payerData: { name: "Alice" },
+        allowOnion: true,
+        fetch: async () =>
+          jsonResponse({ pr: await testBolt11Invoice(2000, payRequest.metadataHash) }),
+      }),
+    ).resolves.toMatchObject({ type: "bolt11" });
+
+    const privateNetworkPayRequest = {
+      ...payRequest,
+      callback: "http://127.0.0.1/callback",
+    };
+
+    await expect(
+      requestPayment(privateNetworkPayRequest, {
+        amountMsat: 2000,
+        payerData: { name: "Alice" },
+        fetch: async () =>
+          jsonResponse({ pr: await testBolt11Invoice(2000, payRequest.metadataHash) }),
+      }),
+    ).rejects.toThrow(InvalidCallbackResponseError);
+
+    await expect(
+      requestPayment(privateNetworkPayRequest, {
+        amountMsat: 2000,
+        payerData: { name: "Alice" },
+        allowPrivateNetwork: true,
+        fetch: async () =>
+          jsonResponse({ pr: await testBolt11Invoice(2000, payRequest.metadataHash) }),
+      }),
+    ).resolves.toMatchObject({ type: "bolt11" });
   });
 
   test("enforces optional provider identity policy", async () => {
@@ -389,6 +421,49 @@ describe("requestPayment", () => {
           }),
       }),
     ).resolves.toMatchObject({ type: "bolt11" });
+  });
+
+  test("forwards network controls when resolving string inputs", async () => {
+    const controller = new AbortController();
+    const seen: Array<{ input: string; init: RequestInit | undefined }> = [];
+    const resolvedPayRequest = {
+      tag: "payRequest",
+      callback: "https://example.com/callback?k1=abc",
+      minSendable: 1000,
+      maxSendable: 10_000,
+      metadata: '[["text/plain","Test payment"]]',
+      commentAllowed: 10,
+      payerData: {
+        name: { mandatory: true },
+      },
+    };
+
+    const fetcher = async (input: RequestInfo | URL, init?: RequestInit) => {
+      seen.push({ input: String(input), init });
+      if (seen.length === 1) {
+        expect(init?.signal).toBeDefined();
+        expect(init?.redirect).toBe("manual");
+        return jsonResponse(resolvedPayRequest);
+      }
+
+      return jsonResponse({ pr: await testBolt11Invoice(2000, payRequest.metadataHash) });
+    };
+
+    await expect(
+      requestPayment("alice@example.com", {
+        amountMsat: 2000,
+        payerData: { name: "Alice" },
+        signal: controller.signal,
+        timeoutMs: 10_000,
+        redirectPolicy: "same-origin",
+        fetch: fetcher,
+      }),
+    ).resolves.toMatchObject({ type: "bolt11" });
+
+    expect(seen.map((entry) => entry.input)).toEqual([
+      "https://example.com/.well-known/lnurlp/alice",
+      "https://example.com/callback?k1=abc&amount=2000&payerdata=%7B%22name%22%3A%22Alice%22%7D",
+    ]);
   });
 
   test("wraps non-serializable payer data errors", async () => {

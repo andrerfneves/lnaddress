@@ -53,12 +53,41 @@ describe("pay request parsing", () => {
     ).toThrow(InvalidPayRequestError);
   });
 
-  test("allows onion callbacks", () => {
-    expect(
+  test("requires explicit allowOnion for onion callbacks", () => {
+    expect(() =>
       parsePayRequestResponse({
         ...baseResponse,
         callback: "https://abcdefghijklmnop.onion/callback",
-      }).callback,
+      }),
+    ).toThrow(InvalidPayRequestError);
+
+    expect(
+      parsePayRequestResponse(
+        {
+          ...baseResponse,
+          callback: "https://abcdefghijklmnop.onion/callback",
+        },
+        { allowOnion: true },
+      ).callback,
     ).toBe("https://abcdefghijklmnop.onion/callback");
+  });
+
+  test("requires explicit allowPrivateNetwork for private callbacks", () => {
+    expect(() =>
+      parsePayRequestResponse({
+        ...baseResponse,
+        callback: "http://127.0.0.1/callback",
+      }),
+    ).toThrow(InvalidPayRequestError);
+
+    expect(
+      parsePayRequestResponse(
+        {
+          ...baseResponse,
+          callback: "http://127.0.0.1/callback",
+        },
+        { allowPrivateNetwork: true },
+      ).callback,
+    ).toBe("http://127.0.0.1/callback");
   });
 });

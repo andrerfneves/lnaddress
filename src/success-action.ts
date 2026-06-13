@@ -1,5 +1,6 @@
 import { InvalidCallbackResponseError } from "./errors";
-import type { SuccessAction } from "./types";
+import { assertHttpUrl } from "./internal";
+import type { SuccessAction, UrlSafetyOptions } from "./types";
 
 function aesDecryptNotAvailable(): never {
   throw new Error(
@@ -28,7 +29,10 @@ function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 }
 
-export function parseSuccessAction(raw: unknown): SuccessAction | undefined {
+export function parseSuccessAction(
+  raw: unknown,
+  options: UrlSafetyOptions = {},
+): SuccessAction | undefined {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     return undefined;
   }
@@ -50,13 +54,9 @@ export function parseSuccessAction(raw: unknown): SuccessAction | undefined {
   if (tag === "url" && typeof action.description === "string" && typeof action.url === "string") {
     let url: URL;
     try {
-      url = new URL(action.url);
+      url = assertHttpUrl(action.url, options);
     } catch (cause) {
       throw new InvalidCallbackResponseError("URL successAction URL is invalid", { cause });
-    }
-
-    if (url.protocol !== "https:" && url.protocol !== "http:") {
-      throw new InvalidCallbackResponseError("URL successAction URL must use http or https");
     }
 
     return {

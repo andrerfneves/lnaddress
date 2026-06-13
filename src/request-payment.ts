@@ -12,6 +12,7 @@ import {
   amountToMsatString,
   assertHttpUrl,
   assertRedirectPolicy,
+  fetchWithRedirectPolicy,
   getFetch,
   readJsonResponse,
   readString,
@@ -184,14 +185,17 @@ function callbackErrorMessage(raw: Record<string, unknown>): string {
     : "Payment callback returned an error";
 }
 
-function readVerifyUrl(raw: Record<string, unknown>): string | undefined {
+function readVerifyUrl(
+  raw: Record<string, unknown>,
+  options: RequestPaymentOptions,
+): string | undefined {
   const verifyUrl = readString(raw, ["verify", "verifyUrl", "verifyUrl"]);
   if (!verifyUrl) {
     return undefined;
   }
 
   try {
-    return assertHttpUrl(verifyUrl).toString();
+    return assertHttpUrl(verifyUrl, options).toString();
   } catch (cause) {
     throw new InvalidCallbackResponseError("Payment callback verify URL is invalid", { cause });
   }
@@ -373,11 +377,11 @@ async function parseCallbackResponse(
     readUnknown(record, ["converted"]),
     options.convert !== undefined,
   );
-  const verifyUrl = readVerifyUrl(record);
+  const verifyUrl = readVerifyUrl(record, options);
   if (verifyUrl) {
     assertProviderPolicy(payRequest, verifyUrl, options, "Payment callback verify URL");
   }
-  const successAction = parseSuccessAction(readUnknown(record, ["successAction"]));
+  const successAction = parseSuccessAction(readUnknown(record, ["successAction"]), options);
 
   if (pr) {
     if (options.validateBolt11 ?? true) {
@@ -496,6 +500,18 @@ export async function requestPayment(
   if (options.allowOnion !== undefined) {
     resolveOptions.allowOnion = options.allowOnion;
   }
+  if (options.allowPrivateNetwork !== undefined) {
+    resolveOptions.allowPrivateNetwork = options.allowPrivateNetwork;
+  }
+  if (options.signal !== undefined) {
+    resolveOptions.signal = options.signal;
+  }
+  if (options.timeoutMs !== undefined) {
+    resolveOptions.timeoutMs = options.timeoutMs;
+  }
+  if (options.redirectPolicy !== undefined) {
+    resolveOptions.redirectPolicy = options.redirectPolicy;
+  }
 
   const payRequest = isPayRequest(payRequestOrInput)
     ? payRequestOrInput
@@ -513,7 +529,7 @@ export async function requestPayment(
   const { init, cleanup } = requestInit(options.headers, options);
 
   try {
-    response = await fetcher(callbackUrl, init);
+    response = await fetchWithRedirectPolicy(fetcher, callbackUrl, init, options);
   } catch (cause) {
     throw new NetworkError(`Failed to request payment instruction: ${callbackUrl.toString()}`, {
       cause,

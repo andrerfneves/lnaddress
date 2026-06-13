@@ -42,6 +42,33 @@ describe("successAction parsing", () => {
         url: "lightning:lnbc1example",
       }),
     ).toThrow(InvalidCallbackResponseError);
+
+    expect(() =>
+      parseSuccessAction({
+        tag: "url",
+        description: "receipt",
+        url: "https://abcdefghijklmnop.onion/receipt",
+      }),
+    ).toThrow(InvalidCallbackResponseError);
+
+    expect(
+      parseSuccessAction(
+        {
+          tag: "url",
+          description: "receipt",
+          url: "https://abcdefghijklmnop.onion/receipt",
+        },
+        { allowOnion: true },
+      ),
+    ).toMatchObject({ url: "https://abcdefghijklmnop.onion/receipt" });
+
+    expect(() =>
+      parseSuccessAction({
+        tag: "url",
+        description: "receipt",
+        url: "http://127.0.0.1/receipt",
+      }),
+    ).toThrow(InvalidCallbackResponseError);
   });
 
   test("decrypts AES success actions with Web Crypto", async () => {

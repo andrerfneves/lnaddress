@@ -7,6 +7,7 @@ import {
 import {
   assertHttpUrl,
   assertRedirectPolicy,
+  fetchWithRedirectPolicy,
   getFetch,
   readJsonResponse,
   requestInit,
@@ -105,10 +106,7 @@ function inputToUrl(
   }
 
   try {
-    const parsed = new URL(value);
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-      throw new InvalidLnurlError("URL input must use http or https");
-    }
+    const parsed = assertHttpUrl(value, options);
     return {
       url: parsed.toString(),
     };
@@ -129,7 +127,7 @@ export async function resolve(input: string, options: ResolveOptions = {}): Prom
   const { init, cleanup } = requestInit(options.headers, options);
 
   try {
-    response = await fetcher(url, init);
+    response = await fetchWithRedirectPolicy(fetcher, url, init, options);
   } catch (cause) {
     throw new NetworkError(`Failed to resolve LNURL-pay endpoint: ${url}`, { cause });
   } finally {
@@ -154,6 +152,9 @@ export async function resolve(input: string, options: ResolveOptions = {}): Prom
   const parseContext = {
     sourceUrl: url,
     ...(options.allowOnion !== undefined ? { allowOnion: options.allowOnion } : {}),
+    ...(options.allowPrivateNetwork !== undefined
+      ? { allowPrivateNetwork: options.allowPrivateNetwork }
+      : {}),
     ...(address ? { lightningAddress: address } : {}),
   };
 

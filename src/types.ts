@@ -2,6 +2,7 @@ export type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promis
 
 export type UrlSafetyOptions = {
   allowOnion?: boolean;
+  allowPrivateNetwork?: boolean;
 };
 
 export type Bolt11Network = "bitcoin" | "testnet" | "regtest" | "signet";

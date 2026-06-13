@@ -8,6 +8,7 @@ export {
   InvalidPaymentOptionError,
   InvalidRequestPaymentOptionsError,
   InvalidPayRequestError,
+  InvalidServiceKeysError,
   LnAddressError,
   MissingMandatoryPayerDataError,
   NetworkError,
@@ -35,6 +36,12 @@ export {
   validatePaymentOption,
 } from "./request-payment";
 export { resolve } from "./resolve";
+export {
+  LNURL_SERVICE_PATH,
+  fetchServiceKeys,
+  parseServiceKeysResponse,
+  serviceKeysUrl,
+} from "./service-keys";
 export { decryptSuccessAction, parseSuccessAction } from "./success-action";
 export { verifyPayment } from "./verify";
 export type {
@@ -45,9 +52,13 @@ export type {
   Currency,
   CurrencyConvertible,
   DenominatedAmount,
+  DomainServiceKey,
+  DomainServiceKeyAlgorithm,
+  DomainServiceKeys,
   DestinationPaymentInstruction,
   FetchLike,
   FetchControls,
+  FetchServiceKeysOptions,
   LightningAddress,
   MetadataEntry,
   MetadataImage,
@@ -55,6 +66,7 @@ export type {
   NodePubkeyPolicy,
   NodePubkeyVerification,
   PayRequest,
+  ParseServiceKeysContext,
   PayerData,
   PayerDataField,
   PaymentInstruction,

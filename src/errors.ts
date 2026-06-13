@@ -11,6 +11,7 @@ export type LnAddressErrorCode =
   | "INVALID_PAYMENT_OPTION"
   | "INVALID_REQUEST_PAYMENT_OPTIONS"
   | "NODE_PUBKEY_MISMATCH"
+  | "INVALID_SERVICE_KEYS"
   | "VERIFY_ERROR";
 
 export class LnAddressError extends Error {
@@ -107,6 +108,12 @@ export class NodePubkeyMismatchError extends LnAddressError {
     options?: { cause?: unknown },
   ) {
     super("NODE_PUBKEY_MISMATCH", message, options);
+  }
+}
+
+export class InvalidServiceKeysError extends LnAddressError {
+  constructor(message = "Invalid LNURL service keys document", options?: { cause?: unknown }) {
+    super("INVALID_SERVICE_KEYS", message, options);
   }
 }
 

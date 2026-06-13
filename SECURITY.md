@@ -17,6 +17,7 @@ it does not make remote providers trusted.
   metadata by default. Metadata description-hash validation is available as an
   opt-in strict mode with `validateMetadataHash: true`.
 - Callback `verify` URLs as HTTP(S) URLs, with optional provider identity policy.
+- Domain service-key documents from `/.well-known/lnurl-service`: flat `signingKeys` / `encryptionKeys`, exact optional domain binding, valid compressed secp256k1 public keys, duplicate key-id rejection within each key-use array, key-level `expiresAt`, and optional PEM-shaped `certChain` arrays.
 - LUD-09 `successAction` message, URL, and AES shapes. URL actions must use
   HTTP(S), and AES actions can be decrypted with `decryptSuccessAction`.
 - LUD-21 verification response shape.
@@ -29,6 +30,7 @@ it does not make remote providers trusted.
 - Provider business logic, custody state, inventory, or settlement truth beyond
   what the provider reports.
 - TLS certificate pinning or DNSSEC.
+- Certificate-chain trust decisions for service-key `certChain`; the library preserves and lightly validates PEM-shaped strings, but callers must apply any certificate policy they require.
 - Whether a destination payment address belongs to the intended recipient.
 - Whether a flexible destination rail is globally valid beyond helper-level URI
   scheme checks.
@@ -45,7 +47,7 @@ range blocking, or redirect limits.
 
 Built-in controls:
 
-- `timeoutMs` aborts slow resolve, callback, and verify requests.
+- `timeoutMs` aborts slow resolve, callback, verify, and service-key requests.
 - `signal` lets callers cancel in-flight requests.
 - `redirectPolicy` rejects redirects, cross-origin redirects, or HTTPS to HTTP
   downgrades before following redirect targets.
@@ -68,6 +70,14 @@ Injected `fetch` implementations should preserve standard `Response` behavior
 where possible, especially `ok`, `status`, `statusText`, `url`, `redirected`, and
 `json()`. If you enforce redirects inside custom fetch, document how that
 interacts with `redirectPolicy`.
+
+## Domain Service Keys
+
+`fetchServiceKeys("example.com")` requests `https://example.com/.well-known/lnurl-service` and parses the returned domain service-key document. The optional `domain` field must match the source host when present; no wildcard or subdomain inheritance is assumed.
+
+`certChain` is optional per-key metadata. The base trust model is the HTTPS origin plus the raw compressed secp256k1 `publicKey`; applications that require certificate-based trust must validate `certChain` according to their own policy before relying on it.
+
+This feature only discovers keys. It does not define or validate signed-message envelopes, encrypted-provider-data envelopes, or compliance payloads; those belong to companion LUDs.
 
 ## nodePubkeys Invoice-Origin Checks
 

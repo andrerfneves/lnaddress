@@ -75,6 +75,7 @@ describe("built package imports", () => {
     const mod = await import("../../dist/index.js");
 
     expect(typeof mod.resolve).toBe("function");
+    expect(typeof mod.fetchServiceKeys).toBe("function");
     expect(typeof mod.pay).toBe("function");
     expect(typeof mod.verifyPayment).toBe("function");
     expect(mod.isLightningAddress("alice@example.com")).toBe(true);
@@ -85,6 +86,7 @@ describe("built package imports", () => {
 
     expect(typeof mod.resolve).toBe("function");
     expect(typeof mod.requestPayment).toBe("function");
+    expect(typeof mod.parseServiceKeysResponse).toBe("function");
     expect(mod.isLightningAddress("not-an-address")).toBe(false);
   });
 
@@ -103,9 +105,10 @@ describe("built package imports", () => {
     writeFileSync(
       esmFile,
       [
-        'import { isLightningAddress, validateCurrency } from "lnaddress";',
+        'import { isLightningAddress, serviceKeysUrl, validateCurrency } from "lnaddress";',
         'if (!isLightningAddress("alice@example.com")) throw new Error("bad esm export");',
         'if (typeof validateCurrency !== "function") throw new Error("missing validateCurrency");',
+        'if (serviceKeysUrl("example.com").pathname !== "/.well-known/lnurl-service") throw new Error("bad serviceKeysUrl export");',
       ].join("\n"),
     );
 
@@ -113,9 +116,10 @@ describe("built package imports", () => {
     writeFileSync(
       cjsFile,
       [
-        'const { isLightningAddress, requestPayment } = require("lnaddress");',
+        'const { fetchServiceKeys, isLightningAddress, requestPayment } = require("lnaddress");',
         'if (isLightningAddress("not-an-address")) throw new Error("bad cjs export");',
         'if (typeof requestPayment !== "function") throw new Error("missing requestPayment");',
+        'if (typeof fetchServiceKeys !== "function") throw new Error("missing fetchServiceKeys");',
       ].join("\n"),
     );
 

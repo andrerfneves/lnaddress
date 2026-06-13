@@ -31,7 +31,7 @@ export type ParsePayRequestContext = UrlSafetyOptions & {
   lightningAddress?: LightningAddress;
 };
 
-function parse_payerData(raw: unknown): PayerData | undefined {
+function parsePayerData(raw: unknown): PayerData | undefined {
   const record = unknownToRecord(raw);
   if (!record) {
     return undefined;
@@ -63,7 +63,7 @@ function parse_payerData(raw: unknown): PayerData | undefined {
   return payerData;
 }
 
-function parse_paymentOptions(raw: unknown): PaymentOption[] | undefined {
+function parsePaymentOptions(raw: unknown): PaymentOption[] | undefined {
   if (!Array.isArray(raw)) {
     return undefined;
   }
@@ -206,12 +206,12 @@ export function parsePayRequestResponse(
     payRequest.commentAllowed = parsed.data.commentAllowed;
   }
 
-  const payerData = parse_payerData(parsed.data.payerData);
+  const payerData = parsePayerData(parsed.data.payerData);
   if (payerData) {
     payRequest.payerData = payerData;
   }
 
-  const paymentOptions = parse_paymentOptions(parsed.data.paymentOptions);
+  const paymentOptions = parsePaymentOptions(parsed.data.paymentOptions);
   if (paymentOptions) {
     payRequest.paymentOptions = paymentOptions;
   }

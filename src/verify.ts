@@ -10,23 +10,23 @@ import {
 } from "./internal";
 import type { PaymentInstruction, VerifyPaymentOptions, VerifyResult } from "./types";
 
-function verifyUrl_from_input(payment_or_verifyUrl: PaymentInstruction | string): string {
-  if (typeof payment_or_verifyUrl === "string") {
-    return payment_or_verifyUrl;
+function verifyUrlFromInput(paymentOrVerifyUrl: PaymentInstruction | string): string {
+  if (typeof paymentOrVerifyUrl === "string") {
+    return paymentOrVerifyUrl;
   }
 
-  if (payment_or_verifyUrl.verifyUrl) {
-    return payment_or_verifyUrl.verifyUrl;
+  if (paymentOrVerifyUrl.verifyUrl) {
+    return paymentOrVerifyUrl.verifyUrl;
   }
 
   throw new VerifyError("Payment instruction does not include a verifyUrl");
 }
 
 export async function verifyPayment(
-  payment_or_verifyUrl: PaymentInstruction | string,
+  paymentOrVerifyUrl: PaymentInstruction | string,
   options: VerifyPaymentOptions = {},
 ): Promise<VerifyResult> {
-  const verifyUrl = verifyUrl_from_input(payment_or_verifyUrl);
+  const verifyUrl = verifyUrlFromInput(paymentOrVerifyUrl);
 
   let parsedUrl: URL;
   try {

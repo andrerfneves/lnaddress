@@ -8,11 +8,16 @@ import { fileURLToPath } from "node:url";
 const repoRoot = resolvePath(dirname(fileURLToPath(import.meta.url)), "../..");
 const tmpRoots: string[] = [];
 
-function run(command: string, args: string[], cwd: string): string {
+function run(
+  command: string,
+  args: string[],
+  cwd: string,
+  envOverrides: NodeJS.ProcessEnv = {},
+): string {
   const result = spawnSync(command, args, {
     cwd,
     encoding: "utf8",
-    env: process.env,
+    env: { ...process.env, ...envOverrides },
   });
 
   if (result.status !== 0) {
@@ -33,6 +38,7 @@ function packFixture(): { fixture: string; packageDir: string } {
     "npm",
     ["pack", "--ignore-scripts", "--json", "--pack-destination", tmpRoot],
     repoRoot,
+    { npm_config_dry_run: "false" },
   );
   const [packed] = JSON.parse(packJson) as Array<{ filename: string }>;
   if (!packed?.filename) {

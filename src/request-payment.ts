@@ -27,6 +27,7 @@ import {
   toMsatBigint,
   unknownToRecord,
 } from "./internal";
+import { verifyNodePubkeys } from "./node-pubkeys";
 import { isPayRequest } from "./payrequest";
 import { assertProviderPolicy } from "./provider-policy";
 import { resolve } from "./resolve";
@@ -35,6 +36,7 @@ import type {
   Bolt11PaymentInstruction,
   ConvertedAmount,
   DestinationPaymentInstruction,
+  NodePubkeyVerification,
   PayRequest,
   PaymentInstruction,
   RequestPaymentOptions,
@@ -326,8 +328,10 @@ async function parseCallbackResponse(
   const successAction = parseSuccessAction(readUnknown(record, ["successAction"]), options);
 
   if (pr) {
+    let nodePubkeyVerification: NodePubkeyVerification | undefined;
     if (options.validateBolt11 ?? true) {
-      await assertBolt11Payment(pr, payRequest, options, converted);
+      const bolt11 = await assertBolt11Payment(pr, payRequest, options, converted);
+      nodePubkeyVerification = verifyNodePubkeys(payRequest, bolt11, options.nodePubkeyPolicy);
     }
 
     const instruction: Bolt11PaymentInstruction = {
@@ -362,6 +366,10 @@ async function parseCallbackResponse(
 
     if (converted) {
       instruction.converted = converted;
+    }
+
+    if (nodePubkeyVerification) {
+      instruction.nodePubkeyVerification = nodePubkeyVerification;
     }
 
     return instruction;

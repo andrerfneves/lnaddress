@@ -41,6 +41,7 @@ if (payment.type === "bolt11") {
 | LUD-21 | verify URL | Supported |
 | LUD-22 | currency-denominated amounts and conversion quotes | Supported |
 | LUD-XX | `paymentOptions` for multi-rail pay | Supported |
+| LUD-XX | `nodePubkeys` invoice-origin checks for `payRequest` | Supported |
 
 `lnaddress` intentionally does not implement withdraw, auth, hosted channels, channel requests, NWC, encrypted provider data, or keysend in v0.1.0.
 
@@ -229,6 +230,45 @@ if (payment.type === "destination") {
 
 If `paymentOption` is absent, the normal LUD-06 Lightning flow is used. `validatePaymentOption` rejects unknown or unavailable options before the callback is sent. If an option has its own `currencies`, those override the top-level LUD-22 `currencies` for that rail; otherwise it inherits the top-level list.
 
+## Invoice-origin checks with nodePubkeys
+
+The draft `nodePubkeys` LUD-XX proposal ([lnurl/luds#297](https://github.com/lnurl/luds/pull/297)) lets a provider advertise the Lightning node public keys that may generate invoices for a payRequest. `lnaddress` parses those keys and, when BOLT11 validation is enabled, compares the invoice payee node id against the advertised list.
+
+```ts
+import { requestPayment, resolve } from "lnaddress";
+
+const payRequest = await resolve("alice@example.com");
+
+if (payRequest.nodePubkeys) {
+  console.log(payRequest.nodePubkeys.map((entry) => entry.pubkey));
+}
+
+const payment = await requestPayment(payRequest, {
+  amountMsat: 25_000,
+});
+
+if (payment.type === "bolt11") {
+  const verification = payment.nodePubkeyVerification;
+
+  if (verification?.status === "verified") {
+    console.log(`Invoice came from expected node ${verification.matchedPubkey}`);
+  }
+
+  if (verification?.status === "mismatch") {
+    // Spec-compatible default: warn, but do not block user-controlled payment.
+    console.warn(verification.warning);
+  }
+}
+
+// Strict server-side or policy-driven callers can opt into blocking mismatches.
+await requestPayment(payRequest, {
+  amountMsat: 25_000,
+  nodePubkeyPolicy: "enforce",
+});
+```
+
+`nodePubkeyPolicy` defaults to `"warn"`: mismatches are returned as `payment.nodePubkeyVerification.status === "mismatch"` and the payment instruction is still returned. Use `"enforce"` to throw `NodePubkeyMismatchError`, or `"off"` to skip comparison while keeping the other BOLT11 checks. If an invoice omits the BOLT11 `n` tag, `lnaddress` recovers the signer pubkey from the invoice signature and marks `payeeNodeIdSource: "signature"`.
+
 ## Destination Instructions
 
 Some providers return payment destinations instead of BOLT11 invoices. `lnaddress` preserves those responses as a typed destination instruction. Treat destination strings and `paymentUri` as provider data until your application validates the target rail.
@@ -291,6 +331,7 @@ await pay("alice@example.com", {
   timeoutMs: 10_000,
   redirectPolicy: "same-origin",
   providerPolicy: "same-origin",
+  nodePubkeyPolicy: "warn",
 });
 ```
 
@@ -351,6 +392,7 @@ const payment = await requestPayment("alice@example.com", {
   payerData: { name: "Alice" },
   validateBolt11: true,
   validateMetadataHash: false,
+  nodePubkeyPolicy: "warn",
 });
 ```
 
@@ -418,6 +460,7 @@ if (payment.type === "bolt11") {
 - `metadataHash` is computed from the exact metadata string returned by the provider.
 - `validateBolt11` is enabled by default and checks invoice structure, amount, network, expiry, signature, and payee node id when present.
 - BOLT11 description-hash validation is opt-in with `validateMetadataHash: true` because current LUD-06 behavior no longer requires it by default.
+- If a provider advertises `nodePubkeys`, BOLT11 payments include `nodePubkeyVerification` so wallets can show invoice-origin warnings. Mismatches are non-blocking by default (`nodePubkeyPolicy: "warn"`) and can be made strict with `"enforce"`.
 - LUD-09 AES success actions can be decrypted asynchronously with `decryptSuccessAction`.
 - LUD-09 URL success actions and destination `paymentUri` values are untrusted provider data; do not fetch/open them without app-level policy.
 - Always verify settlement with `verifyPayment` when the provider supplies a verify URL.

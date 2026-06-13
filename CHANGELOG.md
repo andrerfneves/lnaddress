@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Added draft LUD-XX `nodePubkeys` support for payRequest parsing, BOLT11 invoice-origin verification metadata, non-blocking mismatch warnings, and opt-in strict enforcement.
+- Added nodePubkeys tests, docs, and a runnable local example.
+
 ## 0.1.0
 
 - Initial Lightning Address-first LNURL-pay client.

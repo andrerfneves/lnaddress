@@ -11,6 +11,7 @@ bun examples/basic/comments.ts
 bun examples/basic/payer-data.ts
 bun examples/basic/verify.ts
 bun examples/basic/destination.ts
+bun examples/basic/node-pubkeys.ts
 ```
 
 ## Payment options explainer

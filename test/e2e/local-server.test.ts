@@ -1,12 +1,12 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { pay, resolve, verifyPayment } from "../../src";
-import { start_lnurl_test_server } from "../fixtures/server";
+import { startLnurlTestServer } from "../fixtures/server";
 
-let server: ReturnType<typeof start_lnurl_test_server>;
+let server: ReturnType<typeof startLnurlTestServer>;
 
 describe("local LNURL-pay server", () => {
   beforeAll(() => {
-    server = start_lnurl_test_server();
+    server = startLnurlTestServer();
   });
 
   afterAll(() => {
@@ -14,8 +14,8 @@ describe("local LNURL-pay server", () => {
   });
 
   test("resolves and requests a BOLT11 payment", async () => {
-    const pay_request = await resolve(`${server.origin}/.well-known/lnurlp/alice`);
-    expect(pay_request.description).toBe("Alice test payment");
+    const payRequest = await resolve(`${server.origin}/.well-known/lnurlp/alice`);
+    expect(payRequest.description).toBe("Alice test payment");
 
     const payment = await pay(`${server.origin}/.well-known/lnurlp/alice`, {
       amountMsat: 2500,

@@ -1,7 +1,7 @@
 import { pay, verifyPayment } from "../../src";
-import { create_mock_lnurl_fetch, liquid } from "./mock-provider";
+import { createMockLnurlFetch, liquid } from "./mock-provider";
 
-const fetch = create_mock_lnurl_fetch();
+const fetch = createMockLnurlFetch();
 const payment = await pay(liquid, {
   amountMsat: 10_000,
   fetch,

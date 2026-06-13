@@ -69,15 +69,15 @@ export class CommentTooLongError extends LnAddressError {
 }
 
 export class MissingMandatoryPayerDataError extends LnAddressError {
-  readonly missing_fields: string[];
+  readonly missingFields: string[];
 
-  constructor(missing_fields: string[], options?: { cause?: unknown }) {
+  constructor(missingFields: string[], options?: { cause?: unknown }) {
     super(
       "MISSING_MANDATORY_PAYER_DATA",
-      `Missing mandatory payer data: ${missing_fields.join(", ")}`,
+      `Missing mandatory payer data: ${missingFields.join(", ")}`,
       options,
     );
-    this.missing_fields = missing_fields;
+    this.missingFields = missingFields;
   }
 }
 

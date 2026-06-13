@@ -59,14 +59,14 @@ function convertBits(data: number[], fromBits: number, toBits: number, pad: bool
   let bits = 0;
   const ret: number[] = [];
   const maxv = (1 << toBits) - 1;
-  const max_acc = (1 << (fromBits + toBits - 1)) - 1;
+  const maxAcc = (1 << (fromBits + toBits - 1)) - 1;
 
   for (const value of data) {
     if (value < 0 || value >> fromBits !== 0) {
       throw new InvalidLnurlError("LNURL data contains an invalid value");
     }
 
-    acc = ((acc << fromBits) | value) & max_acc;
+    acc = ((acc << fromBits) | value) & maxAcc;
     bits += fromBits;
 
     while (bits >= toBits) {
@@ -110,19 +110,19 @@ export function decodeLnurl(lnurl: string, options: UrlSafetyOptions = {}): stri
   }
 
   const normalized = value.toLowerCase();
-  const separator_index = normalized.lastIndexOf("1");
+  const separatorIndex = normalized.lastIndexOf("1");
 
-  if (separator_index <= 0 || separator_index + 7 > normalized.length) {
+  if (separatorIndex <= 0 || separatorIndex + 7 > normalized.length) {
     throw new InvalidLnurlError("LNURL bech32 separator or checksum is invalid");
   }
 
-  const hrp = normalized.slice(0, separator_index);
+  const hrp = normalized.slice(0, separatorIndex);
   if (hrp !== "lnurl") {
     throw new InvalidLnurlError("LNURL bech32 human-readable part must be lnurl");
   }
 
-  const data_part = normalized.slice(separator_index + 1);
-  const data = [...data_part].map((char) => {
+  const dataPart = normalized.slice(separatorIndex + 1);
+  const data = [...dataPart].map((char) => {
     const index = charset.indexOf(char);
     if (index === -1) {
       throw new InvalidLnurlError("LNURL bech32 string contains an invalid character");

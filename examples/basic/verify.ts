@@ -1,7 +1,7 @@
 import { pay, verifyPayment } from "../../src";
-import { alice, create_mock_lnurl_fetch } from "./mock-provider";
+import { alice, createMockLnurlFetch } from "./mock-provider";
 
-const fetch = create_mock_lnurl_fetch();
+const fetch = createMockLnurlFetch();
 const payment = await pay(alice, {
   amountMsat: 25_000,
   payerData: { name: "Alice" },
@@ -12,7 +12,7 @@ const first = await verifyPayment(payment, { fetch });
 const second = await verifyPayment(payment, { fetch });
 
 console.log({
-  first_settled: first.settled,
-  second_settled: second.settled,
+  firstSettled: first.settled,
+  secondSettled: second.settled,
   preimage: second.preimage,
 });

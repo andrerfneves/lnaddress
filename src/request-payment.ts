@@ -33,7 +33,7 @@ import type {
 } from "./types";
 
 export function validateCallbackAmount(
-  pay_request: PayRequest,
+  payRequest: PayRequest,
   amountMsat: number | bigint,
   paymentOption?: string,
 ): void {
@@ -45,11 +45,11 @@ export function validateCallbackAmount(
     throw new AmountOutOfRangeError("amountMsat must be a non-negative integer", { cause });
   }
 
-  let minSendable = pay_request.minSendableMsat;
-  let maxSendable = pay_request.maxSendableMsat;
+  let minSendable = payRequest.minSendableMsat;
+  let maxSendable = payRequest.maxSendableMsat;
 
-  if (paymentOption !== undefined && pay_request.paymentOptions) {
-    const option = pay_request.paymentOptions.find((o) => o.id === paymentOption);
+  if (paymentOption !== undefined && payRequest.paymentOptions) {
+    const option = payRequest.paymentOptions.find((o) => o.id === paymentOption);
     if (option) {
       if (option.minSendableMsat !== undefined) {
         minSendable = option.minSendableMsat;
@@ -67,12 +67,12 @@ export function validateCallbackAmount(
   }
 }
 
-export function validateComment(pay_request: PayRequest, comment?: string): void {
+export function validateComment(payRequest: PayRequest, comment?: string): void {
   if (comment === undefined) {
     return;
   }
 
-  const allowed = pay_request.commentAllowed ?? 0;
+  const allowed = payRequest.commentAllowed ?? 0;
 
   if (allowed <= 0) {
     throw new CommentNotAllowedError();
@@ -84,10 +84,10 @@ export function validateComment(pay_request: PayRequest, comment?: string): void
 }
 
 export function validateMandatoryPayerData(
-  pay_request: PayRequest,
+  payRequest: PayRequest,
   payerData?: Record<string, unknown>,
 ): void {
-  const requested = pay_request.payerData;
+  const requested = payRequest.payerData;
   if (!requested) {
     return;
   }
@@ -105,12 +105,12 @@ export function validateMandatoryPayerData(
   }
 }
 
-export function validatePaymentOption(pay_request: PayRequest, paymentOption?: string): void {
+export function validatePaymentOption(payRequest: PayRequest, paymentOption?: string): void {
   if (paymentOption === undefined) {
     return;
   }
 
-  const options = pay_request.paymentOptions;
+  const options = payRequest.paymentOptions;
   if (!options) {
     throw new InvalidPaymentOptionError(
       "paymentOption was provided but the pay request does not advertise paymentOptions",
@@ -151,22 +151,22 @@ function readVerifyUrl(raw: Record<string, unknown>): string | undefined {
   }
 }
 
-function sameSite(hostname: string, expected_hostname: string): boolean {
-  return hostname === expected_hostname || hostname.endsWith(`.${expected_hostname}`);
+function sameSite(hostname: string, expectedHostname: string): boolean {
+  return hostname === expectedHostname || hostname.endsWith(`.${expectedHostname}`);
 }
 
-function providerBase(pay_request: PayRequest): URL | undefined {
-  if (pay_request.sourceUrl) {
-    return new URL(pay_request.sourceUrl);
+function providerBase(payRequest: PayRequest): URL | undefined {
+  if (payRequest.sourceUrl) {
+    return new URL(payRequest.sourceUrl);
   }
-  if (pay_request.lightningAddress) {
-    return new URL(`https://${pay_request.lightningAddress.domain}`);
+  if (payRequest.lightningAddress) {
+    return new URL(`https://${payRequest.lightningAddress.domain}`);
   }
   return undefined;
 }
 
 function assertProviderPolicy(
-  pay_request: PayRequest,
+  payRequest: PayRequest,
   url: string | URL,
   options: RequestPaymentOptions,
   label: string,
@@ -176,7 +176,7 @@ function assertProviderPolicy(
     return;
   }
 
-  const base = providerBase(pay_request);
+  const base = providerBase(payRequest);
   if (!base) {
     throw new InvalidCallbackResponseError(
       `${label} providerPolicy requires a resolved PayRequest with sourceUrl or lightningAddress`,
@@ -203,7 +203,7 @@ function stringifyPayerData(payerData: Record<string, unknown>): string {
 
 async function parseCallbackResponse(
   raw: unknown,
-  pay_request: PayRequest,
+  payRequest: PayRequest,
   options: RequestPaymentOptions,
 ): Promise<PaymentInstruction> {
   const record = unknownToRecord(raw);
@@ -222,13 +222,13 @@ async function parseCallbackResponse(
   const paymentOption = readString(record, ["paymentOption"]);
   const verifyUrl = readVerifyUrl(record);
   if (verifyUrl) {
-    assertProviderPolicy(pay_request, verifyUrl, options, "Payment callback verify URL");
+    assertProviderPolicy(payRequest, verifyUrl, options, "Payment callback verify URL");
   }
   const successAction = parseSuccessAction(readUnknown(record, ["successAction"]));
 
   if (pr) {
     if (options.validateBolt11 ?? true) {
-      await assertBolt11Payment(pr, pay_request, options);
+      await assertBolt11Payment(pr, payRequest, options);
     }
 
     const instruction: Bolt11PaymentInstruction = {
@@ -291,73 +291,73 @@ async function parseCallbackResponse(
   );
 }
 
-function buildCallbackUrl(pay_request: PayRequest, options: RequestPaymentOptions): URL {
-  let callback_url: URL;
+function buildCallbackUrl(payRequest: PayRequest, options: RequestPaymentOptions): URL {
+  let callbackUrl: URL;
 
   try {
-    callback_url = assertHttpUrl(pay_request.callback, options);
+    callbackUrl = assertHttpUrl(payRequest.callback, options);
   } catch (cause) {
     throw new InvalidCallbackResponseError("Pay request callback URL is invalid", { cause });
   }
 
-  callback_url.searchParams.set("amount", amountToMsatString(options.amountMsat));
+  callbackUrl.searchParams.set("amount", amountToMsatString(options.amountMsat));
 
   if (options.comment !== undefined) {
-    callback_url.searchParams.set("comment", options.comment);
+    callbackUrl.searchParams.set("comment", options.comment);
   }
 
   if (options.payerData !== undefined) {
-    callback_url.searchParams.set("payerdata", stringifyPayerData(options.payerData));
+    callbackUrl.searchParams.set("payerdata", stringifyPayerData(options.payerData));
   }
 
   if (options.paymentOption !== undefined) {
-    callback_url.searchParams.set("paymentOption", options.paymentOption);
+    callbackUrl.searchParams.set("paymentOption", options.paymentOption);
   }
 
-  return callback_url;
+  return callbackUrl;
 }
 
 export async function requestPayment(
-  pay_request_or_input: PayRequest | string,
+  payRequestOrInput: PayRequest | string,
   options: RequestPaymentOptions,
 ): Promise<PaymentInstruction> {
-  const resolve_options: ResolveOptions = {};
+  const resolveOptions: ResolveOptions = {};
   if (options.fetch) {
-    resolve_options.fetch = options.fetch;
+    resolveOptions.fetch = options.fetch;
   }
   if (options.headers) {
-    resolve_options.headers = options.headers;
+    resolveOptions.headers = options.headers;
   }
   if (options.allowOnion !== undefined) {
-    resolve_options.allowOnion = options.allowOnion;
+    resolveOptions.allowOnion = options.allowOnion;
   }
 
-  const pay_request = isPayRequest(pay_request_or_input)
-    ? pay_request_or_input
-    : await resolve(pay_request_or_input, resolve_options);
+  const payRequest = isPayRequest(payRequestOrInput)
+    ? payRequestOrInput
+    : await resolve(payRequestOrInput, resolveOptions);
 
-  validateCallbackAmount(pay_request, options.amountMsat, options.paymentOption);
-  validateComment(pay_request, options.comment);
-  validateMandatoryPayerData(pay_request, options.payerData);
-  validatePaymentOption(pay_request, options.paymentOption);
+  validateCallbackAmount(payRequest, options.amountMsat, options.paymentOption);
+  validateComment(payRequest, options.comment);
+  validateMandatoryPayerData(payRequest, options.payerData);
+  validatePaymentOption(payRequest, options.paymentOption);
 
-  const callback_url = buildCallbackUrl(pay_request, options);
-  assertProviderPolicy(pay_request, callback_url, options, "Pay request callback URL");
+  const callbackUrl = buildCallbackUrl(payRequest, options);
+  assertProviderPolicy(payRequest, callbackUrl, options, "Pay request callback URL");
   const fetcher = getFetch(options.fetch);
   let response: Response;
   const { init, cleanup } = requestInit(options.headers, options);
 
   try {
-    response = await fetcher(callback_url, init);
+    response = await fetcher(callbackUrl, init);
   } catch (cause) {
-    throw new NetworkError(`Failed to request payment instruction: ${callback_url.toString()}`, {
+    throw new NetworkError(`Failed to request payment instruction: ${callbackUrl.toString()}`, {
       cause,
     });
   } finally {
     cleanup();
   }
 
-  assertRedirectPolicy(callback_url, response, options);
+  assertRedirectPolicy(callbackUrl, response, options);
 
   if (!response.ok) {
     throw new NetworkError(
@@ -374,7 +374,7 @@ export async function requestPayment(
     });
   }
 
-  return parseCallbackResponse(raw, pay_request, options);
+  return parseCallbackResponse(raw, payRequest, options);
 }
 
 export async function pay(

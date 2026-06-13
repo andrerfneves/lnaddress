@@ -26,7 +26,7 @@ export function requestInit(
   const init: RequestInit = {
     headers: mergeHeaders(headers),
   };
-  const cleanup_callbacks: Array<() => void> = [];
+  const cleanupCallbacks: Array<() => void> = [];
 
   if (options.timeoutMs !== undefined) {
     if (!Number.isSafeInteger(options.timeoutMs) || options.timeoutMs <= 0) {
@@ -36,7 +36,7 @@ export function requestInit(
     const controller = new AbortController();
     init.signal = controller.signal;
     const timeout = setTimeout(() => controller.abort(), options.timeoutMs);
-    cleanup_callbacks.push(() => clearTimeout(timeout));
+    cleanupCallbacks.push(() => clearTimeout(timeout));
 
     if (options.signal) {
       if (options.signal.aborted) {
@@ -44,7 +44,7 @@ export function requestInit(
       } else {
         const abort = () => controller.abort();
         options.signal.addEventListener("abort", abort, { once: true });
-        cleanup_callbacks.push(() => options.signal?.removeEventListener("abort", abort));
+        cleanupCallbacks.push(() => options.signal?.removeEventListener("abort", abort));
       }
     }
   } else if (options.signal) {
@@ -54,7 +54,7 @@ export function requestInit(
   return {
     init,
     cleanup: () => {
-      for (const cleanup of cleanup_callbacks) {
+      for (const cleanup of cleanupCallbacks) {
         cleanup();
       }
     },
@@ -62,7 +62,7 @@ export function requestInit(
 }
 
 export function assertRedirectPolicy(
-  request_url: URL | string,
+  requestUrl: URL | string,
   response: Response,
   options: FetchControls,
 ): void {
@@ -75,7 +75,7 @@ export function assertRedirectPolicy(
     throw new NetworkError("Redirected responses are disabled by redirectPolicy");
   }
 
-  const original = new URL(String(request_url));
+  const original = new URL(String(requestUrl));
   const final = new URL(response.url);
 
   if (policy === "same-origin" && final.origin !== original.origin) {

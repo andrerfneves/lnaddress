@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { InvalidPayRequestError, parsePayRequestResponse } from "../../src";
 
-const base_response = {
+const baseResponse = {
   tag: "payRequest",
   callback: "https://example.com/callback",
   minSendable: 1000,
@@ -11,22 +11,22 @@ const base_response = {
 
 describe("pay request parsing", () => {
   test("preserves currency conversion extension fields", () => {
-    const pay_request = parsePayRequestResponse({
-      ...base_response,
+    const payRequest = parsePayRequestResponse({
+      ...baseResponse,
       currencies: [{ code: "USD", symbol: "$" }],
       convert: { USD: 1 },
       converted: { currency: "USD", amount: "0.01" },
     });
 
-    expect(pay_request.currencies).toEqual([{ code: "USD", symbol: "$" }]);
-    expect(pay_request.convert).toEqual({ USD: 1 });
-    expect(pay_request.converted).toEqual({ currency: "USD", amount: "0.01" });
+    expect(payRequest.currencies).toEqual([{ code: "USD", symbol: "$" }]);
+    expect(payRequest.convert).toEqual({ USD: 1 });
+    expect(payRequest.converted).toEqual({ currency: "USD", amount: "0.01" });
   });
 
   test("rejects min greater than max", () => {
     expect(() =>
       parsePayRequestResponse({
-        ...base_response,
+        ...baseResponse,
         minSendable: 5001,
         maxSendable: 5000,
       }),
@@ -36,7 +36,7 @@ describe("pay request parsing", () => {
   test("rejects metadata without a text/plain description", () => {
     expect(() =>
       parsePayRequestResponse({
-        ...base_response,
+        ...baseResponse,
         metadata: '[["image/png","abc123"]]',
       }),
     ).toThrow(InvalidPayRequestError);
@@ -45,7 +45,7 @@ describe("pay request parsing", () => {
   test("rejects invalid callback protocols", () => {
     expect(() =>
       parsePayRequestResponse({
-        ...base_response,
+        ...baseResponse,
         callback: "ftp://example.com/callback",
       }),
     ).toThrow(InvalidPayRequestError);
@@ -54,7 +54,7 @@ describe("pay request parsing", () => {
   test("allows onion callbacks", () => {
     expect(
       parsePayRequestResponse({
-        ...base_response,
+        ...baseResponse,
         callback: "https://abcdefghijklmnop.onion/callback",
       }).callback,
     ).toBe("https://abcdefghijklmnop.onion/callback");

@@ -1,11 +1,11 @@
 import type { FetchLike } from "lnaddress";
 
 type ProviderState = {
-  bolt11_settled: boolean;
-  liquid_settled: boolean;
+  bolt11Settled: boolean;
+  liquidSettled: boolean;
 };
 
-export const mock_origin = "https://playground.lnaddress.test";
+export const mockOrigin = "https://playground.lnaddress.test";
 
 function json(body: unknown, init?: ResponseInit): Response {
   return new Response(JSON.stringify(body), {
@@ -15,23 +15,23 @@ function json(body: unknown, init?: ResponseInit): Response {
   });
 }
 
-export function create_playground_fetch(): FetchLike {
+export function createPlaygroundFetch(): FetchLike {
   const state: ProviderState = {
-    bolt11_settled: false,
-    liquid_settled: false,
+    bolt11Settled: false,
+    liquidSettled: false,
   };
 
   return async (input) => {
     const url = new URL(String(input));
 
-    if (url.origin !== mock_origin) {
+    if (url.origin !== mockOrigin) {
       return json({ status: "ERROR", reason: "unknown host" }, { status: 404 });
     }
 
     if (url.pathname === "/.well-known/lnurlp/alice") {
       return json({
         tag: "payRequest",
-        callback: `${mock_origin}/callback/bolt11`,
+        callback: `${mockOrigin}/callback/bolt11`,
         minSendable: 1_000,
         maxSendable: 250_000,
         metadata:
@@ -47,7 +47,7 @@ export function create_playground_fetch(): FetchLike {
     if (url.pathname === "/.well-known/lnurlp/liquid") {
       return json({
         tag: "payRequest",
-        callback: `${mock_origin}/callback/liquid`,
+        callback: `${mockOrigin}/callback/liquid`,
         minSendable: 5_000,
         maxSendable: 500_000,
         metadata: '[["text/plain","Liquid destination playground"]]',
@@ -66,7 +66,7 @@ export function create_playground_fetch(): FetchLike {
         status: "OK",
         pr: "lnbc1qqqqqqqqqqqqqq",
         routes: [],
-        verify: `${mock_origin}/verify/bolt11`,
+        verify: `${mockOrigin}/verify/bolt11`,
         successAction: {
           tag: "message",
           message: `Created invoice for ${amount} msat`,
@@ -79,13 +79,13 @@ export function create_playground_fetch(): FetchLike {
         status: "OK",
         paymentDestination: "liquid-address-for-playground",
         paymentURI: "liquidnetwork:liquid-address-for-playground",
-        verify: `${mock_origin}/verify/liquid`,
+        verify: `${mockOrigin}/verify/liquid`,
       });
     }
 
     if (url.pathname === "/verify/bolt11") {
-      const settled = state.bolt11_settled;
-      state.bolt11_settled = true;
+      const settled = state.bolt11Settled;
+      state.bolt11Settled = true;
       return json({
         status: "OK",
         settled,
@@ -95,8 +95,8 @@ export function create_playground_fetch(): FetchLike {
     }
 
     if (url.pathname === "/verify/liquid") {
-      const settled = state.liquid_settled;
-      state.liquid_settled = true;
+      const settled = state.liquidSettled;
+      state.liquidSettled = true;
       return json({
         status: "OK",
         settled,

@@ -22,7 +22,7 @@ function lightningAddress_to_url(lightningAddress: LightningAddress): string {
   )}`;
 }
 
-function assert_resolve_url(url: string, options: ResolveOptions): string {
+function assertResolveUrl(url: string, options: ResolveOptions): string {
   try {
     return assertHttpUrl(url, options).toString();
   } catch (cause) {
@@ -30,7 +30,7 @@ function assert_resolve_url(url: string, options: ResolveOptions): string {
   }
 }
 
-function lnurlp_uri_to_url(input: string): { url: string; lightningAddress?: LightningAddress } {
+function lnurlpUriToUrl(input: string): { url: string; lightningAddress?: LightningAddress } {
   let parsed: URL;
 
   try {
@@ -81,14 +81,14 @@ function inputToUrl(
   const lower = value.toLowerCase();
 
   if (lower.startsWith("lnurlp://")) {
-    const result = lnurlp_uri_to_url(value);
+    const result = lnurlpUriToUrl(value);
     return result.lightningAddress
       ? {
-          url: assert_resolve_url(result.url, options),
+          url: assertResolveUrl(result.url, options),
           address: result.lightningAddress,
         }
       : {
-          url: assert_resolve_url(result.url, options),
+          url: assertResolveUrl(result.url, options),
         };
   }
 
@@ -101,7 +101,7 @@ function inputToUrl(
   if (!value.includes("://") && value.includes("@")) {
     const address = parseLightningAddress(value);
     return {
-      url: assert_resolve_url(lightningAddress_to_url(address), options),
+      url: assertResolveUrl(lightningAddress_to_url(address), options),
       address,
     };
   }
@@ -153,11 +153,11 @@ export async function resolve(input: string, options: ResolveOptions = {}): Prom
     throw new InvalidPayRequestError("Resolved response is not valid JSON", { cause });
   }
 
-  const parse_context = {
+  const parseContext = {
     sourceUrl: url,
     ...(options.allowOnion !== undefined ? { allowOnion: options.allowOnion } : {}),
     ...(address ? { lightningAddress: address } : {}),
   };
 
-  return parsePayRequestResponse(raw, parse_context);
+  return parsePayRequestResponse(raw, parseContext);
 }

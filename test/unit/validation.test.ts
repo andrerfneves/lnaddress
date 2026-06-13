@@ -10,7 +10,7 @@ import {
   validateMandatoryPayerData,
 } from "../../src";
 
-const base_response = {
+const baseResponse = {
   tag: "payRequest",
   callback: "https://example.com/callback",
   minSendable: 1000,
@@ -20,40 +20,40 @@ const base_response = {
 
 describe("validation helpers", () => {
   test("accepts amount inside range", () => {
-    const pay_request = parsePayRequestResponse(base_response);
-    expect(() => validateCallbackAmount(pay_request, 1000)).not.toThrow();
-    expect(() => validateCallbackAmount(pay_request, 5000n)).not.toThrow();
+    const payRequest = parsePayRequestResponse(baseResponse);
+    expect(() => validateCallbackAmount(payRequest, 1000)).not.toThrow();
+    expect(() => validateCallbackAmount(payRequest, 5000n)).not.toThrow();
   });
 
   test("rejects amount outside range", () => {
-    const pay_request = parsePayRequestResponse(base_response);
-    expect(() => validateCallbackAmount(pay_request, 999)).toThrow(AmountOutOfRangeError);
-    expect(() => validateCallbackAmount(pay_request, 5001n)).toThrow(AmountOutOfRangeError);
+    const payRequest = parsePayRequestResponse(baseResponse);
+    expect(() => validateCallbackAmount(payRequest, 999)).toThrow(AmountOutOfRangeError);
+    expect(() => validateCallbackAmount(payRequest, 5001n)).toThrow(AmountOutOfRangeError);
   });
 
   test("validates comments against commentAllowed", () => {
-    const without_comment = parsePayRequestResponse(base_response);
-    expect(() => validateComment(without_comment, "hi")).toThrow(CommentNotAllowedError);
+    const withoutComment = parsePayRequestResponse(baseResponse);
+    expect(() => validateComment(withoutComment, "hi")).toThrow(CommentNotAllowedError);
 
-    const with_comment = parsePayRequestResponse({ ...base_response, commentAllowed: 2 });
-    expect(() => validateComment(with_comment, "hi")).not.toThrow();
-    expect(() => validateComment(with_comment, "hey")).toThrow(CommentTooLongError);
+    const withComment = parsePayRequestResponse({ ...baseResponse, commentAllowed: 2 });
+    expect(() => validateComment(withComment, "hi")).not.toThrow();
+    expect(() => validateComment(withComment, "hey")).toThrow(CommentTooLongError);
   });
 
   test("validates mandatory payer data", () => {
-    const pay_request = parsePayRequestResponse({
-      ...base_response,
+    const payRequest = parsePayRequestResponse({
+      ...baseResponse,
       payerData: {
         name: { mandatory: true },
         email: { mandatory: false },
       },
     });
 
-    expect(() => validateMandatoryPayerData(pay_request, { name: "Alice" })).not.toThrow();
-    expect(() => validateMandatoryPayerData(pay_request, {})).toThrow(
+    expect(() => validateMandatoryPayerData(payRequest, { name: "Alice" })).not.toThrow();
+    expect(() => validateMandatoryPayerData(payRequest, {})).toThrow(
       MissingMandatoryPayerDataError,
     );
-    expect(() => validateMandatoryPayerData(pay_request, { name: null })).toThrow(
+    expect(() => validateMandatoryPayerData(payRequest, { name: null })).toThrow(
       MissingMandatoryPayerDataError,
     );
   });

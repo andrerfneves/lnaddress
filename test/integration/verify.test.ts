@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { VerifyError, verifyPayment } from "../../src";
 
-function json_response(body: unknown, init?: ResponseInit): Response {
+function jsonResponse(body: unknown, init?: ResponseInit): Response {
   return new Response(JSON.stringify(body), {
     status: 200,
     headers: { "content-type": "application/json" },
@@ -13,7 +13,7 @@ describe("verifyPayment", () => {
   test("parses legacy LUD-21 unpaid and paid responses", async () => {
     await expect(
       verifyPayment("https://example.com/verify/unpaid", {
-        fetch: async () => json_response({ status: "OK", settled: false, preimage: null }),
+        fetch: async () => jsonResponse({ status: "OK", settled: false, preimage: null }),
       }),
     ).resolves.toMatchObject({
       status: "OK",
@@ -24,7 +24,7 @@ describe("verifyPayment", () => {
     await expect(
       verifyPayment("https://example.com/verify/paid", {
         fetch: async () =>
-          json_response({
+          jsonResponse({
             status: "OK",
             settled: true,
             preimage: "00".repeat(32),
@@ -49,7 +49,7 @@ describe("verifyPayment", () => {
         },
         {
           fetch: async () =>
-            json_response({
+            jsonResponse({
               status: "OK",
               settled: true,
               paymentDestination: "liquid-address",
@@ -68,7 +68,7 @@ describe("verifyPayment", () => {
   test("returns error status responses and rejects invalid shapes", async () => {
     await expect(
       verifyPayment("https://example.com/verify/error", {
-        fetch: async () => json_response({ status: "ERROR", reason: "unknown payment" }),
+        fetch: async () => jsonResponse({ status: "ERROR", reason: "unknown payment" }),
       }),
     ).resolves.toMatchObject({
       status: "ERROR",
@@ -77,7 +77,7 @@ describe("verifyPayment", () => {
 
     await expect(
       verifyPayment("https://example.com/verify/bad", {
-        fetch: async () => json_response({ settled: true }),
+        fetch: async () => jsonResponse({ settled: true }),
       }),
     ).rejects.toThrow(VerifyError);
   });
@@ -95,7 +95,7 @@ describe("verifyPayment", () => {
   test("allows onion verify URLs", async () => {
     await expect(
       verifyPayment("https://abcdefghijklmnop.onion/verify", {
-        fetch: async () => json_response({ status: "OK", settled: false }),
+        fetch: async () => jsonResponse({ status: "OK", settled: false }),
       }),
     ).resolves.toMatchObject({
       status: "OK",

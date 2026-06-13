@@ -2,15 +2,15 @@ import { InvalidPayRequestError } from "./errors";
 import { sha256 } from "./sha256";
 import type { MetadataEntry, MetadataImage } from "./types";
 
-function to_hex(value: number): string {
+function toHex(value: number): string {
   return value.toString(16).padStart(2, "0");
 }
 
-export function parseMetadata(metadata_string: string): MetadataEntry[] {
+export function parseMetadata(metadataString: string): MetadataEntry[] {
   let decoded: unknown;
 
   try {
-    decoded = JSON.parse(metadata_string);
+    decoded = JSON.parse(metadataString);
   } catch (cause) {
     throw new InvalidPayRequestError("Pay request metadata is not valid JSON", { cause });
   }
@@ -33,9 +33,9 @@ export function parseMetadata(metadata_string: string): MetadataEntry[] {
   });
 }
 
-export function getMetadataHash(metadata_string: string): string {
-  const bytes = new TextEncoder().encode(metadata_string);
-  return [...sha256(bytes)].map(to_hex).join("");
+export function getMetadataHash(metadataString: string): string {
+  const bytes = new TextEncoder().encode(metadataString);
+  return [...sha256(bytes)].map(toHex).join("");
 }
 
 export function getDescription(metadata: MetadataEntry[]): string | undefined {

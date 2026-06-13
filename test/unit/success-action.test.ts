@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { InvalidCallbackResponseError, decryptSuccessAction, parseSuccessAction } from "../../src";
 
-function bytes_to_base64(bytes: Uint8Array): string {
+function bytesToBase64(bytes: Uint8Array): string {
   let value = "";
   for (const byte of bytes) {
     value += String.fromCharCode(byte);
@@ -65,8 +65,8 @@ describe("successAction parsing", () => {
     const action = parseSuccessAction({
       tag: "aes",
       description: "secret",
-      ciphertext: bytes_to_base64(ciphertext),
-      iv: bytes_to_base64(iv),
+      ciphertext: bytesToBase64(ciphertext),
+      iv: bytesToBase64(iv),
     });
 
     expect(action?.tag).toBe("aes");

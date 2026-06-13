@@ -1,4 +1,4 @@
-const sha256_k = [
+const sha256K = [
   0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
   0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
   0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
@@ -13,7 +13,7 @@ function rotr(value: number, shift: number): number {
   return (value >>> shift) | (value << (32 - shift));
 }
 
-function write_word(output: Uint8Array, offset: number, value: number): void {
+function writeWord(output: Uint8Array, offset: number, value: number): void {
   output[offset] = (value >>> 24) & 0xff;
   output[offset + 1] = (value >>> 16) & 0xff;
   output[offset + 2] = (value >>> 8) & 0xff;
@@ -21,14 +21,14 @@ function write_word(output: Uint8Array, offset: number, value: number): void {
 }
 
 export function sha256(bytes: Uint8Array): Uint8Array {
-  const bit_length = BigInt(bytes.length) * 8n;
-  const padded_length = Math.ceil((bytes.length + 9) / 64) * 64;
-  const padded = new Uint8Array(padded_length);
+  const bitLength = BigInt(bytes.length) * 8n;
+  const paddedLength = Math.ceil((bytes.length + 9) / 64) * 64;
+  const padded = new Uint8Array(paddedLength);
   padded.set(bytes);
   padded[bytes.length] = 0x80;
 
   for (let i = 0; i < 8; i += 1) {
-    padded[padded.length - 1 - i] = Number((bit_length >> BigInt(i * 8)) & 0xffn);
+    padded[padded.length - 1 - i] = Number((bitLength >> BigInt(i * 8)) & 0xffn);
   }
 
   let h0 = 0x6a09e667;
@@ -69,7 +69,7 @@ export function sha256(bytes: Uint8Array): Uint8Array {
     for (let i = 0; i < 64; i += 1) {
       const s1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
       const ch = (e & f) ^ (~e & g);
-      const temp1 = (h + s1 + ch + (sha256_k[i] ?? 0) + (w[i] ?? 0)) | 0;
+      const temp1 = (h + s1 + ch + (sha256K[i] ?? 0) + (w[i] ?? 0)) | 0;
       const s0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
       const maj = (a & b) ^ (a & c) ^ (b & c);
       const temp2 = (s0 + maj) | 0;
@@ -96,7 +96,7 @@ export function sha256(bytes: Uint8Array): Uint8Array {
 
   const output = new Uint8Array(32);
   [h0, h1, h2, h3, h4, h5, h6, h7].forEach((value, index) => {
-    write_word(output, index * 4, value);
+    writeWord(output, index * 4, value);
   });
 
   return output;

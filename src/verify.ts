@@ -28,14 +28,14 @@ export async function verifyPayment(
 ): Promise<VerifyResult> {
   const verifyUrl = verifyUrl_from_input(payment_or_verifyUrl);
 
-  let parsed_url: URL;
+  let parsedUrl: URL;
   try {
-    parsed_url = new URL(verifyUrl);
+    parsedUrl = new URL(verifyUrl);
   } catch (cause) {
     throw new VerifyError("verifyUrl is invalid", { cause });
   }
 
-  if (parsed_url.protocol !== "https:" && parsed_url.protocol !== "http:") {
+  if (parsedUrl.protocol !== "https:" && parsedUrl.protocol !== "http:") {
     throw new VerifyError("verifyUrl must use http or https");
   }
 
@@ -44,14 +44,14 @@ export async function verifyPayment(
   const { init, cleanup } = requestInit(options.headers, options);
 
   try {
-    response = await fetcher(parsed_url, init);
+    response = await fetcher(parsedUrl, init);
   } catch (cause) {
-    throw new NetworkError(`Failed to verify payment: ${parsed_url.toString()}`, { cause });
+    throw new NetworkError(`Failed to verify payment: ${parsedUrl.toString()}`, { cause });
   } finally {
     cleanup();
   }
 
-  assertRedirectPolicy(parsed_url, response, options);
+  assertRedirectPolicy(parsedUrl, response, options);
 
   if (!response.ok) {
     throw new NetworkError(`Failed to verify payment: ${response.status} ${response.statusText}`);

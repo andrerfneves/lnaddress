@@ -1,13 +1,13 @@
 import { requestPayment, resolve, validateComment } from "../../src";
-import { alice, create_mock_lnurl_fetch } from "./mock-provider";
+import { alice, createMockLnurlFetch } from "./mock-provider";
 
-const fetch = create_mock_lnurl_fetch();
-const pay_request = await resolve(alice, { fetch });
+const fetch = createMockLnurlFetch();
+const payRequest = await resolve(alice, { fetch });
 const comment = "Thanks for the demo";
 
-validateComment(pay_request, comment);
+validateComment(payRequest, comment);
 
-const payment = await requestPayment(pay_request, {
+const payment = await requestPayment(payRequest, {
   amountMsat: 25_000,
   comment,
   payerData: { name: "Alice" },

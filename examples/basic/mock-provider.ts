@@ -1,6 +1,6 @@
 type ProviderState = {
-  bolt11_settled: boolean;
-  liquid_settled: boolean;
+  bolt11Settled: boolean;
+  liquidSettled: boolean;
 };
 
 const origin = "https://lnaddress.test";
@@ -13,10 +13,10 @@ function json(body: unknown, init?: ResponseInit): Response {
   });
 }
 
-export function create_mock_lnurl_fetch(): typeof fetch {
+export function createMockLnurlFetch(): typeof fetch {
   const state: ProviderState = {
-    bolt11_settled: false,
-    liquid_settled: false,
+    bolt11Settled: false,
+    liquidSettled: false,
   };
 
   return async (input) => {
@@ -74,8 +74,8 @@ export function create_mock_lnurl_fetch(): typeof fetch {
     }
 
     if (url.pathname === "/verify/bolt11") {
-      const settled = state.bolt11_settled;
-      state.bolt11_settled = true;
+      const settled = state.bolt11Settled;
+      state.bolt11Settled = true;
       return json({
         status: "OK",
         settled,
@@ -85,8 +85,8 @@ export function create_mock_lnurl_fetch(): typeof fetch {
     }
 
     if (url.pathname === "/verify/liquid") {
-      const settled = state.liquid_settled;
-      state.liquid_settled = true;
+      const settled = state.liquidSettled;
+      state.liquidSettled = true;
       return json({
         status: "OK",
         settled,

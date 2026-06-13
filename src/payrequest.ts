@@ -11,7 +11,7 @@ import type {
   UrlSafetyOptions,
 } from "./types";
 
-const pay_request_schema = z
+const payRequestSchema = z
   .object({
     tag: z.literal("payRequest"),
     callback: z.string(),
@@ -40,24 +40,24 @@ function parse_payerData(raw: unknown): PayerData | undefined {
   const payerData: PayerData = {};
 
   for (const [field, config] of Object.entries(record)) {
-    const config_record = unknownToRecord(config) ?? {};
-    const parsed_field: PayerDataField = {
-      raw: config_record,
+    const configRecord = unknownToRecord(config) ?? {};
+    const parsedField: PayerDataField = {
+      raw: configRecord,
     };
 
-    if (typeof config_record.mandatory === "boolean") {
-      parsed_field.mandatory = config_record.mandatory;
+    if (typeof configRecord.mandatory === "boolean") {
+      parsedField.mandatory = configRecord.mandatory;
     }
 
-    if (typeof config_record.name === "string") {
-      parsed_field.name = config_record.name;
+    if (typeof configRecord.name === "string") {
+      parsedField.name = configRecord.name;
     }
 
-    if (typeof config_record.k1 === "string") {
-      parsed_field.k1 = config_record.k1;
+    if (typeof configRecord.k1 === "string") {
+      parsedField.k1 = configRecord.k1;
     }
 
-    payerData[field] = parsed_field;
+    payerData[field] = parsedField;
   }
 
   return payerData;
@@ -69,7 +69,7 @@ function parse_paymentOptions(raw: unknown): PaymentOption[] | undefined {
   }
 
   const paymentOptions: PaymentOption[] = [];
-  const seen_ids = new Set<string>();
+  const seenIds = new Set<string>();
 
   for (const [index, entry] of raw.entries()) {
     const record = unknownToRecord(entry);
@@ -85,10 +85,10 @@ function parse_paymentOptions(raw: unknown): PaymentOption[] | undefined {
       throw new InvalidPaymentOptionError(`paymentOptions entry ${index} must have a string type`);
     }
 
-    if (seen_ids.has(record.id)) {
+    if (seenIds.has(record.id)) {
       throw new InvalidPaymentOptionError(`paymentOptions contains duplicate id: ${record.id}`);
     }
-    seen_ids.add(record.id);
+    seenIds.add(record.id);
 
     const option: PaymentOption = {
       id: record.id,
@@ -148,7 +148,7 @@ export function parsePayRequestResponse(
   raw: unknown,
   context: ParsePayRequestContext = {},
 ): PayRequest {
-  const parsed = pay_request_schema.safeParse(raw);
+  const parsed = payRequestSchema.safeParse(raw);
 
   if (!parsed.success) {
     throw new InvalidPayRequestError("Resolved response is not a valid LUD-06 payRequest", {
@@ -184,7 +184,7 @@ export function parsePayRequestResponse(
     throw new InvalidPayRequestError("Pay request metadata must include a text/plain description");
   }
 
-  const pay_request: PayRequest = {
+  const payRequest: PayRequest = {
     tag: "payRequest",
     callback: parsed.data.callback,
     minSendableMsat,
@@ -195,48 +195,48 @@ export function parsePayRequestResponse(
     raw,
   };
 
-  pay_request.description = description;
+  payRequest.description = description;
 
   const image = getImage(metadata);
   if (image) {
-    pay_request.image = image;
+    payRequest.image = image;
   }
 
   if (parsed.data.commentAllowed !== undefined) {
-    pay_request.commentAllowed = parsed.data.commentAllowed;
+    payRequest.commentAllowed = parsed.data.commentAllowed;
   }
 
   const payerData = parse_payerData(parsed.data.payerData);
   if (payerData) {
-    pay_request.payerData = payerData;
+    payRequest.payerData = payerData;
   }
 
   const paymentOptions = parse_paymentOptions(parsed.data.paymentOptions);
   if (paymentOptions) {
-    pay_request.paymentOptions = paymentOptions;
+    payRequest.paymentOptions = paymentOptions;
   }
 
   if (parsed.data.currencies !== undefined) {
-    pay_request.currencies = parsed.data.currencies;
+    payRequest.currencies = parsed.data.currencies;
   }
 
   if (parsed.data.convert !== undefined) {
-    pay_request.convert = parsed.data.convert;
+    payRequest.convert = parsed.data.convert;
   }
 
   if (parsed.data.converted !== undefined) {
-    pay_request.converted = parsed.data.converted;
+    payRequest.converted = parsed.data.converted;
   }
 
   if (context.sourceUrl) {
-    pay_request.sourceUrl = context.sourceUrl;
+    payRequest.sourceUrl = context.sourceUrl;
   }
 
   if (context.lightningAddress) {
-    pay_request.lightningAddress = context.lightningAddress;
+    payRequest.lightningAddress = context.lightningAddress;
   }
 
-  return pay_request;
+  return payRequest;
 }
 
 export function isPayRequest(value: unknown): value is PayRequest {

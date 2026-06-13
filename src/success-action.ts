@@ -1,13 +1,13 @@
 import { InvalidCallbackResponseError } from "./errors";
 import type { SuccessAction } from "./types";
 
-function aes_decrypt_not_available(): never {
+function aesDecryptNotAvailable(): never {
   throw new Error(
     "AES successAction decryption is not available synchronously. Use the raw ciphertext and Web Crypto in userland.",
   );
 }
 
-function base64_to_bytes(value: string): Uint8Array {
+function base64ToBytes(value: string): Uint8Array {
   const decoded = atob(value);
   return Uint8Array.from(decoded, (char) => char.charCodeAt(0));
 }
@@ -77,7 +77,7 @@ export function parseSuccessAction(raw: unknown): SuccessAction | undefined {
       description: action.description,
       ciphertext: action.ciphertext,
       iv: action.iv,
-      decrypt: aes_decrypt_not_available,
+      decrypt: aesDecryptNotAvailable,
     };
   }
 
@@ -103,9 +103,9 @@ export async function decryptSuccessAction(
     ["decrypt"],
   );
   const plaintext = await crypto.subtle.decrypt(
-    { name: "AES-CBC", iv: toArrayBuffer(base64_to_bytes(action.iv)) },
+    { name: "AES-CBC", iv: toArrayBuffer(base64ToBytes(action.iv)) },
     key,
-    toArrayBuffer(base64_to_bytes(action.ciphertext)),
+    toArrayBuffer(base64ToBytes(action.ciphertext)),
   );
 
   return new TextDecoder().decode(plaintext);

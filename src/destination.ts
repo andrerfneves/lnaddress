@@ -3,7 +3,7 @@ import type { DestinationPaymentInstruction, PaymentInstruction } from "./types"
 
 export type DestinationRail = "lightning" | "bitcoin" | "liquid" | "arkade" | "spark";
 
-const rail_schemes: Record<DestinationRail, string[]> = {
+const railSchemes: Record<DestinationRail, string[]> = {
   lightning: ["lightning:"],
   bitcoin: ["bitcoin:"],
   liquid: ["liquidnetwork:", "liquid:"],
@@ -35,7 +35,7 @@ export function destinationMatchesRail(
     return false;
   }
 
-  const schemes = rail_schemes[rail];
+  const schemes = railSchemes[rail];
   if (!payment.paymentUri) {
     return false;
   }

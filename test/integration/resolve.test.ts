@@ -32,7 +32,7 @@ const payRequestResponse = {
   payerData: {
     name: { mandatory: true },
   },
-  currencies: [{ code: "USD" }],
+  currencies: [{ code: "USD", name: "US Dollar", symbol: "$", decimals: 2, multiplier: 1000 }],
 };
 
 describe("resolve", () => {
@@ -52,7 +52,9 @@ describe("resolve", () => {
     expect(payRequest.image?.dataUri).toBe("data:image/png;base64,abc123");
     expect(payRequest.commentAllowed).toBe(16);
     expect(payRequest.payerData?.name?.mandatory).toBe(true);
-    expect(payRequest.currencies).toEqual([{ code: "USD" }]);
+    expect(payRequest.currencies).toMatchObject([
+      { code: "USD", name: "US Dollar", symbol: "$", decimals: 2, multiplier: 1000 },
+    ]);
     expect(payRequest.raw).toEqual(payRequestResponse);
   });
 

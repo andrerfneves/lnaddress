@@ -19,11 +19,16 @@ export type ResolveOptions = UrlSafetyOptions & {
   headers?: HeadersInit;
 } & FetchControls;
 
-export type RequestPaymentOptions = UrlSafetyOptions & {
-  amountMsat: number | bigint;
+export type DenominatedAmount = {
+  amount: number | bigint;
+  currency: string;
+};
+
+type RequestPaymentBaseOptions = UrlSafetyOptions & {
   comment?: string;
   payerData?: Record<string, unknown>;
   paymentOption?: string;
+  convert?: string;
   fetch?: FetchLike;
   headers?: HeadersInit;
   validateBolt11?: boolean;
@@ -32,6 +37,12 @@ export type RequestPaymentOptions = UrlSafetyOptions & {
   now?: Date | number | (() => Date | number);
   providerPolicy?: ProviderPolicy;
 } & FetchControls;
+
+export type RequestPaymentOptions = RequestPaymentBaseOptions &
+  (
+    | { amountMsat: number | bigint; denominatedAmount?: never }
+    | { amountMsat?: never; denominatedAmount: DenominatedAmount }
+  );
 
 export type VerifyPaymentOptions = UrlSafetyOptions & {
   fetch?: FetchLike;
@@ -61,12 +72,35 @@ export type PayerDataField = {
 
 export type PayerData = Record<string, PayerDataField>;
 
+export type CurrencyConvertible = {
+  min: number;
+  max: number;
+};
+
+export type Currency = {
+  code: string;
+  name: string;
+  symbol: string;
+  decimals: number;
+  multiplier: number;
+  convertible?: CurrencyConvertible;
+  raw?: Record<string, unknown>;
+};
+
+export type ConvertedAmount = {
+  multiplier: number;
+  amount: number;
+  fee: number;
+  raw: Record<string, unknown>;
+};
+
 export type PaymentOption = {
   id: string;
   type: string;
   available?: boolean;
   minSendableMsat?: bigint;
   maxSendableMsat?: bigint;
+  currencies?: Currency[];
   raw: Record<string, unknown>;
 };
 
@@ -83,9 +117,7 @@ export type PayRequest = {
   commentAllowed?: number;
   payerData?: PayerData;
   paymentOptions?: PaymentOption[];
-  currencies?: unknown;
-  convert?: unknown;
-  converted?: unknown;
+  currencies?: Currency[];
   raw: unknown;
   sourceUrl?: string;
   lightningAddress?: LightningAddress;
@@ -100,6 +132,7 @@ export type Bolt11PaymentInstruction = {
   paymentUri?: string;
   verifyUrl?: string;
   successAction?: SuccessAction;
+  converted?: ConvertedAmount;
   raw: unknown;
 };
 
@@ -109,6 +142,7 @@ export type DestinationPaymentInstruction = {
   paymentDestination: string;
   paymentUri?: string;
   verifyUrl?: string;
+  converted?: ConvertedAmount;
   raw: unknown;
 };
 

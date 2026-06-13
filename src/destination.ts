@@ -11,23 +11,23 @@ const rail_schemes: Record<DestinationRail, string[]> = {
   spark: ["spark:"],
 };
 
-export function is_destination_payment(
+export function isDestinationPayment(
   payment: PaymentInstruction,
 ): payment is DestinationPaymentInstruction {
   return payment.type === "destination";
 }
 
-export function assert_destination_payment(
+export function assertDestinationPayment(
   payment: PaymentInstruction,
 ): DestinationPaymentInstruction {
-  if (!is_destination_payment(payment)) {
+  if (!isDestinationPayment(payment)) {
     throw new InvalidCallbackResponseError("Payment instruction is not a destination payment");
   }
 
   return payment;
 }
 
-export function destination_matches_rail(
+export function destinationMatchesRail(
   payment: DestinationPaymentInstruction,
   rail: DestinationRail,
 ): boolean {
@@ -43,11 +43,11 @@ export function destination_matches_rail(
   return schemes.some((scheme) => payment.payment_uri?.toLowerCase().startsWith(scheme));
 }
 
-export function assert_destination_rail(
+export function assertDestinationRail(
   payment: DestinationPaymentInstruction,
   rail: DestinationRail,
 ): DestinationPaymentInstruction {
-  if (!destination_matches_rail(payment, rail)) {
+  if (!destinationMatchesRail(payment, rail)) {
     throw new InvalidCallbackResponseError(`Destination payment is not a ${rail} payment`);
   }
 

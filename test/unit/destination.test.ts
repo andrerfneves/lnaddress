@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import {
   InvalidCallbackResponseError,
-  assert_destination_payment,
-  assert_destination_rail,
-  destination_matches_rail,
-  is_destination_payment,
+  assertDestinationPayment,
+  assertDestinationRail,
+  destinationMatchesRail,
+  isDestinationPayment,
 } from "../../src";
 import type { PaymentInstruction } from "../../src";
 
@@ -23,20 +23,18 @@ describe("destination payment helpers", () => {
   };
 
   test("detects and asserts destination payments", () => {
-    expect(is_destination_payment(liquid_payment)).toBe(true);
-    expect(is_destination_payment(bolt11_payment)).toBe(false);
-    expect(assert_destination_payment(liquid_payment)).toBe(liquid_payment);
-    expect(() => assert_destination_payment(bolt11_payment)).toThrow(InvalidCallbackResponseError);
+    expect(isDestinationPayment(liquid_payment)).toBe(true);
+    expect(isDestinationPayment(bolt11_payment)).toBe(false);
+    expect(assertDestinationPayment(liquid_payment)).toBe(liquid_payment);
+    expect(() => assertDestinationPayment(bolt11_payment)).toThrow(InvalidCallbackResponseError);
   });
 
   test("validates destination rails by payment URI scheme", () => {
-    const destination = assert_destination_payment(liquid_payment);
+    const destination = assertDestinationPayment(liquid_payment);
 
-    expect(destination_matches_rail(destination, "liquid")).toBe(true);
-    expect(destination_matches_rail(destination, "bitcoin")).toBe(false);
-    expect(assert_destination_rail(destination, "liquid")).toBe(destination);
-    expect(() => assert_destination_rail(destination, "spark")).toThrow(
-      InvalidCallbackResponseError,
-    );
+    expect(destinationMatchesRail(destination, "liquid")).toBe(true);
+    expect(destinationMatchesRail(destination, "bitcoin")).toBe(false);
+    expect(assertDestinationRail(destination, "liquid")).toBe(destination);
+    expect(() => assertDestinationRail(destination, "spark")).toThrow(InvalidCallbackResponseError);
   });
 });

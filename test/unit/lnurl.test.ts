@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { InvalidLnurlError, decode_lnurl, encode_lnurl } from "../../src";
+import { InvalidLnurlError, decodeLnurl, encodeLnurl } from "../../src";
 
 const charset = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
 const generator = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
@@ -52,45 +52,45 @@ function bech32_with_payload(hrp: string, payload: number[]): string {
 describe("LNURL encode/decode", () => {
   test("round-trips a valid URL", () => {
     const url = "https://example.com/.well-known/lnurlp/alice";
-    expect(decode_lnurl(encode_lnurl(url))).toBe(url);
+    expect(decodeLnurl(encodeLnurl(url))).toBe(url);
   });
 
   test("matches known LNURL vectors", () => {
-    expect(encode_lnurl("https://example.com/.well-known/lnurlp/alice")).toBe(
+    expect(encodeLnurl("https://example.com/.well-known/lnurlp/alice")).toBe(
       "lnurl1dp68gurn8ghj7etcv9khqmr99e3k7mf09emk2mrv944kummhdchkcmn4wfk8qtmpd35kxeg9saevq",
     );
     expect(
-      decode_lnurl("lnurl1dp68gurn8ghj7um9wfmxjcm99e5k7telwy7ksetvd3hj2v3swahhymry5mqgjz"),
+      decodeLnurl("lnurl1dp68gurn8ghj7um9wfmxjcm99e5k7telwy7ksetvd3hj2v3swahhymry5mqgjz"),
     ).toBe("https://service.io/?q=hello%20world");
   });
 
   test("decodes uppercase bech32", () => {
     const url = "https://example.com/lnurlp/alice";
-    expect(decode_lnurl(encode_lnurl(url).toUpperCase())).toBe(url);
+    expect(decodeLnurl(encodeLnurl(url).toUpperCase())).toBe(url);
   });
 
   test("rejects invalid checksum", () => {
-    const encoded = encode_lnurl("https://example.com/alice");
+    const encoded = encodeLnurl("https://example.com/alice");
     const invalid = `${encoded.slice(0, -1)}${encoded.endsWith("q") ? "p" : "q"}`;
-    expect(() => decode_lnurl(invalid)).toThrow(InvalidLnurlError);
+    expect(() => decodeLnurl(invalid)).toThrow(InvalidLnurlError);
   });
 
   test("rejects malformed bech32 inputs", () => {
-    const encoded = encode_lnurl("https://example.com/alice");
+    const encoded = encodeLnurl("https://example.com/alice");
     const mixed_case = `${encoded.slice(0, 6).toUpperCase()}${encoded.slice(6)}`;
 
-    expect(() => decode_lnurl(mixed_case)).toThrow(InvalidLnurlError);
-    expect(() => decode_lnurl("lnurx1qqqqqq")).toThrow(InvalidLnurlError);
-    expect(() => decode_lnurl("lnurl1")).toThrow(InvalidLnurlError);
-    expect(() => decode_lnurl(bech32_with_payload("lnurl", [1]))).toThrow(InvalidLnurlError);
+    expect(() => decodeLnurl(mixed_case)).toThrow(InvalidLnurlError);
+    expect(() => decodeLnurl("lnurx1qqqqqq")).toThrow(InvalidLnurlError);
+    expect(() => decodeLnurl("lnurl1")).toThrow(InvalidLnurlError);
+    expect(() => decodeLnurl(bech32_with_payload("lnurl", [1]))).toThrow(InvalidLnurlError);
   });
 
   test("rejects invalid URLs", () => {
-    expect(() => encode_lnurl("mailto:alice@example.com")).toThrow(InvalidLnurlError);
+    expect(() => encodeLnurl("mailto:alice@example.com")).toThrow(InvalidLnurlError);
   });
 
   test("allows onion URLs", () => {
     const onion = "https://abcdefghijklmnop.onion/lnurlp/alice";
-    expect(decode_lnurl(encode_lnurl(onion))).toBe(onion);
+    expect(decodeLnurl(encodeLnurl(onion))).toBe(onion);
   });
 });

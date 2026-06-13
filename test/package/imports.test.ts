@@ -7,8 +7,8 @@ describe("built package imports", () => {
 
     expect(typeof mod.resolve).toBe("function");
     expect(typeof mod.pay).toBe("function");
-    expect(typeof mod.verify_payment).toBe("function");
-    expect(mod.is_lightning_address("alice@example.com")).toBe(true);
+    expect(typeof mod.verifyPayment).toBe("function");
+    expect(mod.isLightningAddress("alice@example.com")).toBe(true);
   });
 
   test("requires from CJS output", () => {
@@ -16,7 +16,7 @@ describe("built package imports", () => {
     const mod = require("../../dist/index.cjs") as typeof import("../../src");
 
     expect(typeof mod.resolve).toBe("function");
-    expect(typeof mod.request_payment).toBe("function");
-    expect(mod.is_lightning_address("not-an-address")).toBe(false);
+    expect(typeof mod.requestPayment).toBe("function");
+    expect(mod.isLightningAddress("not-an-address")).toBe(false);
   });
 });

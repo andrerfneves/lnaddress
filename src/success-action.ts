@@ -28,7 +28,7 @@ function to_array_buffer(bytes: Uint8Array): ArrayBuffer {
   return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 }
 
-export function parse_success_action(raw: unknown): SuccessAction | undefined {
+export function parseSuccessAction(raw: unknown): SuccessAction | undefined {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     return undefined;
   }
@@ -87,7 +87,7 @@ export function parse_success_action(raw: unknown): SuccessAction | undefined {
   };
 }
 
-export async function decrypt_success_action(
+export async function decryptSuccessAction(
   action: SuccessAction,
   preimage: string,
 ): Promise<string> {

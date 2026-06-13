@@ -86,7 +86,7 @@ function convert_bits(data: number[], from_bits: number, to_bits: number, pad: b
   return ret;
 }
 
-export function encode_lnurl(url: string, options: UrlSafetyOptions = {}): string {
+export function encodeLnurl(url: string, options: UrlSafetyOptions = {}): string {
   let parsed: URL;
 
   try {
@@ -102,7 +102,7 @@ export function encode_lnurl(url: string, options: UrlSafetyOptions = {}): strin
   return `lnurl1${combined.map((value) => charset[value]).join("")}`;
 }
 
-export function decode_lnurl(lnurl: string, options: UrlSafetyOptions = {}): string {
+export function decodeLnurl(lnurl: string, options: UrlSafetyOptions = {}): string {
   const value = lnurl.trim();
 
   if (value !== value.toLowerCase() && value !== value.toUpperCase()) {

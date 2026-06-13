@@ -2,10 +2,10 @@ import { describe, expect, test } from "bun:test";
 import {
   InvalidLightningAddressError,
   InvalidPayRequestError,
-  decode_lnurl,
-  encode_lnurl,
-  parse_lightning_address,
-  parse_metadata,
+  decodeLnurl,
+  encodeLnurl,
+  parseLightningAddress,
+  parseMetadata,
 } from "../../src";
 
 function lcg(seed: number): () => number {
@@ -40,7 +40,7 @@ describe("deterministic fuzz coverage", () => {
       const input = random_string(random, alphabet, 80);
 
       try {
-        const parsed = parse_lightning_address(input);
+        const parsed = parseLightningAddress(input);
         expect(parsed.address).toBe(`${parsed.username}@${parsed.domain}`);
         expect(parsed.domain).toBe(parsed.domain.toLowerCase());
       } catch (error) {
@@ -58,7 +58,7 @@ describe("deterministic fuzz coverage", () => {
       const path = random_string(random, path_alphabet, 40);
       const url = `https://${label}.example/.well-known/lnurlp/${path || "alice"}`;
 
-      expect(decode_lnurl(encode_lnurl(url))).toBe(url);
+      expect(decodeLnurl(encodeLnurl(url))).toBe(url);
     }
   });
 
@@ -81,7 +81,7 @@ describe("deterministic fuzz coverage", () => {
       });
 
       try {
-        const parsed = parse_metadata(JSON.stringify(entries));
+        const parsed = parseMetadata(JSON.stringify(entries));
         expect(
           parsed.every(
             ([mime_type, value]) => typeof mime_type === "string" && typeof value === "string",

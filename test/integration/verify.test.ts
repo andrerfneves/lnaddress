@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { VerifyError, verify_payment } from "../../src";
+import { VerifyError, verifyPayment } from "../../src";
 
 function json_response(body: unknown, init?: ResponseInit): Response {
   return new Response(JSON.stringify(body), {
@@ -9,10 +9,10 @@ function json_response(body: unknown, init?: ResponseInit): Response {
   });
 }
 
-describe("verify_payment", () => {
+describe("verifyPayment", () => {
   test("parses legacy LUD-21 unpaid and paid responses", async () => {
     await expect(
-      verify_payment("https://example.com/verify/unpaid", {
+      verifyPayment("https://example.com/verify/unpaid", {
         fetch: async () => json_response({ status: "OK", settled: false, preimage: null }),
       }),
     ).resolves.toMatchObject({
@@ -22,7 +22,7 @@ describe("verify_payment", () => {
     });
 
     await expect(
-      verify_payment("https://example.com/verify/paid", {
+      verifyPayment("https://example.com/verify/paid", {
         fetch: async () =>
           json_response({
             status: "OK",
@@ -40,7 +40,7 @@ describe("verify_payment", () => {
 
   test("parses generic destination verification fields", async () => {
     await expect(
-      verify_payment(
+      verifyPayment(
         {
           type: "destination",
           payment_destination: "liquid-address",
@@ -67,7 +67,7 @@ describe("verify_payment", () => {
 
   test("returns error status responses and rejects invalid shapes", async () => {
     await expect(
-      verify_payment("https://example.com/verify/error", {
+      verifyPayment("https://example.com/verify/error", {
         fetch: async () => json_response({ status: "ERROR", reason: "unknown payment" }),
       }),
     ).resolves.toMatchObject({
@@ -76,7 +76,7 @@ describe("verify_payment", () => {
     });
 
     await expect(
-      verify_payment("https://example.com/verify/bad", {
+      verifyPayment("https://example.com/verify/bad", {
         fetch: async () => json_response({ settled: true }),
       }),
     ).rejects.toThrow(VerifyError);
@@ -84,7 +84,7 @@ describe("verify_payment", () => {
 
   test("requires a verify_url when verifying a payment instruction", async () => {
     await expect(
-      verify_payment({
+      verifyPayment({
         type: "destination",
         payment_destination: "liquid-address",
         raw: {},
@@ -94,7 +94,7 @@ describe("verify_payment", () => {
 
   test("allows onion verify URLs", async () => {
     await expect(
-      verify_payment("https://abcdefghijklmnop.onion/verify", {
+      verifyPayment("https://abcdefghijklmnop.onion/verify", {
         fetch: async () => json_response({ status: "OK", settled: false }),
       }),
     ).resolves.toMatchObject({

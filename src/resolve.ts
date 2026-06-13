@@ -11,9 +11,9 @@ import {
   read_json_response,
   request_init,
 } from "./internal";
-import { parse_lightning_address } from "./lightning-address";
-import { decode_lnurl } from "./lnurl";
-import { parse_pay_request_response } from "./payrequest";
+import { parseLightningAddress } from "./lightning-address";
+import { decodeLnurl } from "./lnurl";
+import { parsePayRequestResponse } from "./payrequest";
 import type { LightningAddress, PayRequest, ResolveOptions } from "./types";
 
 function lightning_address_to_url(lightning_address: LightningAddress): string {
@@ -44,7 +44,7 @@ function lnurlp_uri_to_url(input: string): { url: string; lightning_address?: Li
   }
 
   if (parsed.username) {
-    const lightning_address = parse_lightning_address(`${parsed.username}@${parsed.hostname}`);
+    const lightning_address = parseLightningAddress(`${parsed.username}@${parsed.hostname}`);
     return {
       url: lightning_address_to_url(lightning_address),
       lightning_address,
@@ -94,12 +94,12 @@ function input_to_url(
 
   if (lower.startsWith("lnurl")) {
     return {
-      url: decode_lnurl(value, options),
+      url: decodeLnurl(value, options),
     };
   }
 
   if (!value.includes("://") && value.includes("@")) {
-    const address = parse_lightning_address(value);
+    const address = parseLightningAddress(value);
     return {
       url: assert_resolve_url(lightning_address_to_url(address), options),
       address,
@@ -159,5 +159,5 @@ export async function resolve(input: string, options: ResolveOptions = {}): Prom
     ...(address ? { lightning_address: address } : {}),
   };
 
-  return parse_pay_request_response(raw, parse_context);
+  return parsePayRequestResponse(raw, parse_context);
 }

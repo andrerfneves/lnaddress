@@ -1,5 +1,5 @@
 import type { PaymentInstruction } from "../../src";
-import { pay, resolve, verify_payment } from "../../src";
+import { pay, resolve, verifyPayment } from "../../src";
 
 async function narrows_discriminated_union(payment: PaymentInstruction) {
   if (payment.type === "bolt11") {
@@ -19,7 +19,7 @@ async function exported_types_are_usable() {
   });
 
   await narrows_discriminated_union(payment);
-  const verify_result = await verify_payment(payment.verify_url ?? "https://example.com/verify");
+  const verify_result = await verifyPayment(payment.verify_url ?? "https://example.com/verify");
   verify_result.status satisfies "OK" | "ERROR";
 }
 

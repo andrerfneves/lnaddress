@@ -3,7 +3,7 @@ import {
   InvalidLnurlError,
   InvalidPayRequestError,
   NetworkError,
-  encode_lnurl,
+  encodeLnurl,
   resolve,
 } from "../../src";
 
@@ -63,7 +63,7 @@ describe("resolve", () => {
       return json_response(pay_request_response);
     };
 
-    await expect(resolve(encode_lnurl(url), { fetch: fetcher })).resolves.toMatchObject({
+    await expect(resolve(encodeLnurl(url), { fetch: fetcher })).resolves.toMatchObject({
       callback: "https://example.com/callback",
     });
   });

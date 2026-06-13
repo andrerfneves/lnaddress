@@ -4,12 +4,12 @@ import {
   type RequestPaymentOptions,
   type VerifyResult,
   pay,
-  request_payment,
+  requestPayment,
   resolve,
-  validate_callback_amount,
-  validate_comment,
-  validate_mandatory_payer_data,
-  verify_payment,
+  validateCallbackAmount,
+  validateComment,
+  validateMandatoryPayerData,
+  verifyPayment,
 } from "lnaddress";
 import { StrictMode, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -100,9 +100,9 @@ function App() {
     }
 
     return {
-      amount: safe_validate(() => validate_callback_amount(pay_request, Number(amount_msat))),
-      comment: safe_validate(() => validate_comment(pay_request, comment || undefined)),
-      payer_data: safe_validate(() => validate_mandatory_payer_data(pay_request, payer_data)),
+      amount: safe_validate(() => validateCallbackAmount(pay_request, Number(amount_msat))),
+      comment: safe_validate(() => validateComment(pay_request, comment || undefined)),
+      payer_data: safe_validate(() => validateMandatoryPayerData(pay_request, payer_data)),
     } as const;
   }, [amount_msat, comment, pay_request, payer_data]);
 
@@ -136,7 +136,7 @@ function App() {
     try {
       const request_options = build_request_options();
       const instruction = pay_request
-        ? await request_payment(pay_request, request_options)
+        ? await requestPayment(pay_request, request_options)
         : await pay(input, request_options);
 
       set_payment(instruction);
@@ -168,7 +168,7 @@ function App() {
     set_error(null);
 
     try {
-      const verified = await verify_payment(payment, { fetch });
+      const verified = await verifyPayment(payment, { fetch });
       set_verify_result(verified);
     } catch (cause) {
       set_error(cause instanceof Error ? cause.message : String(cause));

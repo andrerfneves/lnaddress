@@ -3,8 +3,8 @@ import {
   CommentTooLongError,
   InvalidCallbackResponseError,
   MissingMandatoryPayerDataError,
-  parse_pay_request_response,
-  request_payment,
+  parsePayRequestResponse,
+  requestPayment,
 } from "../../src";
 import { test_bolt11_invoice } from "../fixtures/bolt11";
 
@@ -16,7 +16,7 @@ function json_response(body: unknown, init?: ResponseInit): Response {
   });
 }
 
-const pay_request = parse_pay_request_response({
+const pay_request = parsePayRequestResponse({
   tag: "payRequest",
   callback: "https://example.com/callback?k1=abc",
   minSendable: 1000,
@@ -28,7 +28,7 @@ const pay_request = parse_pay_request_response({
   },
 });
 
-describe("request_payment", () => {
+describe("requestPayment", () => {
   test("builds callback URLs with amount, comment, and payerdata", async () => {
     const fetcher = async (input: RequestInfo | URL) => {
       const url = new URL(String(input));
@@ -45,7 +45,7 @@ describe("request_payment", () => {
       });
     };
 
-    const payment = await request_payment(pay_request, {
+    const payment = await requestPayment(pay_request, {
       amount_msat: 2000,
       comment: "thanks ⚡",
       payer_data: { name: "Alice" },
@@ -78,7 +78,7 @@ describe("request_payment", () => {
     };
 
     await expect(
-      request_payment(pay_request_with_query, {
+      requestPayment(pay_request_with_query, {
         amount_msat: 2000,
         comment: "new",
         payer_data: { name: "Alice" },
@@ -95,7 +95,7 @@ describe("request_payment", () => {
         verify: "https://example.com/verify/liquid",
       });
 
-    const payment = await request_payment(pay_request, {
+    const payment = await requestPayment(pay_request, {
       amount_msat: 2000n,
       payer_data: { name: "Alice" },
       fetch: fetcher,
@@ -114,7 +114,7 @@ describe("request_payment", () => {
       json_response({ pr: await test_bolt11_invoice(2000, pay_request.metadata_hash) });
 
     await expect(
-      request_payment(pay_request, {
+      requestPayment(pay_request, {
         amount_msat: 2000,
         comment: "this is too long",
         payer_data: { name: "Alice" },
@@ -123,14 +123,14 @@ describe("request_payment", () => {
     ).rejects.toThrow(CommentTooLongError);
 
     await expect(
-      request_payment(pay_request, {
+      requestPayment(pay_request, {
         amount_msat: 2000,
         fetch: fetcher,
       }),
     ).rejects.toThrow(MissingMandatoryPayerDataError);
 
     await expect(
-      request_payment(pay_request, {
+      requestPayment(pay_request, {
         amount_msat: 2000,
         payer_data: { name: null },
         fetch: fetcher,
@@ -140,7 +140,7 @@ describe("request_payment", () => {
 
   test("rejects callback errors and missing instructions", async () => {
     await expect(
-      request_payment(pay_request, {
+      requestPayment(pay_request, {
         amount_msat: 2000,
         payer_data: { name: "Alice" },
         fetch: async () => json_response({ status: "ERROR", reason: "nope" }),
@@ -148,7 +148,7 @@ describe("request_payment", () => {
     ).rejects.toThrow(InvalidCallbackResponseError);
 
     await expect(
-      request_payment(pay_request, {
+      requestPayment(pay_request, {
         amount_msat: 2000,
         payer_data: { name: "Alice" },
         fetch: async () => json_response({ status: "OK" }),
@@ -158,7 +158,7 @@ describe("request_payment", () => {
 
   test("rejects invalid callback verify URLs", async () => {
     await expect(
-      request_payment(pay_request, {
+      requestPayment(pay_request, {
         amount_msat: 2000,
         payer_data: { name: "Alice" },
         fetch: async () =>
@@ -170,7 +170,7 @@ describe("request_payment", () => {
     ).rejects.toThrow(InvalidCallbackResponseError);
 
     await expect(
-      request_payment(pay_request, {
+      requestPayment(pay_request, {
         amount_msat: 2000,
         payer_data: { name: "Alice" },
         fetch: async () =>
@@ -184,7 +184,7 @@ describe("request_payment", () => {
 
   test("validates BOLT11 amount and metadata hash by default and can skip the check", async () => {
     await expect(
-      request_payment(pay_request, {
+      requestPayment(pay_request, {
         amount_msat: 2000,
         payer_data: { name: "Alice" },
         fetch: async () => json_response({ pr: "not-an-invoice" }),
@@ -192,7 +192,7 @@ describe("request_payment", () => {
     ).rejects.toThrow(InvalidCallbackResponseError);
 
     await expect(
-      request_payment(pay_request, {
+      requestPayment(pay_request, {
         amount_msat: 2000,
         payer_data: { name: "Alice" },
         fetch: async () =>
@@ -201,7 +201,7 @@ describe("request_payment", () => {
     ).rejects.toThrow(InvalidCallbackResponseError);
 
     await expect(
-      request_payment(pay_request, {
+      requestPayment(pay_request, {
         amount_msat: 2000,
         payer_data: { name: "Alice" },
         fetch: async () => json_response({ pr: await test_bolt11_invoice(2000, "00".repeat(32)) }),
@@ -209,7 +209,7 @@ describe("request_payment", () => {
     ).rejects.toThrow(InvalidCallbackResponseError);
 
     await expect(
-      request_payment(pay_request, {
+      requestPayment(pay_request, {
         amount_msat: 2000,
         payer_data: { name: "Alice" },
         fetch: async () =>
@@ -222,7 +222,7 @@ describe("request_payment", () => {
     ).rejects.toThrow(InvalidCallbackResponseError);
 
     await expect(
-      request_payment(pay_request, {
+      requestPayment(pay_request, {
         amount_msat: 2000,
         payer_data: { name: "Alice" },
         validate_bolt11: false,
@@ -236,7 +236,7 @@ describe("request_payment", () => {
 
   test("validates BOLT11 network and expiry policy", async () => {
     await expect(
-      request_payment(pay_request, {
+      requestPayment(pay_request, {
         amount_msat: 2000,
         payer_data: { name: "Alice" },
         expected_network: "testnet",
@@ -246,7 +246,7 @@ describe("request_payment", () => {
     ).rejects.toThrow(InvalidCallbackResponseError);
 
     await expect(
-      request_payment(pay_request, {
+      requestPayment(pay_request, {
         amount_msat: 2000,
         payer_data: { name: "Alice" },
         expected_network: "bitcoin",
@@ -256,7 +256,7 @@ describe("request_payment", () => {
     ).resolves.toMatchObject({ type: "bolt11" });
 
     await expect(
-      request_payment(pay_request, {
+      requestPayment(pay_request, {
         amount_msat: 2000,
         payer_data: { name: "Alice" },
         now: 2_000_000,
@@ -271,7 +271,7 @@ describe("request_payment", () => {
     ).rejects.toThrow(InvalidCallbackResponseError);
 
     await expect(
-      request_payment(pay_request, {
+      requestPayment(pay_request, {
         amount_msat: 2000,
         payer_data: { name: "Alice" },
         validate_expiry: false,
@@ -295,7 +295,7 @@ describe("request_payment", () => {
     let called = false;
 
     await expect(
-      request_payment(invalid_pay_request, {
+      requestPayment(invalid_pay_request, {
         amount_msat: 2000,
         payer_data: { name: "Alice" },
         fetch: async () => {
@@ -312,7 +312,7 @@ describe("request_payment", () => {
     };
 
     await expect(
-      request_payment(onion_pay_request, {
+      requestPayment(onion_pay_request, {
         amount_msat: 2000,
         payer_data: { name: "Alice" },
         fetch: async () =>
@@ -330,7 +330,7 @@ describe("request_payment", () => {
     };
 
     await expect(
-      request_payment(
+      requestPayment(
         {
           ...sourced_pay_request,
           callback: "https://payments.example.net/callback",
@@ -346,7 +346,7 @@ describe("request_payment", () => {
     ).rejects.toThrow(InvalidCallbackResponseError);
 
     await expect(
-      request_payment(
+      requestPayment(
         {
           ...sourced_pay_request,
           callback: "https://pay.example.com/callback",
@@ -362,7 +362,7 @@ describe("request_payment", () => {
     ).resolves.toMatchObject({ type: "bolt11" });
 
     await expect(
-      request_payment(sourced_pay_request, {
+      requestPayment(sourced_pay_request, {
         amount_msat: 2000,
         payer_data: { name: "Alice" },
         provider_policy: "same-origin",
@@ -375,7 +375,7 @@ describe("request_payment", () => {
     ).rejects.toThrow(InvalidCallbackResponseError);
 
     await expect(
-      request_payment(sourced_pay_request, {
+      requestPayment(sourced_pay_request, {
         amount_msat: 2000,
         payer_data: { name: "Alice" },
         provider_policy: "same-origin",
@@ -393,7 +393,7 @@ describe("request_payment", () => {
       json_response({ pr: await test_bolt11_invoice(2000, pay_request.metadata_hash) });
 
     await expect(
-      request_payment(pay_request, {
+      requestPayment(pay_request, {
         amount_msat: 2000,
         payer_data: { name: "Alice", unsupported: 1n },
         fetch: fetcher,

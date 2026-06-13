@@ -1,9 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  InvalidCallbackResponseError,
-  decrypt_success_action,
-  parse_success_action,
-} from "../../src";
+import { InvalidCallbackResponseError, decryptSuccessAction, parseSuccessAction } from "../../src";
 
 function bytes_to_base64(bytes: Uint8Array): string {
   let value = "";
@@ -28,7 +24,7 @@ function to_array_buffer(bytes: Uint8Array): ArrayBuffer {
 describe("successAction parsing", () => {
   test("validates URL success actions", () => {
     expect(
-      parse_success_action({
+      parseSuccessAction({
         tag: "url",
         description: "receipt",
         url: "https://example.com/receipt",
@@ -40,7 +36,7 @@ describe("successAction parsing", () => {
     });
 
     expect(() =>
-      parse_success_action({
+      parseSuccessAction({
         tag: "url",
         description: "receipt",
         url: "lightning:lnbc1example",
@@ -66,7 +62,7 @@ describe("successAction parsing", () => {
       ),
     );
 
-    const action = parse_success_action({
+    const action = parseSuccessAction({
       tag: "aes",
       description: "secret",
       ciphertext: bytes_to_base64(ciphertext),
@@ -75,7 +71,7 @@ describe("successAction parsing", () => {
 
     expect(action?.tag).toBe("aes");
     if (action?.tag === "aes" && "decrypt" in action) {
-      expect(await decrypt_success_action(action, preimage)).toBe("paid");
+      expect(await decryptSuccessAction(action, preimage)).toBe("paid");
       expect(() => action.decrypt(preimage)).toThrow();
     }
   });

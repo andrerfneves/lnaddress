@@ -11,27 +11,27 @@ export {
   NetworkError,
   VerifyError,
 } from "./errors";
-export { is_lightning_address, parse_lightning_address } from "./lightning-address";
-export { decode_lnurl, encode_lnurl } from "./lnurl";
+export { isLightningAddress, parseLightningAddress } from "./lightning-address";
+export { decodeLnurl, encodeLnurl } from "./lnurl";
 export {
-  assert_destination_payment,
-  assert_destination_rail,
-  destination_matches_rail,
-  is_destination_payment,
+  assertDestinationPayment,
+  assertDestinationRail,
+  destinationMatchesRail,
+  isDestinationPayment,
 } from "./destination";
 export type { DestinationRail } from "./destination";
-export { get_metadata_hash, parse_metadata } from "./metadata";
-export { parse_pay_request_response } from "./payrequest";
+export { getMetadataHash, parseMetadata } from "./metadata";
+export { parsePayRequestResponse } from "./payrequest";
 export {
-  request_payment,
+  requestPayment,
   pay,
-  validate_callback_amount,
-  validate_comment,
-  validate_mandatory_payer_data,
+  validateCallbackAmount,
+  validateComment,
+  validateMandatoryPayerData,
 } from "./request-payment";
 export { resolve } from "./resolve";
-export { decrypt_success_action, parse_success_action } from "./success-action";
-export { verify_payment } from "./verify";
+export { decryptSuccessAction, parseSuccessAction } from "./success-action";
+export { verifyPayment } from "./verify";
 export type {
   Bolt11PaymentInstruction,
   Bolt11Network,

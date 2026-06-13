@@ -1,4 +1,4 @@
-import { get_metadata_hash } from "../../src";
+import { getMetadataHash } from "../../src";
 import { test_bolt11_invoice } from "./bolt11";
 
 type ServerState = {
@@ -66,7 +66,7 @@ export function start_lnurl_test_server() {
 
         return json({
           status: "OK",
-          pr: await test_bolt11_invoice(2500, get_metadata_hash(alice_metadata)),
+          pr: await test_bolt11_invoice(2500, getMetadataHash(alice_metadata)),
           routes: [],
           verify: `${origin}/verify/bolt11`,
         });

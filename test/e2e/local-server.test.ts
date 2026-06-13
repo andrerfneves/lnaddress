@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { pay, resolve, verify_payment } from "../../src";
+import { pay, resolve, verifyPayment } from "../../src";
 import { start_lnurl_test_server } from "../fixtures/server";
 
 let server: ReturnType<typeof start_lnurl_test_server>;
@@ -23,7 +23,7 @@ describe("local LNURL-pay server", () => {
     });
 
     expect(payment.type).toBe("bolt11");
-    const verified = await verify_payment(payment);
+    const verified = await verifyPayment(payment);
     expect(verified.settled).toBe(true);
   });
 
@@ -37,8 +37,8 @@ describe("local LNURL-pay server", () => {
       payment_destination: "liquid-address",
     });
 
-    const first = await verify_payment(payment);
-    const second = await verify_payment(payment);
+    const first = await verifyPayment(payment);
+    const second = await verifyPayment(payment);
 
     expect(first).toMatchObject({ settled: false, payment_reference: null });
     expect(second).toMatchObject({ settled: true, payment_reference: "liquid-txid" });
@@ -54,8 +54,8 @@ describe("local LNURL-pay server", () => {
       payment_destination: "lno1pg257enxv4ezqcneypekxarpw3jxj",
     });
 
-    const first = await verify_payment(payment);
-    const second = await verify_payment(payment);
+    const first = await verifyPayment(payment);
+    const second = await verifyPayment(payment);
 
     expect(first).toMatchObject({ settled: false, payment_reference: null });
     expect(second).toMatchObject({

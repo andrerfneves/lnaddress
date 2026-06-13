@@ -14,7 +14,7 @@ function is_valid_domain(hostname: string): boolean {
   return !!tld && /[a-z]/.test(tld) && labels.every((label) => domain_label_pattern.test(label));
 }
 
-export function parse_lightning_address(address: string): LightningAddress {
+export function parseLightningAddress(address: string): LightningAddress {
   const value = address.trim();
   const at_index = value.indexOf("@");
 
@@ -64,9 +64,9 @@ export function parse_lightning_address(address: string): LightningAddress {
   };
 }
 
-export function is_lightning_address(value: string): boolean {
+export function isLightningAddress(value: string): boolean {
   try {
-    parse_lightning_address(value);
+    parseLightningAddress(value);
     return true;
   } catch {
     return false;

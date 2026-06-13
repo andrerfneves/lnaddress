@@ -21,7 +21,7 @@ import {
 } from "./internal";
 import { is_pay_request } from "./payrequest";
 import { resolve } from "./resolve";
-import { parse_success_action } from "./success-action";
+import { parseSuccessAction } from "./success-action";
 import type {
   Bolt11PaymentInstruction,
   DestinationPaymentInstruction,
@@ -31,7 +31,7 @@ import type {
   ResolveOptions,
 } from "./types";
 
-export function validate_callback_amount(
+export function validateCallbackAmount(
   pay_request: PayRequest,
   amount_msat: number | bigint,
 ): void {
@@ -50,7 +50,7 @@ export function validate_callback_amount(
   }
 }
 
-export function validate_comment(pay_request: PayRequest, comment?: string): void {
+export function validateComment(pay_request: PayRequest, comment?: string): void {
   if (comment === undefined) {
     return;
   }
@@ -66,7 +66,7 @@ export function validate_comment(pay_request: PayRequest, comment?: string): voi
   }
 }
 
-export function validate_mandatory_payer_data(
+export function validateMandatoryPayerData(
   pay_request: PayRequest,
   payer_data?: Record<string, unknown>,
 ): void {
@@ -180,7 +180,7 @@ async function parse_callback_response(
   if (verify_url) {
     assert_provider_policy(pay_request, verify_url, options, "Payment callback verify URL");
   }
-  const success_action = parse_success_action(
+  const success_action = parseSuccessAction(
     read_unknown(record, ["successAction", "success_action"]),
   );
 
@@ -263,7 +263,7 @@ function build_callback_url(pay_request: PayRequest, options: RequestPaymentOpti
   return callback_url;
 }
 
-export async function request_payment(
+export async function requestPayment(
   pay_request_or_input: PayRequest | string,
   options: RequestPaymentOptions,
 ): Promise<PaymentInstruction> {
@@ -282,9 +282,9 @@ export async function request_payment(
     ? pay_request_or_input
     : await resolve(pay_request_or_input, resolve_options);
 
-  validate_callback_amount(pay_request, options.amount_msat);
-  validate_comment(pay_request, options.comment);
-  validate_mandatory_payer_data(pay_request, options.payer_data);
+  validateCallbackAmount(pay_request, options.amount_msat);
+  validateComment(pay_request, options.comment);
+  validateMandatoryPayerData(pay_request, options.payer_data);
 
   const callback_url = build_callback_url(pay_request, options);
   assert_provider_policy(pay_request, callback_url, options, "Pay request callback URL");
@@ -326,5 +326,5 @@ export async function pay(
   input: string,
   options: RequestPaymentOptions,
 ): Promise<PaymentInstruction> {
-  return request_payment(input, options);
+  return requestPayment(input, options);
 }

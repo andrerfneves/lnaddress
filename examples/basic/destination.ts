@@ -1,4 +1,4 @@
-import { pay, verify_payment } from "../../src";
+import { pay, verifyPayment } from "../../src";
 import { create_mock_lnurl_fetch, liquid } from "./mock-provider";
 
 const fetch = create_mock_lnurl_fetch();
@@ -11,7 +11,7 @@ if (payment.type !== "destination") {
   throw new Error("Expected a destination instruction");
 }
 
-const verified = await verify_payment(payment, { fetch });
+const verified = await verifyPayment(payment, { fetch });
 
 console.log({
   payment_destination: payment.payment_destination,

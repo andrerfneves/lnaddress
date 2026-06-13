@@ -22,7 +22,7 @@ function verify_url_from_input(payment_or_verify_url: PaymentInstruction | strin
   throw new VerifyError("Payment instruction does not include a verify_url");
 }
 
-export async function verify_payment(
+export async function verifyPayment(
   payment_or_verify_url: PaymentInstruction | string,
   options: VerifyPaymentOptions = {},
 ): Promise<VerifyResult> {

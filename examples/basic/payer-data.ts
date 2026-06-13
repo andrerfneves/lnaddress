@@ -1,4 +1,4 @@
-import { request_payment, resolve, validate_mandatory_payer_data } from "../../src";
+import { requestPayment, resolve, validateMandatoryPayerData } from "../../src";
 import { alice, create_mock_lnurl_fetch } from "./mock-provider";
 
 const fetch = create_mock_lnurl_fetch();
@@ -8,9 +8,9 @@ const payer_data = {
   email: "alice@example.com",
 };
 
-validate_mandatory_payer_data(pay_request, payer_data);
+validateMandatoryPayerData(pay_request, payer_data);
 
-const payment = await request_payment(pay_request, {
+const payment = await requestPayment(pay_request, {
   amount_msat: 25_000,
   payer_data,
   fetch,

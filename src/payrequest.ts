@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { InvalidPayRequestError } from "./errors";
 import { assert_http_url, to_msat_bigint, unknown_to_record } from "./internal";
-import { get_description, get_image, get_metadata_hash, parse_metadata } from "./metadata";
+import { getMetadataHash, get_description, get_image, parseMetadata } from "./metadata";
 import type {
   LightningAddress,
   PayRequest,
@@ -62,7 +62,7 @@ function parse_payer_data(raw: unknown): PayerData | undefined {
   return payer_data;
 }
 
-export function parse_pay_request_response(
+export function parsePayRequestResponse(
   raw: unknown,
   context: ParsePayRequestContext = {},
 ): PayRequest {
@@ -96,7 +96,7 @@ export function parse_pay_request_response(
     );
   }
 
-  const metadata = parse_metadata(parsed.data.metadata);
+  const metadata = parseMetadata(parsed.data.metadata);
   const description = get_description(metadata);
   if (!description) {
     throw new InvalidPayRequestError("Pay request metadata must include a text/plain description");
@@ -109,7 +109,7 @@ export function parse_pay_request_response(
     max_sendable_msat,
     metadata,
     metadata_raw: parsed.data.metadata,
-    metadata_hash: get_metadata_hash(parsed.data.metadata),
+    metadata_hash: getMetadataHash(parsed.data.metadata),
     raw,
   };
 

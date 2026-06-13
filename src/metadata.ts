@@ -6,7 +6,7 @@ function to_hex(value: number): string {
   return value.toString(16).padStart(2, "0");
 }
 
-export function parse_metadata(metadata_string: string): MetadataEntry[] {
+export function parseMetadata(metadata_string: string): MetadataEntry[] {
   let decoded: unknown;
 
   try {
@@ -33,7 +33,7 @@ export function parse_metadata(metadata_string: string): MetadataEntry[] {
   });
 }
 
-export function get_metadata_hash(metadata_string: string): string {
+export function getMetadataHash(metadata_string: string): string {
   const bytes = new TextEncoder().encode(metadata_string);
   return [...sha256(bytes)].map(to_hex).join("");
 }

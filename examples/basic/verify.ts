@@ -1,4 +1,4 @@
-import { pay, verify_payment } from "../../src";
+import { pay, verifyPayment } from "../../src";
 import { alice, create_mock_lnurl_fetch } from "./mock-provider";
 
 const fetch = create_mock_lnurl_fetch();
@@ -8,8 +8,8 @@ const payment = await pay(alice, {
   fetch,
 });
 
-const first = await verify_payment(payment, { fetch });
-const second = await verify_payment(payment, { fetch });
+const first = await verifyPayment(payment, { fetch });
+const second = await verifyPayment(payment, { fetch });
 
 console.log({
   first_settled: first.settled,

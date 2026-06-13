@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { InvalidPayRequestError, parse_pay_request_response } from "../../src";
+import { InvalidPayRequestError, parsePayRequestResponse } from "../../src";
 
 const base_response = {
   tag: "payRequest",
@@ -11,7 +11,7 @@ const base_response = {
 
 describe("pay request parsing", () => {
   test("preserves currency conversion extension fields", () => {
-    const pay_request = parse_pay_request_response({
+    const pay_request = parsePayRequestResponse({
       ...base_response,
       currencies: [{ code: "USD", symbol: "$" }],
       convert: { USD: 1 },
@@ -25,7 +25,7 @@ describe("pay request parsing", () => {
 
   test("rejects min greater than max", () => {
     expect(() =>
-      parse_pay_request_response({
+      parsePayRequestResponse({
         ...base_response,
         minSendable: 5001,
         maxSendable: 5000,
@@ -35,7 +35,7 @@ describe("pay request parsing", () => {
 
   test("rejects metadata without a text/plain description", () => {
     expect(() =>
-      parse_pay_request_response({
+      parsePayRequestResponse({
         ...base_response,
         metadata: '[["image/png","abc123"]]',
       }),
@@ -44,7 +44,7 @@ describe("pay request parsing", () => {
 
   test("rejects invalid callback protocols", () => {
     expect(() =>
-      parse_pay_request_response({
+      parsePayRequestResponse({
         ...base_response,
         callback: "ftp://example.com/callback",
       }),
@@ -53,7 +53,7 @@ describe("pay request parsing", () => {
 
   test("allows onion callbacks", () => {
     expect(
-      parse_pay_request_response({
+      parsePayRequestResponse({
         ...base_response,
         callback: "https://abcdefghijklmnop.onion/callback",
       }).callback,

@@ -61,7 +61,7 @@ console.log(payment.pr);
 ## Resolve first, pay later
 
 ```ts
-import { request_payment, resolve } from "lnaddress";
+import { requestPayment, resolve } from "lnaddress";
 
 const pay_request = await resolve("alice@example.com");
 
@@ -69,7 +69,7 @@ console.log(pay_request.description);
 console.log(pay_request.min_sendable_msat);
 console.log(pay_request.max_sendable_msat);
 
-const payment = await request_payment(pay_request, {
+const payment = await requestPayment(pay_request, {
   amount_msat: 50_000n,
 });
 ```
@@ -77,11 +77,11 @@ const payment = await request_payment(pay_request, {
 ## Lightning Address examples
 
 ```ts
-import { is_lightning_address, parse_lightning_address, resolve } from "lnaddress";
+import { isLightningAddress, parseLightningAddress, resolve } from "lnaddress";
 
-is_lightning_address("alice@example.com"); // true
+isLightningAddress("alice@example.com"); // true
 
-const address = parse_lightning_address("alice+shop@EXAMPLE.COM");
+const address = parseLightningAddress("alice+shop@EXAMPLE.COM");
 // { username: "alice+shop", domain: "example.com", address: "alice+shop@example.com" }
 
 await resolve("alice@example.com");
@@ -91,10 +91,10 @@ await resolve("alice@example.com");
 ## LNURL examples
 
 ```ts
-import { decode_lnurl, encode_lnurl, resolve } from "lnaddress";
+import { decodeLnurl, encodeLnurl, resolve } from "lnaddress";
 
-const encoded = encode_lnurl("https://example.com/.well-known/lnurlp/alice");
-const url = decode_lnurl(encoded);
+const encoded = encodeLnurl("https://example.com/.well-known/lnurlp/alice");
+const url = decodeLnurl(encoded);
 
 await resolve(encoded);
 await resolve("lnurlp://example.com/alice");
@@ -104,13 +104,13 @@ await resolve(url);
 ## Comments
 
 ```ts
-import { request_payment, resolve, validate_comment } from "lnaddress";
+import { requestPayment, resolve, validateComment } from "lnaddress";
 
 const pay_request = await resolve("alice@example.com");
 
-validate_comment(pay_request, "thanks");
+validateComment(pay_request, "thanks");
 
-await request_payment(pay_request, {
+await requestPayment(pay_request, {
   amount_msat: 10_000,
   comment: "thanks",
 });
@@ -121,16 +121,16 @@ If the provider does not advertise `commentAllowed`, comments are rejected befor
 ## Payer Data
 
 ```ts
-import { request_payment, resolve, validate_mandatory_payer_data } from "lnaddress";
+import { requestPayment, resolve, validateMandatoryPayerData } from "lnaddress";
 
 const pay_request = await resolve("merchant@example.com");
 
-validate_mandatory_payer_data(pay_request, {
+validateMandatoryPayerData(pay_request, {
   name: "Alice",
   email: "alice@example.com",
 });
 
-await request_payment(pay_request, {
+await requestPayment(pay_request, {
   amount_msat: 100_000,
   payer_data: {
     name: "Alice",
@@ -144,13 +144,13 @@ await request_payment(pay_request, {
 ## Verify
 
 ```ts
-import { pay, verify_payment } from "lnaddress";
+import { pay, verifyPayment } from "lnaddress";
 
 const payment = await pay("alice@example.com", {
   amount_msat: 10_000,
 });
 
-const result = await verify_payment(payment);
+const result = await verifyPayment(payment);
 
 if (result.status === "OK" && result.settled) {
   console.log(result.preimage);
@@ -160,9 +160,9 @@ if (result.status === "OK" && result.settled) {
 You can also verify by URL:
 
 ```ts
-import { verify_payment } from "lnaddress";
+import { verifyPayment } from "lnaddress";
 
-await verify_payment("https://example.com/verify?k1=...");
+await verifyPayment("https://example.com/verify?k1=...");
 ```
 
 ## Destination Instructions
@@ -253,12 +253,12 @@ const pay_request = await resolve("alice@example.com", {
 });
 ```
 
-### `request_payment(pay_request_or_input, options)`
+### `requestPayment(pay_request_or_input, options)`
 
 Accepts a resolved `PayRequest` or any `resolve` input and returns a `PaymentInstruction`.
 
 ```ts
-const payment = await request_payment("alice@example.com", {
+const payment = await requestPayment("alice@example.com", {
   amount_msat: 10_000,
   comment: "hi",
   payer_data: { name: "Alice" },
@@ -268,24 +268,24 @@ const payment = await request_payment("alice@example.com", {
 
 ### `pay(input, options)`
 
-One-shot `resolve` plus `request_payment`.
+One-shot `resolve` plus `requestPayment`.
 
-### `verify_payment(payment_or_verify_url, options?)`
+### `verifyPayment(payment_or_verify_url, options?)`
 
 Fetches a LUD-21 verify URL and returns a `VerifyResult`.
 
 ### Utilities
 
 ```ts
-parse_lightning_address(address);
-is_lightning_address(value);
-decode_lnurl(lnurl);
-encode_lnurl(url);
-parse_metadata(metadata_string);
-get_metadata_hash(metadata_string);
-validate_callback_amount(pay_request, amount_msat);
-validate_comment(pay_request, comment);
-validate_mandatory_payer_data(pay_request, payer_data);
+parseLightningAddress(address);
+isLightningAddress(value);
+decodeLnurl(lnurl);
+encodeLnurl(url);
+parseMetadata(metadata_string);
+getMetadataHash(metadata_string);
+validateCallbackAmount(pay_request, amount_msat);
+validateComment(pay_request, comment);
+validateMandatoryPayerData(pay_request, payer_data);
 ```
 
 ## Types
@@ -318,7 +318,7 @@ if (payment.type === "bolt11") {
 - `metadata_hash` is computed from the exact metadata string returned by the provider.
 - `validate_bolt11` performs basic invoice shape validation only. It is not a full BOLT11 decoder.
 - AES success actions are preserved, but synchronous AES decryption is not implemented in v0.1.0 because Web Crypto is asynchronous.
-- Always verify settlement with `verify_payment` when the provider supplies a verify URL.
+- Always verify settlement with `verifyPayment` when the provider supplies a verify URL.
 
 ## Roadmap
 

@@ -13,6 +13,15 @@ bun examples/basic/verify.ts
 bun examples/basic/destination.ts
 ```
 
+## Payment options explainer
+
+`examples/payment-options` contains a standalone HTML explainer plus a Bun mock provider for the multi-rail `paymentOptions` flow. It also shows how the extension composes with LUD-22 currencies.
+
+```sh
+cd examples/payment-options
+bun mock-provider.ts
+```
+
 ## Playground
 
 `examples/playground` is a Vite React app with shadcn-style local components and mocked provider flows.

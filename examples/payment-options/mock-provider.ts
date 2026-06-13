@@ -10,12 +10,13 @@
  *   GET /verify/:id                → LUD-21 verify with paymentOption + paymentReference
  *
  * Usage from the library:
- *   const payRequest = await resolve("alice@localhost:3000");
+ *   const payRequest = await resolve("http://localhost:3000/.well-known/lnurlp/alice", { allowPrivateNetwork: true });
  *   const payment = await requestPayment(payRequest, {
  *     amountMsat: 25000,
  *     paymentOption: "liquid",
+ *     allowPrivateNetwork: true,
  *   });
- *   const result = await verifyPayment(payment);
+ *   const result = await verifyPayment(payment, { allowPrivateNetwork: true });
  */
 
 import { requestPayment, resolve, verifyPayment } from "../../dist/index.js";
@@ -95,7 +96,7 @@ const server = Bun.serve({
             paymentOption: "lightning",
             pr: "lnbc100n1p3qgxcqpp5...",
             paymentDestination: "lnbc100n1p3qgxcqpp5...",
-            paymentUri: "lightning:lnbc100n1p3qgxcqpp5...",
+            paymentURI: "lightning:lnbc100n1p3qgxcqpp5...",
             verify: verifyUrl,
           });
 
@@ -104,7 +105,7 @@ const server = Bun.serve({
             status: "OK",
             paymentOption: "lightning-bolt12",
             paymentDestination: "lno1pg257enxv4ezqcneypekxarpw3jxj",
-            paymentUri: "lightning:lno1pg257enxv4ezqcneypekxarpw3jxj",
+            paymentURI: "lightning:lno1pg257enxv4ezqcneypekxarpw3jxj",
             verify: verifyUrl,
           });
 
@@ -113,7 +114,7 @@ const server = Bun.serve({
             status: "OK",
             paymentOption: "onchain",
             paymentDestination: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
-            paymentUri: "bitcoin:bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh?amount=0.001",
+            paymentURI: "bitcoin:bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh?amount=0.001",
             verify: verifyUrl,
           });
 
@@ -123,7 +124,7 @@ const server = Bun.serve({
             paymentOption: "liquid",
             paymentDestination:
               "lq1qq2x6tjgk6r2v6jlj3mq5x3t2q6f0m4p3k7x9a4c5d6e7f8g9h0i1j2k3l4m5n6o7p8",
-            paymentUri:
+            paymentURI:
               "liquidnetwork:lq1qq2x6tjgk6r2v6jlj3mq5x3t2q6f0m4p3k7x9a4c5d6e7f8g9h0i1j2k3l4m5n6o7p8?amount=0.001",
             verify: verifyUrl,
           });
@@ -187,7 +188,9 @@ setTimeout(async () => {
   try {
     // 1. Resolve
     console.log(`  1. Resolve alice@localhost:${PORT}`);
-    const payRequest = await resolve(`http://localhost:${PORT}/.well-known/lnurlp/alice`);
+    const payRequest = await resolve(`http://localhost:${PORT}/.well-known/lnurlp/alice`, {
+      allowPrivateNetwork: true,
+    });
     console.log(
       "     →",
       payRequest.paymentOptions?.map((o) => `${o.id}:${o.available ? "✓" : "✗"}`).join(", "),
@@ -204,23 +207,24 @@ setTimeout(async () => {
       amountMsat: 25000,
       paymentOption: "liquid",
       payerData: { name: "Demo Wallet" },
+      allowPrivateNetwork: true,
     });
     console.log("     → type:", payment.type);
     console.log("     → paymentOption:", payment.paymentOption);
     console.log("     → paymentDestination:", payment.paymentDestination);
-    console.log("     → paymentUri:", payment.paymentUri);
+    console.log("     → paymentURI:", payment.paymentUri);
     console.log("     → verifyUrl:", payment.verifyUrl);
 
     // 4. Verify immediately (not settled yet)
     console.log("\n  4. Verify immediately...");
-    const early = await verifyPayment(payment);
+    const early = await verifyPayment(payment, { allowPrivateNetwork: true });
     console.log("     → settled:", early.settled);
     console.log("     → paymentReference:", early.paymentReference);
 
     // 5. Wait and verify again
     console.log("\n  5. Wait 3.5s for settlement...");
     await new Promise((r) => setTimeout(r, 3500));
-    const later = await verifyPayment(payment);
+    const later = await verifyPayment(payment, { allowPrivateNetwork: true });
     console.log("     → settled:", later.settled);
     console.log("     → paymentOption:", later.paymentOption);
     console.log("     → paymentReference:", later.paymentReference);

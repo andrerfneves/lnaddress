@@ -39,6 +39,7 @@ if (payment.type === "bolt11") {
 | LUD-16 | Lightning Address | Supported |
 | LUD-18 | `payerData` | Supported |
 | LUD-21 | verify URL | Supported |
+| LUD-22 | currency-denominated amounts and conversion quotes | Supported |
 | LUD-XX | `paymentOptions` for multi-rail pay | Supported |
 
 `lnaddress` intentionally does not implement withdraw, auth, hosted channels, channel requests, NWC, encrypted provider data, or keysend in v0.1.0.
@@ -166,9 +167,41 @@ import { verifyPayment } from "lnaddress";
 await verifyPayment("https://example.com/verify?k1=...");
 ```
 
+## LUD-22 currencies and conversion
+
+Providers can advertise supported currencies with LUD-22 `currencies`. `lnaddress` preserves those as typed `Currency` objects and can build both LUD-22 callback forms:
+
+```ts
+import { requestPayment, resolve, validateCurrency } from "lnaddress";
+
+const payRequest = await resolve("alice@example.com");
+
+console.log(payRequest.currencies);
+// [{ code: "BRL", decimals: 2, multiplier: 5370, convertible: { min: 100, max: 1000000 }, ... }]
+
+validateCurrency(payRequest, "BRL");
+
+// Denominated amount: GET <callback>?amount=100.BRL
+const denominated = await requestPayment(payRequest, {
+  denominatedAmount: { amount: 100, currency: "BRL" },
+});
+
+// Receiver-side conversion: GET <callback>?amount=538000&convert=BRL
+const converted = await requestPayment(payRequest, {
+  amountMsat: 538_000,
+  convert: "BRL",
+});
+
+console.log(denominated.type);
+console.log(converted.converted);
+// { amount: 100, fee: 1000, multiplier: 5370, raw: ... }
+```
+
+`amountMsat` and `denominatedAmount` are mutually exclusive. `convert` requires the selected currency to advertise `convertible`; the callback response must include `converted`, and BOLT11 responses are checked against the LUD-22 formula `invoice amount msat = converted.amount * converted.multiplier + converted.fee`.
+
 ## Payment Options
 
-Providers may advertise multiple payment rails via `paymentOptions` in the LUD-06 response. `lnaddress` parses them and lets you select one before the callback.
+Providers may advertise multiple payment rails via the draft `paymentOptions` extension in the LUD-06 response. `lnaddress` parses them and lets you select one before the callback.
 
 ```ts
 import { requestPayment, resolve, validatePaymentOption } from "lnaddress";
@@ -194,11 +227,11 @@ if (payment.type === "destination") {
 }
 ```
 
-If `paymentOption` is absent, the normal LUD-06 Lightning flow is used. `validatePaymentOption` rejects unknown or unavailable options before the callback is sent.
+If `paymentOption` is absent, the normal LUD-06 Lightning flow is used. `validatePaymentOption` rejects unknown or unavailable options before the callback is sent. If an option has its own `currencies`, those override the top-level LUD-22 `currencies` for that rail; otherwise it inherits the top-level list.
 
 ## Destination Instructions
 
-Some providers return payment destinations instead of BOLT11 invoices. `lnaddress` preserves those responses as a typed destination instruction.
+Some providers return payment destinations instead of BOLT11 invoices. `lnaddress` preserves those responses as a typed destination instruction. Treat destination strings and `paymentUri` as provider data until your application validates the target rail.
 
 ```ts
 const payment = await pay("liquid@example.com", {
@@ -212,13 +245,14 @@ if (payment.type === "destination") {
 }
 ```
 
-The same shape works for BOLT12-style offers and destination rails such as onchain, Liquid, Arkade, or Spark when a provider returns `paymentDestination`, `paymentURI`, and optionally `verify`.
+The same shape works for BOLT12-style offers and destination rails such as onchain, Liquid, Arkade, or Spark when a provider returns `paymentDestination`, wire-field `paymentURI`, and optionally `verify`. Use `assertDestinationRail(payment, "liquid")` or `destinationMatchesRail` when you need URI-scheme validation for known rails.
 
 ## Examples
 
 This repository includes copy-pasteable examples and a richer mocked playground:
 
 - `examples/basic`: small scripts for resolve, BOLT11 requests, comments, payer data, verify, and destination payments.
+- `examples/payment-options`: standalone multi-rail `paymentOptions` explainer and mock provider.
 - `examples/playground`: a Vite React playground with shadcn-style local components that exercises the library end to end against mocked provider flows.
 
 ```sh
@@ -246,6 +280,28 @@ const payRequest = await resolve("alice@example.com", {
   },
 });
 ```
+
+## Network and provider controls
+
+`resolve`, `requestPayment`, `pay`, and `verifyPayment` accept the same fetch controls:
+
+```ts
+await pay("alice@example.com", {
+  amountMsat: 10_000,
+  timeoutMs: 10_000,
+  redirectPolicy: "same-origin",
+  providerPolicy: "same-origin",
+});
+```
+
+By default, `lnaddress` rejects `.onion`, localhost, loopback, link-local, and private-network HTTP(S) URLs. Opt in only when that is intentional:
+
+```ts
+await resolve("https://abcdefghijklmnop.onion/lnurlp/alice", { allowOnion: true });
+await resolve("http://localhost:3000/.well-known/lnurlp/alice", { allowPrivateNetwork: true });
+```
+
+`redirectPolicy` is enforced before following redirects. `providerPolicy: "same-origin"` requires callback and verify URLs to stay on the resolved provider origin; `"same-site"` allows the same hostname or subdomain. Use a custom `fetch` for stricter DNS/IP allowlists, proxies, or runtime-specific SSRF controls.
 
 ## Error Handling
 
@@ -294,6 +350,7 @@ const payment = await requestPayment("alice@example.com", {
   comment: "hi",
   payerData: { name: "Alice" },
   validateBolt11: true,
+  validateMetadataHash: false,
 });
 ```
 
@@ -318,6 +375,7 @@ validateCallbackAmount(payRequest, amountMsat);
 validateComment(payRequest, comment);
 validateMandatoryPayerData(payRequest, payerData);
 validatePaymentOption(payRequest, paymentOption);
+validateCurrency(payRequest, currencyCode);
 ```
 
 ## Types
@@ -325,7 +383,17 @@ validatePaymentOption(payRequest, paymentOption);
 The public API uses camelCase for function names and object fields.
 
 ```ts
-import type { PayRequest, PaymentInstruction, PaymentOption, VerifyResult } from "lnaddress";
+import type {
+  ConvertedAmount,
+  Currency,
+  CurrencyConvertible,
+  DenominatedAmount,
+  PayRequest,
+  PaymentInstruction,
+  PaymentOption,
+  RequestPaymentOptions,
+  VerifyResult,
+} from "lnaddress";
 ```
 
 `PaymentInstruction` is a discriminated union:
@@ -348,15 +416,17 @@ if (payment.type === "bolt11") {
 ## Security Notes
 
 - `metadataHash` is computed from the exact metadata string returned by the provider.
-- `validateBolt11` performs basic invoice shape validation only. It is not a full BOLT11 decoder.
-- AES success actions are preserved, but synchronous AES decryption is not implemented in v0.1.0 because Web Crypto is asynchronous.
+- `validateBolt11` is enabled by default and checks invoice structure, amount, network, expiry, signature, and payee node id when present.
+- BOLT11 description-hash validation is opt-in with `validateMetadataHash: true` because current LUD-06 behavior no longer requires it by default.
+- LUD-09 AES success actions can be decrypted asynchronously with `decryptSuccessAction`.
+- LUD-09 URL success actions and destination `paymentUri` values are untrusted provider data; do not fetch/open them without app-level policy.
 - Always verify settlement with `verifyPayment` when the provider supplies a verify URL.
 
 ## Roadmap
 
-- Full BOLT11 invoice decoding and amount/hash checks.
-- Async AES success action helper.
-- More destination-rail examples as provider conventions stabilize.
+- More destination-rail examples and validators as provider conventions stabilize.
+- Public-suffix-aware same-site policy if callers need browser-style eTLD+1 semantics.
+- Additional LUD coverage when it fits the small Lightning Address-first API.
 
 ## Contributing
 

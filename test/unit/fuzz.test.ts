@@ -84,7 +84,7 @@ describe("deterministic fuzz coverage", () => {
         const parsed = parseMetadata(JSON.stringify(entries));
         expect(
           parsed.every(
-            ([mime_type, value]) => typeof mime_type === "string" && typeof value === "string",
+            ([mimeType, value]) => typeof mimeType === "string" && typeof value === "string",
           ),
         ).toBe(true);
       } catch (error) {

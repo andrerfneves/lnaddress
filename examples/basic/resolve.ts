@@ -7,7 +7,7 @@ const pay_request = await resolve(alice, { fetch });
 console.log({
   callback: pay_request.callback,
   description: pay_request.description,
-  min_sendable_msat: pay_request.min_sendable_msat.toString(),
-  max_sendable_msat: pay_request.max_sendable_msat.toString(),
-  metadata_hash: pay_request.metadata_hash,
+  minSendableMsat: pay_request.minSendableMsat.toString(),
+  maxSendableMsat: pay_request.maxSendableMsat.toString(),
+  metadataHash: pay_request.metadataHash,
 });

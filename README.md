@@ -39,6 +39,7 @@ if (payment.type === "bolt11") {
 | LUD-16 | Lightning Address | Supported |
 | LUD-18 | `payerData` | Supported |
 | LUD-21 | verify URL | Supported |
+| LUD-XX | `paymentOptions` for multi-rail pay | Supported |
 
 `lnaddress` intentionally does not implement withdraw, auth, hosted channels, channel requests, NWC, UMA compliance, encrypted provider data, or keysend in v0.1.0.
 
@@ -66,8 +67,8 @@ import { requestPayment, resolve } from "lnaddress";
 const pay_request = await resolve("alice@example.com");
 
 console.log(pay_request.description);
-console.log(pay_request.min_sendable_msat);
-console.log(pay_request.max_sendable_msat);
+console.log(pay_request.minSendableMsat);
+console.log(pay_request.maxSendableMsat);
 
 const payment = await requestPayment(pay_request, {
   amount_msat: 50_000n,
@@ -132,14 +133,14 @@ validateMandatoryPayerData(pay_request, {
 
 await requestPayment(pay_request, {
   amount_msat: 100_000,
-  payer_data: {
+  payerData: {
     name: "Alice",
     email: "alice@example.com",
   },
 });
 ```
 
-`payer_data` is passed through as provided. Fields that were not requested by the provider are not stripped.
+`payerData` is passed through as provided. Fields that were not requested by the provider are not stripped.
 
 ## Verify
 
@@ -165,6 +166,36 @@ import { verifyPayment } from "lnaddress";
 await verifyPayment("https://example.com/verify?k1=...");
 ```
 
+## Payment Options
+
+Providers may advertise multiple payment rails via `paymentOptions` in the LUD-06 response. `lnaddress` parses them and lets you select one before the callback.
+
+```ts
+import { requestPayment, resolve, validatePaymentOption } from "lnaddress";
+
+const pay_request = await resolve("alice@example.com");
+
+// See available options
+console.log(pay_request.paymentOptions);
+// [{ id: "lightning", type: "lightning" }, { id: "liquid", type: "liquid" }]
+
+// Select a non-Lightning option
+validatePaymentOption(pay_request, "liquid");
+
+const payment = await requestPayment(pay_request, {
+  amount_msat: 25_000,
+  paymentOption: "liquid",
+});
+
+if (payment.type === "destination") {
+  console.log(payment.paymentOption);     // "liquid"
+  console.log(payment.paymentDestination); // "lq1..."
+  console.log(payment.paymentUri);          // "liquidnetwork:lq1..."
+}
+```
+
+If `paymentOption` is absent, the normal LUD-06 Lightning flow is used. `validatePaymentOption` rejects unknown or unavailable options before the callback is sent.
+
 ## Destination Instructions
 
 Some providers return payment destinations instead of BOLT11 invoices. `lnaddress` preserves those responses as a typed destination instruction.
@@ -175,9 +206,9 @@ const payment = await pay("liquid@example.com", {
 });
 
 if (payment.type === "destination") {
-  console.log(payment.payment_destination);
-  console.log(payment.payment_uri);
-  console.log(payment.verify_url);
+  console.log(payment.paymentDestination);
+  console.log(payment.paymentUri);
+  console.log(payment.verifyUrl);
 }
 ```
 
@@ -261,7 +292,7 @@ Accepts a resolved `PayRequest` or any `resolve` input and returns a `PaymentIns
 const payment = await requestPayment("alice@example.com", {
   amount_msat: 10_000,
   comment: "hi",
-  payer_data: { name: "Alice" },
+  payerData: { name: "Alice" },
   validate_bolt11: true,
 });
 ```
@@ -270,7 +301,7 @@ const payment = await requestPayment("alice@example.com", {
 
 One-shot `resolve` plus `requestPayment`.
 
-### `verifyPayment(payment_or_verify_url, options?)`
+### `verifyPayment(payment_or_verifyUrl, options?)`
 
 Fetches a LUD-21 verify URL and returns a `VerifyResult`.
 
@@ -285,7 +316,8 @@ parseMetadata(metadata_string);
 getMetadataHash(metadata_string);
 validateCallbackAmount(pay_request, amount_msat);
 validateComment(pay_request, comment);
-validateMandatoryPayerData(pay_request, payer_data);
+validateMandatoryPayerData(pay_request, payerData);
+validatePaymentOption(pay_request, paymentOption);
 ```
 
 ## Types
@@ -293,7 +325,7 @@ validateMandatoryPayerData(pay_request, payer_data);
 The public API uses snake_case for function names and object fields.
 
 ```ts
-import type { PayRequest, PaymentInstruction, VerifyResult } from "lnaddress";
+import type { PayRequest, PaymentInstruction, PaymentOption, VerifyResult } from "lnaddress";
 ```
 
 `PaymentInstruction` is a discriminated union:
@@ -302,7 +334,7 @@ import type { PayRequest, PaymentInstruction, VerifyResult } from "lnaddress";
 if (payment.type === "bolt11") {
   payment.pr;
 } else {
-  payment.payment_destination;
+  payment.paymentDestination;
 }
 ```
 
@@ -315,7 +347,7 @@ if (payment.type === "bolt11") {
 
 ## Security Notes
 
-- `metadata_hash` is computed from the exact metadata string returned by the provider.
+- `metadataHash` is computed from the exact metadata string returned by the provider.
 - `validate_bolt11` performs basic invoice shape validation only. It is not a full BOLT11 decoder.
 - AES success actions are preserved, but synchronous AES decryption is not implemented in v0.1.0 because Web Crypto is asynchronous.
 - Always verify settlement with `verifyPayment` when the provider supplies a verify URL.

@@ -5,6 +5,7 @@ export {
   InvalidCallbackResponseError,
   InvalidLightningAddressError,
   InvalidLnurlError,
+  InvalidPaymentOptionError,
   InvalidPayRequestError,
   LnAddressError,
   MissingMandatoryPayerDataError,
@@ -28,6 +29,7 @@ export {
   validateCallbackAmount,
   validateComment,
   validateMandatoryPayerData,
+  validatePaymentOption,
 } from "./request-payment";
 export { resolve } from "./resolve";
 export { decryptSuccessAction, parseSuccessAction } from "./success-action";
@@ -45,6 +47,7 @@ export type {
   PayerData,
   PayerDataField,
   PaymentInstruction,
+  PaymentOption,
   ProviderPolicy,
   RequestPaymentOptions,
   ResolveOptions,

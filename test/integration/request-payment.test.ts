@@ -38,7 +38,7 @@ describe("requestPayment", () => {
       expect(url.searchParams.get("payerdata")).toBe(JSON.stringify({ name: "Alice" }));
 
       return json_response({
-        pr: await test_bolt11_invoice(2000, pay_request.metadata_hash),
+        pr: await test_bolt11_invoice(2000, pay_request.metadataHash),
         routes: [],
         verify: "https://example.com/verify/123",
         successAction: { tag: "message", message: "paid" },
@@ -46,17 +46,17 @@ describe("requestPayment", () => {
     };
 
     const payment = await requestPayment(pay_request, {
-      amount_msat: 2000,
+      amountMsat: 2000,
       comment: "thanks ⚡",
-      payer_data: { name: "Alice" },
+      payerData: { name: "Alice" },
       fetch: fetcher,
     });
 
     expect(payment.type).toBe("bolt11");
     if (payment.type === "bolt11") {
-      expect(payment.pr).toBe(await test_bolt11_invoice(2000, pay_request.metadata_hash));
-      expect(payment.verify_url).toBe("https://example.com/verify/123");
-      expect(payment.success_action).toEqual({ tag: "message", message: "paid" });
+      expect(payment.pr).toBe(await test_bolt11_invoice(2000, pay_request.metadataHash));
+      expect(payment.verifyUrl).toBe("https://example.com/verify/123");
+      expect(payment.successAction).toEqual({ tag: "message", message: "paid" });
     }
   });
 
@@ -73,15 +73,15 @@ describe("requestPayment", () => {
       expect(url.searchParams.getAll("payerdata")).toEqual([JSON.stringify({ name: "Alice" })]);
 
       return json_response({
-        pr: await test_bolt11_invoice(2000, pay_request.metadata_hash),
+        pr: await test_bolt11_invoice(2000, pay_request.metadataHash),
       });
     };
 
     await expect(
       requestPayment(pay_request_with_query, {
-        amount_msat: 2000,
+        amountMsat: 2000,
         comment: "new",
-        payer_data: { name: "Alice" },
+        payerData: { name: "Alice" },
         fetch: fetcher,
       }),
     ).resolves.toMatchObject({ type: "bolt11" });
@@ -96,43 +96,43 @@ describe("requestPayment", () => {
       });
 
     const payment = await requestPayment(pay_request, {
-      amount_msat: 2000n,
-      payer_data: { name: "Alice" },
+      amountMsat: 2000n,
+      payerData: { name: "Alice" },
       fetch: fetcher,
     });
 
     expect(payment).toMatchObject({
       type: "destination",
-      payment_destination: "liquid-address",
-      payment_uri: "liquidnetwork:liquid-address",
-      verify_url: "https://example.com/verify/liquid",
+      paymentDestination: "liquid-address",
+      paymentUri: "liquidnetwork:liquid-address",
+      verifyUrl: "https://example.com/verify/liquid",
     });
   });
 
   test("validates comments and mandatory payer data before callback", async () => {
     const fetcher = async () =>
-      json_response({ pr: await test_bolt11_invoice(2000, pay_request.metadata_hash) });
+      json_response({ pr: await test_bolt11_invoice(2000, pay_request.metadataHash) });
 
     await expect(
       requestPayment(pay_request, {
-        amount_msat: 2000,
+        amountMsat: 2000,
         comment: "this is too long",
-        payer_data: { name: "Alice" },
+        payerData: { name: "Alice" },
         fetch: fetcher,
       }),
     ).rejects.toThrow(CommentTooLongError);
 
     await expect(
       requestPayment(pay_request, {
-        amount_msat: 2000,
+        amountMsat: 2000,
         fetch: fetcher,
       }),
     ).rejects.toThrow(MissingMandatoryPayerDataError);
 
     await expect(
       requestPayment(pay_request, {
-        amount_msat: 2000,
-        payer_data: { name: null },
+        amountMsat: 2000,
+        payerData: { name: null },
         fetch: fetcher,
       }),
     ).rejects.toThrow(MissingMandatoryPayerDataError);
@@ -141,16 +141,16 @@ describe("requestPayment", () => {
   test("rejects callback errors and missing instructions", async () => {
     await expect(
       requestPayment(pay_request, {
-        amount_msat: 2000,
-        payer_data: { name: "Alice" },
+        amountMsat: 2000,
+        payerData: { name: "Alice" },
         fetch: async () => json_response({ status: "ERROR", reason: "nope" }),
       }),
     ).rejects.toThrow(InvalidCallbackResponseError);
 
     await expect(
       requestPayment(pay_request, {
-        amount_msat: 2000,
-        payer_data: { name: "Alice" },
+        amountMsat: 2000,
+        payerData: { name: "Alice" },
         fetch: async () => json_response({ status: "OK" }),
       }),
     ).rejects.toThrow(InvalidCallbackResponseError);
@@ -159,11 +159,11 @@ describe("requestPayment", () => {
   test("rejects invalid callback verify URLs", async () => {
     await expect(
       requestPayment(pay_request, {
-        amount_msat: 2000,
-        payer_data: { name: "Alice" },
+        amountMsat: 2000,
+        payerData: { name: "Alice" },
         fetch: async () =>
           json_response({
-            pr: await test_bolt11_invoice(2000, pay_request.metadata_hash),
+            pr: await test_bolt11_invoice(2000, pay_request.metadataHash),
             verify: "lightning:lnbc1example",
           }),
       }),
@@ -171,8 +171,8 @@ describe("requestPayment", () => {
 
     await expect(
       requestPayment(pay_request, {
-        amount_msat: 2000,
-        payer_data: { name: "Alice" },
+        amountMsat: 2000,
+        payerData: { name: "Alice" },
         fetch: async () =>
           json_response({
             paymentDestination: "liquid-address",
@@ -185,36 +185,36 @@ describe("requestPayment", () => {
   test("validates BOLT11 amount and metadata hash by default and can skip the check", async () => {
     await expect(
       requestPayment(pay_request, {
-        amount_msat: 2000,
-        payer_data: { name: "Alice" },
+        amountMsat: 2000,
+        payerData: { name: "Alice" },
         fetch: async () => json_response({ pr: "not-an-invoice" }),
       }),
     ).rejects.toThrow(InvalidCallbackResponseError);
 
     await expect(
       requestPayment(pay_request, {
-        amount_msat: 2000,
-        payer_data: { name: "Alice" },
+        amountMsat: 2000,
+        payerData: { name: "Alice" },
         fetch: async () =>
-          json_response({ pr: await test_bolt11_invoice(3000, pay_request.metadata_hash) }),
+          json_response({ pr: await test_bolt11_invoice(3000, pay_request.metadataHash) }),
       }),
     ).rejects.toThrow(InvalidCallbackResponseError);
 
     await expect(
       requestPayment(pay_request, {
-        amount_msat: 2000,
-        payer_data: { name: "Alice" },
+        amountMsat: 2000,
+        payerData: { name: "Alice" },
         fetch: async () => json_response({ pr: await test_bolt11_invoice(2000, "00".repeat(32)) }),
       }),
     ).rejects.toThrow(InvalidCallbackResponseError);
 
     await expect(
       requestPayment(pay_request, {
-        amount_msat: 2000,
-        payer_data: { name: "Alice" },
+        amountMsat: 2000,
+        payerData: { name: "Alice" },
         fetch: async () =>
           json_response({
-            pr: await test_bolt11_invoice(2000, pay_request.metadata_hash, {
+            pr: await test_bolt11_invoice(2000, pay_request.metadataHash, {
               mismatched_payee_node: true,
             }),
           }),
@@ -223,9 +223,9 @@ describe("requestPayment", () => {
 
     await expect(
       requestPayment(pay_request, {
-        amount_msat: 2000,
-        payer_data: { name: "Alice" },
-        validate_bolt11: false,
+        amountMsat: 2000,
+        payerData: { name: "Alice" },
+        validateBolt11: false,
         fetch: async () => json_response({ pr: "not-an-invoice" }),
       }),
     ).resolves.toMatchObject({
@@ -237,32 +237,32 @@ describe("requestPayment", () => {
   test("validates BOLT11 network and expiry policy", async () => {
     await expect(
       requestPayment(pay_request, {
-        amount_msat: 2000,
-        payer_data: { name: "Alice" },
-        expected_network: "testnet",
+        amountMsat: 2000,
+        payerData: { name: "Alice" },
+        expectedNetwork: "testnet",
         fetch: async () =>
-          json_response({ pr: await test_bolt11_invoice(2000, pay_request.metadata_hash) }),
+          json_response({ pr: await test_bolt11_invoice(2000, pay_request.metadataHash) }),
       }),
     ).rejects.toThrow(InvalidCallbackResponseError);
 
     await expect(
       requestPayment(pay_request, {
-        amount_msat: 2000,
-        payer_data: { name: "Alice" },
-        expected_network: "bitcoin",
+        amountMsat: 2000,
+        payerData: { name: "Alice" },
+        expectedNetwork: "bitcoin",
         fetch: async () =>
-          json_response({ pr: await test_bolt11_invoice(2000, pay_request.metadata_hash) }),
+          json_response({ pr: await test_bolt11_invoice(2000, pay_request.metadataHash) }),
       }),
     ).resolves.toMatchObject({ type: "bolt11" });
 
     await expect(
       requestPayment(pay_request, {
-        amount_msat: 2000,
-        payer_data: { name: "Alice" },
+        amountMsat: 2000,
+        payerData: { name: "Alice" },
         now: 2_000_000,
         fetch: async () =>
           json_response({
-            pr: await test_bolt11_invoice(2000, pay_request.metadata_hash, {
+            pr: await test_bolt11_invoice(2000, pay_request.metadataHash, {
               timestamp: 1_000_000,
               expiry_seconds: 60,
             }),
@@ -272,13 +272,13 @@ describe("requestPayment", () => {
 
     await expect(
       requestPayment(pay_request, {
-        amount_msat: 2000,
-        payer_data: { name: "Alice" },
-        validate_expiry: false,
+        amountMsat: 2000,
+        payerData: { name: "Alice" },
+        validateExpiry: false,
         now: 2_000_000,
         fetch: async () =>
           json_response({
-            pr: await test_bolt11_invoice(2000, pay_request.metadata_hash, {
+            pr: await test_bolt11_invoice(2000, pay_request.metadataHash, {
               timestamp: 1_000_000,
               expiry_seconds: 60,
             }),
@@ -296,11 +296,11 @@ describe("requestPayment", () => {
 
     await expect(
       requestPayment(invalid_pay_request, {
-        amount_msat: 2000,
-        payer_data: { name: "Alice" },
+        amountMsat: 2000,
+        payerData: { name: "Alice" },
         fetch: async () => {
           called = true;
-          return json_response({ pr: await test_bolt11_invoice(2000, pay_request.metadata_hash) });
+          return json_response({ pr: await test_bolt11_invoice(2000, pay_request.metadataHash) });
         },
       }),
     ).rejects.toThrow(InvalidCallbackResponseError);
@@ -313,10 +313,10 @@ describe("requestPayment", () => {
 
     await expect(
       requestPayment(onion_pay_request, {
-        amount_msat: 2000,
-        payer_data: { name: "Alice" },
+        amountMsat: 2000,
+        payerData: { name: "Alice" },
         fetch: async () =>
-          json_response({ pr: await test_bolt11_invoice(2000, pay_request.metadata_hash) }),
+          json_response({ pr: await test_bolt11_invoice(2000, pay_request.metadataHash) }),
       }),
     ).resolves.toMatchObject({
       type: "bolt11",
@@ -326,7 +326,7 @@ describe("requestPayment", () => {
   test("enforces optional provider identity policy", async () => {
     const sourced_pay_request = {
       ...pay_request,
-      source_url: "https://example.com/.well-known/lnurlp/alice",
+      sourceUrl: "https://example.com/.well-known/lnurlp/alice",
     };
 
     await expect(
@@ -336,11 +336,11 @@ describe("requestPayment", () => {
           callback: "https://payments.example.net/callback",
         },
         {
-          amount_msat: 2000,
-          payer_data: { name: "Alice" },
-          provider_policy: "same-site",
+          amountMsat: 2000,
+          payerData: { name: "Alice" },
+          providerPolicy: "same-site",
           fetch: async () =>
-            json_response({ pr: await test_bolt11_invoice(2000, pay_request.metadata_hash) }),
+            json_response({ pr: await test_bolt11_invoice(2000, pay_request.metadataHash) }),
         },
       ),
     ).rejects.toThrow(InvalidCallbackResponseError);
@@ -352,23 +352,23 @@ describe("requestPayment", () => {
           callback: "https://pay.example.com/callback",
         },
         {
-          amount_msat: 2000,
-          payer_data: { name: "Alice" },
-          provider_policy: "same-site",
+          amountMsat: 2000,
+          payerData: { name: "Alice" },
+          providerPolicy: "same-site",
           fetch: async () =>
-            json_response({ pr: await test_bolt11_invoice(2000, pay_request.metadata_hash) }),
+            json_response({ pr: await test_bolt11_invoice(2000, pay_request.metadataHash) }),
         },
       ),
     ).resolves.toMatchObject({ type: "bolt11" });
 
     await expect(
       requestPayment(sourced_pay_request, {
-        amount_msat: 2000,
-        payer_data: { name: "Alice" },
-        provider_policy: "same-origin",
+        amountMsat: 2000,
+        payerData: { name: "Alice" },
+        providerPolicy: "same-origin",
         fetch: async () =>
           json_response({
-            pr: await test_bolt11_invoice(2000, pay_request.metadata_hash),
+            pr: await test_bolt11_invoice(2000, pay_request.metadataHash),
             verify: "https://verify.example.net/verify",
           }),
       }),
@@ -376,12 +376,12 @@ describe("requestPayment", () => {
 
     await expect(
       requestPayment(sourced_pay_request, {
-        amount_msat: 2000,
-        payer_data: { name: "Alice" },
-        provider_policy: "same-origin",
+        amountMsat: 2000,
+        payerData: { name: "Alice" },
+        providerPolicy: "same-origin",
         fetch: async () =>
           json_response({
-            pr: await test_bolt11_invoice(2000, pay_request.metadata_hash),
+            pr: await test_bolt11_invoice(2000, pay_request.metadataHash),
             verify: "https://example.com/verify",
           }),
       }),
@@ -390,12 +390,12 @@ describe("requestPayment", () => {
 
   test("wraps non-serializable payer data errors", async () => {
     const fetcher = async () =>
-      json_response({ pr: await test_bolt11_invoice(2000, pay_request.metadata_hash) });
+      json_response({ pr: await test_bolt11_invoice(2000, pay_request.metadataHash) });
 
     await expect(
       requestPayment(pay_request, {
-        amount_msat: 2000,
-        payer_data: { name: "Alice", unsupported: 1n },
+        amountMsat: 2000,
+        payerData: { name: "Alice", unsupported: 1n },
         fetch: fetcher,
       }),
     ).rejects.toThrow(InvalidCallbackResponseError);

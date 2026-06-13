@@ -5,21 +5,21 @@ async function narrows_discriminated_union(payment: PaymentInstruction) {
   if (payment.type === "bolt11") {
     payment.pr satisfies string;
   } else {
-    payment.payment_destination satisfies string;
+    payment.paymentDestination satisfies string;
   }
 }
 
 async function exported_types_are_usable() {
   const pay_request = await resolve("alice@example.com");
-  pay_request.min_sendable_msat satisfies bigint;
-  pay_request.metadata_hash satisfies string;
+  pay_request.minSendableMsat satisfies bigint;
+  pay_request.metadataHash satisfies string;
 
-  const payment = await pay(pay_request.source_url ?? "alice@example.com", {
-    amount_msat: 1000n,
+  const payment = await pay(pay_request.sourceUrl ?? "alice@example.com", {
+    amountMsat: 1000n,
   });
 
   await narrows_discriminated_union(payment);
-  const verify_result = await verifyPayment(payment.verify_url ?? "https://example.com/verify");
+  const verify_result = await verifyPayment(payment.verifyUrl ?? "https://example.com/verify");
   verify_result.status satisfies "OK" | "ERROR";
 }
 

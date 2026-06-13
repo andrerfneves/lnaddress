@@ -31,7 +31,7 @@ describe("validation helpers", () => {
     expect(() => validateCallbackAmount(pay_request, 5001n)).toThrow(AmountOutOfRangeError);
   });
 
-  test("validates comments against comment_allowed", () => {
+  test("validates comments against commentAllowed", () => {
     const without_comment = parsePayRequestResponse(base_response);
     expect(() => validateComment(without_comment, "hi")).toThrow(CommentNotAllowedError);
 

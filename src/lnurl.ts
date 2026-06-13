@@ -1,5 +1,5 @@
 import { InvalidLnurlError } from "./errors";
-import { assert_http_url } from "./internal";
+import { assertHttpUrl } from "./internal";
 import type { UrlSafetyOptions } from "./types";
 
 const charset = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
@@ -22,7 +22,7 @@ function polymod(values: number[]): number {
   return chk;
 }
 
-function hrp_expand(hrp: string): number[] {
+function hrpExpand(hrp: string): number[] {
   const expanded: number[] = [];
 
   for (let i = 0; i < hrp.length; i += 1) {
@@ -38,8 +38,8 @@ function hrp_expand(hrp: string): number[] {
   return expanded;
 }
 
-function create_checksum(hrp: string, data: number[]): number[] {
-  const values = [...hrp_expand(hrp), ...data, 0, 0, 0, 0, 0, 0];
+function createChecksum(hrp: string, data: number[]): number[] {
+  const values = [...hrpExpand(hrp), ...data, 0, 0, 0, 0, 0, 0];
   const mod = polymod(values) ^ 1;
   const checksum: number[] = [];
 
@@ -50,36 +50,36 @@ function create_checksum(hrp: string, data: number[]): number[] {
   return checksum;
 }
 
-function verify_checksum(hrp: string, data: number[]): boolean {
-  return polymod([...hrp_expand(hrp), ...data]) === 1;
+function verifyChecksum(hrp: string, data: number[]): boolean {
+  return polymod([...hrpExpand(hrp), ...data]) === 1;
 }
 
-function convert_bits(data: number[], from_bits: number, to_bits: number, pad: boolean): number[] {
+function convertBits(data: number[], fromBits: number, toBits: number, pad: boolean): number[] {
   let acc = 0;
   let bits = 0;
   const ret: number[] = [];
-  const maxv = (1 << to_bits) - 1;
-  const max_acc = (1 << (from_bits + to_bits - 1)) - 1;
+  const maxv = (1 << toBits) - 1;
+  const max_acc = (1 << (fromBits + toBits - 1)) - 1;
 
   for (const value of data) {
-    if (value < 0 || value >> from_bits !== 0) {
+    if (value < 0 || value >> fromBits !== 0) {
       throw new InvalidLnurlError("LNURL data contains an invalid value");
     }
 
-    acc = ((acc << from_bits) | value) & max_acc;
-    bits += from_bits;
+    acc = ((acc << fromBits) | value) & max_acc;
+    bits += fromBits;
 
-    while (bits >= to_bits) {
-      bits -= to_bits;
+    while (bits >= toBits) {
+      bits -= toBits;
       ret.push((acc >> bits) & maxv);
     }
   }
 
   if (pad) {
     if (bits > 0) {
-      ret.push((acc << (to_bits - bits)) & maxv);
+      ret.push((acc << (toBits - bits)) & maxv);
     }
-  } else if (bits >= from_bits || ((acc << (to_bits - bits)) & maxv) !== 0) {
+  } else if (bits >= fromBits || ((acc << (toBits - bits)) & maxv) !== 0) {
     throw new InvalidLnurlError("LNURL data padding is invalid");
   }
 
@@ -90,14 +90,14 @@ export function encodeLnurl(url: string, options: UrlSafetyOptions = {}): string
   let parsed: URL;
 
   try {
-    parsed = assert_http_url(url, options);
+    parsed = assertHttpUrl(url, options);
   } catch (cause) {
     throw new InvalidLnurlError("LNURL can only encode valid http or https URLs", { cause });
   }
 
   const bytes = [...new TextEncoder().encode(parsed.toString())];
-  const data = convert_bits(bytes, 8, 5, true);
-  const combined = [...data, ...create_checksum("lnurl", data)];
+  const data = convertBits(bytes, 8, 5, true);
+  const combined = [...data, ...createChecksum("lnurl", data)];
 
   return `lnurl1${combined.map((value) => charset[value]).join("")}`;
 }
@@ -130,16 +130,16 @@ export function decodeLnurl(lnurl: string, options: UrlSafetyOptions = {}): stri
     return index;
   });
 
-  if (!verify_checksum(hrp, data)) {
+  if (!verifyChecksum(hrp, data)) {
     throw new InvalidLnurlError("LNURL bech32 checksum is invalid");
   }
 
   const payload = data.slice(0, -6);
-  const bytes = convert_bits(payload, 5, 8, false);
+  const bytes = convertBits(payload, 5, 8, false);
   const url = new TextDecoder().decode(new Uint8Array(bytes));
 
   try {
-    return assert_http_url(url, options).toString();
+    return assertHttpUrl(url, options).toString();
   } catch (cause) {
     throw new InvalidLnurlError("Decoded LNURL does not contain a valid http or https URL", {
       cause,

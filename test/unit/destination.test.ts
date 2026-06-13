@@ -11,8 +11,8 @@ import type { PaymentInstruction } from "../../src";
 describe("destination payment helpers", () => {
   const liquid_payment: PaymentInstruction = {
     type: "destination",
-    payment_destination: "liquid-address",
-    payment_uri: "liquidnetwork:liquid-address",
+    paymentDestination: "liquid-address",
+    paymentUri: "liquidnetwork:liquid-address",
     raw: {},
   };
 

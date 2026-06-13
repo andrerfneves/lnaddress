@@ -5,32 +5,32 @@ import {
   NetworkError,
 } from "./errors";
 import {
-  assert_http_url,
-  assert_redirect_policy,
-  get_fetch,
-  read_json_response,
-  request_init,
+  assertHttpUrl,
+  assertRedirectPolicy,
+  getFetch,
+  readJsonResponse,
+  requestInit,
 } from "./internal";
 import { parseLightningAddress } from "./lightning-address";
 import { decodeLnurl } from "./lnurl";
 import { parsePayRequestResponse } from "./payrequest";
 import type { LightningAddress, PayRequest, ResolveOptions } from "./types";
 
-function lightning_address_to_url(lightning_address: LightningAddress): string {
-  return `https://${lightning_address.domain}/.well-known/lnurlp/${encodeURIComponent(
-    lightning_address.username,
+function lightningAddress_to_url(lightningAddress: LightningAddress): string {
+  return `https://${lightningAddress.domain}/.well-known/lnurlp/${encodeURIComponent(
+    lightningAddress.username,
   )}`;
 }
 
 function assert_resolve_url(url: string, options: ResolveOptions): string {
   try {
-    return assert_http_url(url, options).toString();
+    return assertHttpUrl(url, options).toString();
   } catch (cause) {
     throw new InvalidLnurlError("Generated LNURL-pay endpoint URL is invalid", { cause });
   }
 }
 
-function lnurlp_uri_to_url(input: string): { url: string; lightning_address?: LightningAddress } {
+function lnurlp_uri_to_url(input: string): { url: string; lightningAddress?: LightningAddress } {
   let parsed: URL;
 
   try {
@@ -44,10 +44,10 @@ function lnurlp_uri_to_url(input: string): { url: string; lightning_address?: Li
   }
 
   if (parsed.username) {
-    const lightning_address = parseLightningAddress(`${parsed.username}@${parsed.hostname}`);
+    const lightningAddress = parseLightningAddress(`${parsed.username}@${parsed.hostname}`);
     return {
-      url: lightning_address_to_url(lightning_address),
-      lightning_address,
+      url: lightningAddress_to_url(lightningAddress),
+      lightningAddress,
     };
   }
 
@@ -73,7 +73,7 @@ function lnurlp_uri_to_url(input: string): { url: string; lightning_address?: Li
   };
 }
 
-function input_to_url(
+function inputToUrl(
   input: string,
   options: ResolveOptions,
 ): { url: string; address?: LightningAddress } {
@@ -82,10 +82,10 @@ function input_to_url(
 
   if (lower.startsWith("lnurlp://")) {
     const result = lnurlp_uri_to_url(value);
-    return result.lightning_address
+    return result.lightningAddress
       ? {
           url: assert_resolve_url(result.url, options),
-          address: result.lightning_address,
+          address: result.lightningAddress,
         }
       : {
           url: assert_resolve_url(result.url, options),
@@ -101,7 +101,7 @@ function input_to_url(
   if (!value.includes("://") && value.includes("@")) {
     const address = parseLightningAddress(value);
     return {
-      url: assert_resolve_url(lightning_address_to_url(address), options),
+      url: assert_resolve_url(lightningAddress_to_url(address), options),
       address,
     };
   }
@@ -125,10 +125,10 @@ function input_to_url(
 }
 
 export async function resolve(input: string, options: ResolveOptions = {}): Promise<PayRequest> {
-  const { url, address } = input_to_url(input, options);
-  const fetcher = get_fetch(options.fetch);
+  const { url, address } = inputToUrl(input, options);
+  const fetcher = getFetch(options.fetch);
   let response: Response;
-  const { init, cleanup } = request_init(options.headers, options);
+  const { init, cleanup } = requestInit(options.headers, options);
 
   try {
     response = await fetcher(url, init);
@@ -138,7 +138,7 @@ export async function resolve(input: string, options: ResolveOptions = {}): Prom
     cleanup();
   }
 
-  assert_redirect_policy(url, response, options);
+  assertRedirectPolicy(url, response, options);
 
   if (!response.ok) {
     throw new NetworkError(
@@ -148,15 +148,15 @@ export async function resolve(input: string, options: ResolveOptions = {}): Prom
 
   let raw: unknown;
   try {
-    raw = await read_json_response(response);
+    raw = await readJsonResponse(response);
   } catch (cause) {
     throw new InvalidPayRequestError("Resolved response is not valid JSON", { cause });
   }
 
   const parse_context = {
-    source_url: url,
-    ...(options.allow_onion !== undefined ? { allow_onion: options.allow_onion } : {}),
-    ...(address ? { lightning_address: address } : {}),
+    sourceUrl: url,
+    ...(options.allowOnion !== undefined ? { allowOnion: options.allowOnion } : {}),
+    ...(address ? { lightningAddress: address } : {}),
   };
 
   return parsePayRequestResponse(raw, parse_context);

@@ -8,9 +8,9 @@ const comment = "Thanks for the demo";
 validateComment(pay_request, comment);
 
 const payment = await requestPayment(pay_request, {
-  amount_msat: 25_000,
+  amountMsat: 25_000,
   comment,
-  payer_data: { name: "Alice" },
+  payerData: { name: "Alice" },
   fetch,
 });
 

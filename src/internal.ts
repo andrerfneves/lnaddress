@@ -1,7 +1,7 @@
 import { NetworkError } from "./errors";
 import type { FetchControls, FetchLike, UrlSafetyOptions } from "./types";
 
-export function get_fetch(fetcher?: FetchLike): FetchLike {
+export function getFetch(fetcher?: FetchLike): FetchLike {
   const selected = fetcher ?? globalThis.fetch;
 
   if (!selected) {
@@ -11,7 +11,7 @@ export function get_fetch(fetcher?: FetchLike): FetchLike {
   return selected.bind(globalThis) as FetchLike;
 }
 
-export function merge_headers(headers?: HeadersInit): Headers {
+export function mergeHeaders(headers?: HeadersInit): Headers {
   const merged = new Headers(headers);
   if (!merged.has("accept")) {
     merged.set("accept", "application/json");
@@ -19,23 +19,23 @@ export function merge_headers(headers?: HeadersInit): Headers {
   return merged;
 }
 
-export function request_init(
+export function requestInit(
   headers: HeadersInit | undefined,
   options: FetchControls,
 ): { init: RequestInit; cleanup: () => void } {
   const init: RequestInit = {
-    headers: merge_headers(headers),
+    headers: mergeHeaders(headers),
   };
   const cleanup_callbacks: Array<() => void> = [];
 
-  if (options.timeout_ms !== undefined) {
-    if (!Number.isSafeInteger(options.timeout_ms) || options.timeout_ms <= 0) {
-      throw new NetworkError("timeout_ms must be a positive safe integer");
+  if (options.timeoutMs !== undefined) {
+    if (!Number.isSafeInteger(options.timeoutMs) || options.timeoutMs <= 0) {
+      throw new NetworkError("timeoutMs must be a positive safe integer");
     }
 
     const controller = new AbortController();
     init.signal = controller.signal;
-    const timeout = setTimeout(() => controller.abort(), options.timeout_ms);
+    const timeout = setTimeout(() => controller.abort(), options.timeoutMs);
     cleanup_callbacks.push(() => clearTimeout(timeout));
 
     if (options.signal) {
@@ -61,18 +61,18 @@ export function request_init(
   };
 }
 
-export function assert_redirect_policy(
+export function assertRedirectPolicy(
   request_url: URL | string,
   response: Response,
   options: FetchControls,
 ): void {
-  const policy = options.redirect_policy ?? "follow";
+  const policy = options.redirectPolicy ?? "follow";
   if (policy === "follow" || !response.redirected || !response.url) {
     return;
   }
 
   if (policy === "error") {
-    throw new NetworkError("Redirected responses are disabled by redirect_policy");
+    throw new NetworkError("Redirected responses are disabled by redirectPolicy");
   }
 
   const original = new URL(String(request_url));
@@ -87,7 +87,7 @@ export function assert_redirect_policy(
   }
 }
 
-export function parse_json_object(raw: unknown, label: string): Record<string, unknown> {
+export function parseJsonObject(raw: unknown, label: string): Record<string, unknown> {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     throw new TypeError(`${label} must be an object`);
   }
@@ -95,7 +95,7 @@ export function parse_json_object(raw: unknown, label: string): Record<string, u
   return raw as Record<string, unknown>;
 }
 
-export function read_string(raw: Record<string, unknown>, keys: string[]): string | undefined {
+export function readString(raw: Record<string, unknown>, keys: string[]): string | undefined {
   for (const key of keys) {
     const value = raw[key];
     if (typeof value === "string") {
@@ -106,7 +106,7 @@ export function read_string(raw: Record<string, unknown>, keys: string[]): strin
   return undefined;
 }
 
-export function read_boolean(raw: Record<string, unknown>, keys: string[]): boolean | undefined {
+export function readBoolean(raw: Record<string, unknown>, keys: string[]): boolean | undefined {
   for (const key of keys) {
     const value = raw[key];
     if (typeof value === "boolean") {
@@ -117,7 +117,7 @@ export function read_boolean(raw: Record<string, unknown>, keys: string[]): bool
   return undefined;
 }
 
-export function read_unknown(raw: Record<string, unknown>, keys: string[]): unknown {
+export function readUnknown(raw: Record<string, unknown>, keys: string[]): unknown {
   for (const key of keys) {
     if (key in raw) {
       return raw[key];
@@ -127,7 +127,7 @@ export function read_unknown(raw: Record<string, unknown>, keys: string[]): unkn
   return undefined;
 }
 
-export function assert_http_url(url: string, _options: UrlSafetyOptions = {}): URL {
+export function assertHttpUrl(url: string, _options: UrlSafetyOptions = {}): URL {
   let parsed: URL;
 
   try {
@@ -143,7 +143,7 @@ export function assert_http_url(url: string, _options: UrlSafetyOptions = {}): U
   return parsed;
 }
 
-export async function read_json_response(response: Response): Promise<unknown> {
+export async function readJsonResponse(response: Response): Promise<unknown> {
   try {
     return await response.json();
   } catch (cause) {
@@ -151,22 +151,22 @@ export async function read_json_response(response: Response): Promise<unknown> {
   }
 }
 
-export function amount_to_msat_string(amount_msat: number | bigint): string {
-  if (typeof amount_msat === "bigint") {
-    if (amount_msat < 0n) {
-      throw new TypeError("amount_msat must be non-negative");
+export function amountToMsatString(amountMsat: number | bigint): string {
+  if (typeof amountMsat === "bigint") {
+    if (amountMsat < 0n) {
+      throw new TypeError("amountMsat must be non-negative");
     }
-    return amount_msat.toString();
+    return amountMsat.toString();
   }
 
-  if (!Number.isSafeInteger(amount_msat) || amount_msat < 0) {
-    throw new TypeError("amount_msat must be a non-negative safe integer");
+  if (!Number.isSafeInteger(amountMsat) || amountMsat < 0) {
+    throw new TypeError("amountMsat must be a non-negative safe integer");
   }
 
-  return String(amount_msat);
+  return String(amountMsat);
 }
 
-export function to_msat_bigint(value: unknown, field: string): bigint {
+export function toMsatBigint(value: unknown, field: string): bigint {
   if (typeof value === "bigint") {
     if (value < 0n) {
       throw new TypeError(`${field} must be non-negative`);
@@ -188,7 +188,7 @@ export function to_msat_bigint(value: unknown, field: string): bigint {
   throw new TypeError(`${field} must be an integer millisatoshi amount`);
 }
 
-export function unknown_to_record(value: unknown): Record<string, unknown> | undefined {
+export function unknownToRecord(value: unknown): Record<string, unknown> | undefined {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return undefined;
   }

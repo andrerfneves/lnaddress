@@ -15,7 +15,7 @@ it does not make remote providers trusted.
   when the invoice includes an `n` tag.
 - Callback `verify` URLs as HTTP(S) URLs.
 - LUD-09 `successAction` message, URL, and AES shapes. URL actions must use
-  HTTP(S), and AES actions can be decrypted with `decrypt_success_action`.
+  HTTP(S), and AES actions can be decrypted with `decrypt_successAction`.
 - LUD-21 verification response shape.
 - Destination payment responses as typed destination instructions, with optional
   helper validation for known URI rails.

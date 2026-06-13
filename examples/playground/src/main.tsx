@@ -82,7 +82,7 @@ function App() {
   const [error, set_error] = useState<string | null>(null);
   const fetch = useMemo(() => create_playground_fetch(), []);
 
-  const payer_data = useMemo(
+  const payerData = useMemo(
     () => ({
       name: payer_name,
       email: payer_email,
@@ -95,16 +95,16 @@ function App() {
       return {
         amount: "idle",
         comment: "idle",
-        payer_data: "idle",
+        payerData: "idle",
       } as const;
     }
 
     return {
       amount: safe_validate(() => validateCallbackAmount(pay_request, Number(amount_msat))),
       comment: safe_validate(() => validateComment(pay_request, comment || undefined)),
-      payer_data: safe_validate(() => validateMandatoryPayerData(pay_request, payer_data)),
+      payerData: safe_validate(() => validateMandatoryPayerData(pay_request, payerData)),
     } as const;
-  }, [amount_msat, comment, pay_request, payer_data]);
+  }, [amount_msat, comment, pay_request, payerData]);
 
   function select_scenario(next: Scenario) {
     set_scenario(next);
@@ -148,7 +148,7 @@ function App() {
   function build_request_options(): RequestPaymentOptions {
     const options: RequestPaymentOptions = {
       amount_msat: Number(amount_msat),
-      payer_data,
+      payerData,
       fetch,
     };
 
@@ -261,7 +261,7 @@ function App() {
             <div className="panel-heading">Validation</div>
             <StatusLine label="Amount" state={validation.amount} />
             <StatusLine label="Comment" state={validation.comment} />
-            <StatusLine label="Payer data" state={validation.payer_data} />
+            <StatusLine label="Payer data" state={validation.payerData} />
             {error ? <div className="error-strip">{error}</div> : null}
           </aside>
         </section>

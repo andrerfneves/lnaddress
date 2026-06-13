@@ -36,8 +36,8 @@ describe("LUD compliance vectors", () => {
     const pay_request = parsePayRequestResponse(vectors.pay_request);
 
     expect(pay_request.description).toBe("LUD vector payment");
-    expect(pay_request.min_sendable_msat).toBe(1000n);
-    expect(pay_request.max_sendable_msat).toBe(100000n);
+    expect(pay_request.minSendableMsat).toBe(1000n);
+    expect(pay_request.maxSendableMsat).toBe(100000n);
     expect(() => validateComment(pay_request, "hello")).not.toThrow();
     expect(() => validateMandatoryPayerData(pay_request, { name: "Alice" })).not.toThrow();
   });
@@ -66,11 +66,11 @@ describe("LUD compliance vectors", () => {
   test("covers payment callback and LUD-21 verification", async () => {
     const pay_request = parsePayRequestResponse(vectors.pay_request);
     const payment = await requestPayment(pay_request, {
-      amount_msat: 2000,
-      payer_data: { name: "Alice" },
+      amountMsat: 2000,
+      payerData: { name: "Alice" },
       fetch: async () =>
         json_response({
-          pr: await test_bolt11_invoice(2000, pay_request.metadata_hash),
+          pr: await test_bolt11_invoice(2000, pay_request.metadataHash),
           verify: "https://example.com/verify?k1=abcdef",
         }),
     });

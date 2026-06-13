@@ -22,7 +22,7 @@ function polymod(values: number[]): number {
   return chk;
 }
 
-function hrp_expand(hrp: string): number[] {
+function hrpExpand(hrp: string): number[] {
   const expanded: number[] = [];
 
   for (let i = 0; i < hrp.length; i += 1) {
@@ -38,8 +38,8 @@ function hrp_expand(hrp: string): number[] {
   return expanded;
 }
 
-function create_checksum(hrp: string, data: number[]): number[] {
-  const values = [...hrp_expand(hrp), ...data, 0, 0, 0, 0, 0, 0];
+function createChecksum(hrp: string, data: number[]): number[] {
+  const values = [...hrpExpand(hrp), ...data, 0, 0, 0, 0, 0, 0];
   const mod = polymod(values) ^ 1;
   const checksum: number[] = [];
 
@@ -50,31 +50,31 @@ function create_checksum(hrp: string, data: number[]): number[] {
   return checksum;
 }
 
-function convert_bits(data: number[], from_bits: number, to_bits: number, pad: boolean): number[] {
+function convertBits(data: number[], fromBits: number, toBits: number, pad: boolean): number[] {
   let acc = 0;
   let bits = 0;
   const ret: number[] = [];
-  const maxv = (1 << to_bits) - 1;
-  const max_acc = (1 << (from_bits + to_bits - 1)) - 1;
+  const maxv = (1 << toBits) - 1;
+  const max_acc = (1 << (fromBits + toBits - 1)) - 1;
 
   for (const value of data) {
-    acc = ((acc << from_bits) | value) & max_acc;
-    bits += from_bits;
+    acc = ((acc << fromBits) | value) & max_acc;
+    bits += fromBits;
 
-    while (bits >= to_bits) {
-      bits -= to_bits;
+    while (bits >= toBits) {
+      bits -= toBits;
       ret.push((acc >> bits) & maxv);
     }
   }
 
   if (pad && bits > 0) {
-    ret.push((acc << (to_bits - bits)) & maxv);
+    ret.push((acc << (toBits - bits)) & maxv);
   }
 
   return ret;
 }
 
-function hex_to_bytes(hex: string): number[] {
+function hexToBytes(hex: string): number[] {
   const bytes: number[] = [];
 
   for (let i = 0; i < hex.length; i += 2) {
@@ -116,8 +116,8 @@ function int_to_words(value: number | bigint, word_count?: number): number[] {
 }
 
 export async function test_bolt11_invoice(
-  amount_msat: number | bigint,
-  metadata_hash: string,
+  amountMsat: number | bigint,
+  metadataHash: string,
   options: {
     network?: "bc" | "tb" | "bcrt" | "sb";
     timestamp?: number;
@@ -125,14 +125,14 @@ export async function test_bolt11_invoice(
     mismatched_payee_node?: boolean;
   } = {},
 ): Promise<string> {
-  const amount = typeof amount_msat === "bigint" ? amount_msat : BigInt(amount_msat);
+  const amount = typeof amountMsat === "bigint" ? amountMsat : BigInt(amountMsat);
   const hrp = `ln${options.network ?? "bc"}${(amount * 10n).toString()}p`;
   const timestamp = int_to_words(options.timestamp ?? Math.floor(Date.now() / 1000), 7);
-  const hash_words = convert_bits(hex_to_bytes(metadata_hash), 8, 5, true);
+  const hash_words = convertBits(hexToBytes(metadataHash), 8, 5, true);
   const h_tag = charset.indexOf("h");
   const h_length = [hash_words.length >> 5, hash_words.length & 31];
   const node_key = options.mismatched_payee_node ? new Uint8Array(32).fill(2) : private_key;
-  const node_id_words = convert_bits([...getPublicKey(node_key)], 8, 5, true);
+  const node_id_words = convertBits([...getPublicKey(node_key)], 8, 5, true);
   const node_id_field = [
     charset.indexOf("n"),
     node_id_words.length >> 5,
@@ -156,7 +156,7 @@ export async function test_bolt11_invoice(
   const signing_hash = sha256(
     concat_bytes(
       new TextEncoder().encode(hrp),
-      new Uint8Array(convert_bits(signing_data, 5, 8, true)),
+      new Uint8Array(convertBits(signing_data, 5, 8, true)),
     ),
   );
   const recovered_signature = await signAsync(signing_hash, private_key, {
@@ -165,8 +165,8 @@ export async function test_bolt11_invoice(
     lowS: false,
   });
   const signature = new Uint8Array([...recovered_signature.slice(1), recovered_signature[0] ?? 0]);
-  const data = [...signing_data, ...convert_bits([...signature], 8, 5, true)];
-  const combined = [...data, ...create_checksum(hrp, data)];
+  const data = [...signing_data, ...convertBits([...signature], 8, 5, true)];
+  const combined = [...data, ...createChecksum(hrp, data)];
 
   return `${hrp}1${combined.map((value) => charset[value]).join("")}`;
 }

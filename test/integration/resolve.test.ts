@@ -46,12 +46,12 @@ describe("resolve", () => {
     const pay_request = await resolve("alice@example.com", { fetch: fetcher });
 
     expect(seen_urls).toEqual(["https://example.com/.well-known/lnurlp/alice"]);
-    expect(pay_request.min_sendable_msat).toBe(1000n);
-    expect(pay_request.max_sendable_msat).toBe(10000n);
+    expect(pay_request.minSendableMsat).toBe(1000n);
+    expect(pay_request.maxSendableMsat).toBe(10000n);
     expect(pay_request.description).toBe("Test payment");
-    expect(pay_request.image?.data_uri).toBe("data:image/png;base64,abc123");
-    expect(pay_request.comment_allowed).toBe(16);
-    expect(pay_request.payer_data?.name?.mandatory).toBe(true);
+    expect(pay_request.image?.dataUri).toBe("data:image/png;base64,abc123");
+    expect(pay_request.commentAllowed).toBe(16);
+    expect(pay_request.payerData?.name?.mandatory).toBe(true);
     expect(pay_request.currencies).toEqual([{ code: "USD" }]);
     expect(pay_request.raw).toEqual(pay_request_response);
   });
@@ -123,7 +123,7 @@ describe("resolve", () => {
     });
   });
 
-  test("aborts resolve requests after timeout_ms", async () => {
+  test("aborts resolve requests after timeoutMs", async () => {
     const fetcher = async (_input: RequestInfo | URL, init?: RequestInit) => {
       return new Promise<Response>((_resolve, reject) => {
         init?.signal?.addEventListener("abort", () => reject(new Error("aborted")), {
@@ -132,7 +132,7 @@ describe("resolve", () => {
       });
     };
 
-    await expect(resolve("alice@example.com", { fetch: fetcher, timeout_ms: 1 })).rejects.toThrow(
+    await expect(resolve("alice@example.com", { fetch: fetcher, timeoutMs: 1 })).rejects.toThrow(
       NetworkError,
     );
   });
@@ -140,7 +140,7 @@ describe("resolve", () => {
   test("enforces redirect policy", async () => {
     await expect(
       resolve("https://example.com/lnurlp/alice", {
-        redirect_policy: "same-origin",
+        redirectPolicy: "same-origin",
         fetch: async () =>
           redirected_response(pay_request_response, "https://pay.example.net/lnurlp/alice"),
       }),

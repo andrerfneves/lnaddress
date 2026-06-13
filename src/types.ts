@@ -1,7 +1,7 @@
 export type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
 export type UrlSafetyOptions = {
-  allow_onion?: boolean;
+  allowOnion?: boolean;
 };
 
 export type Bolt11Network = "bitcoin" | "testnet" | "regtest" | "signet";
@@ -10,8 +10,8 @@ export type ProviderPolicy = "off" | "same-origin" | "same-site";
 
 export type FetchControls = {
   signal?: AbortSignal;
-  timeout_ms?: number;
-  redirect_policy?: RedirectPolicy;
+  timeoutMs?: number;
+  redirectPolicy?: RedirectPolicy;
 };
 
 export type ResolveOptions = UrlSafetyOptions & {
@@ -20,16 +20,17 @@ export type ResolveOptions = UrlSafetyOptions & {
 } & FetchControls;
 
 export type RequestPaymentOptions = UrlSafetyOptions & {
-  amount_msat: number | bigint;
+  amountMsat: number | bigint;
   comment?: string;
-  payer_data?: Record<string, unknown>;
+  payerData?: Record<string, unknown>;
+  paymentOption?: string;
   fetch?: FetchLike;
   headers?: HeadersInit;
-  validate_bolt11?: boolean;
-  expected_network?: Bolt11Network;
-  validate_expiry?: boolean;
+  validateBolt11?: boolean;
+  expectedNetwork?: Bolt11Network;
+  validateExpiry?: boolean;
   now?: Date | number | (() => Date | number);
-  provider_policy?: ProviderPolicy;
+  providerPolicy?: ProviderPolicy;
 } & FetchControls;
 
 export type VerifyPaymentOptions = UrlSafetyOptions & {
@@ -43,12 +44,12 @@ export type LightningAddress = {
   address: string;
 };
 
-export type MetadataEntry = [mime_type: string, value: string];
+export type MetadataEntry = [mimeType: string, value: string];
 
 export type MetadataImage = {
-  mime_type: string;
+  mimeType: string;
   data: string;
-  data_uri: string;
+  dataUri: string;
 };
 
 export type PayerDataField = {
@@ -60,42 +61,54 @@ export type PayerDataField = {
 
 export type PayerData = Record<string, PayerDataField>;
 
+export type PaymentOption = {
+  id: string;
+  type: string;
+  available?: boolean;
+  minSendableMsat?: bigint;
+  maxSendableMsat?: bigint;
+  raw: Record<string, unknown>;
+};
+
 export type PayRequest = {
   tag: "payRequest";
   callback: string;
-  min_sendable_msat: bigint;
-  max_sendable_msat: bigint;
+  minSendableMsat: bigint;
+  maxSendableMsat: bigint;
   metadata: MetadataEntry[];
-  metadata_raw: string;
-  metadata_hash: string;
+  metadataRaw: string;
+  metadataHash: string;
   description?: string;
   image?: MetadataImage;
-  comment_allowed?: number;
-  payer_data?: PayerData;
+  commentAllowed?: number;
+  payerData?: PayerData;
+  paymentOptions?: PaymentOption[];
   currencies?: unknown;
   convert?: unknown;
   converted?: unknown;
   raw: unknown;
-  source_url?: string;
-  lightning_address?: LightningAddress;
+  sourceUrl?: string;
+  lightningAddress?: LightningAddress;
 };
 
 export type Bolt11PaymentInstruction = {
   type: "bolt11";
   pr: string;
   routes?: [];
-  payment_destination?: string;
-  payment_uri?: string;
-  verify_url?: string;
-  success_action?: SuccessAction;
+  paymentOption?: string;
+  paymentDestination?: string;
+  paymentUri?: string;
+  verifyUrl?: string;
+  successAction?: SuccessAction;
   raw: unknown;
 };
 
 export type DestinationPaymentInstruction = {
   type: "destination";
-  payment_destination: string;
-  payment_uri?: string;
-  verify_url?: string;
+  paymentOption?: string;
+  paymentDestination: string;
+  paymentUri?: string;
+  verifyUrl?: string;
   raw: unknown;
 };
 
@@ -106,8 +119,9 @@ export type VerifyResult = {
   settled?: boolean;
   preimage?: string | null;
   pr?: string;
-  payment_destination?: string;
-  payment_reference?: string | null;
+  paymentOption?: string;
+  paymentDestination?: string;
+  paymentReference?: string | null;
   reason?: string;
   raw: unknown;
 };

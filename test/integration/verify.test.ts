@@ -43,8 +43,8 @@ describe("verifyPayment", () => {
       verifyPayment(
         {
           type: "destination",
-          payment_destination: "liquid-address",
-          verify_url: "https://example.com/verify/liquid",
+          paymentDestination: "liquid-address",
+          verifyUrl: "https://example.com/verify/liquid",
           raw: {},
         },
         {
@@ -60,8 +60,8 @@ describe("verifyPayment", () => {
     ).resolves.toMatchObject({
       status: "OK",
       settled: true,
-      payment_destination: "liquid-address",
-      payment_reference: "txid",
+      paymentDestination: "liquid-address",
+      paymentReference: "txid",
     });
   });
 
@@ -82,11 +82,11 @@ describe("verifyPayment", () => {
     ).rejects.toThrow(VerifyError);
   });
 
-  test("requires a verify_url when verifying a payment instruction", async () => {
+  test("requires a verifyUrl when verifying a payment instruction", async () => {
     await expect(
       verifyPayment({
         type: "destination",
-        payment_destination: "liquid-address",
+        paymentDestination: "liquid-address",
         raw: {},
       }),
     ).rejects.toThrow(VerifyError);

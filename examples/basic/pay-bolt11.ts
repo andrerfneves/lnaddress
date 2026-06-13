@@ -3,8 +3,8 @@ import { alice, create_mock_lnurl_fetch } from "./mock-provider";
 
 const fetch = create_mock_lnurl_fetch();
 const payment = await pay(alice, {
-  amount_msat: 25_000,
-  payer_data: { name: "Alice" },
+  amountMsat: 25_000,
+  payerData: { name: "Alice" },
   fetch,
 });
 

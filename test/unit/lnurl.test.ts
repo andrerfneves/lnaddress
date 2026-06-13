@@ -21,7 +21,7 @@ function polymod(values: number[]): number {
   return chk;
 }
 
-function hrp_expand(hrp: string): number[] {
+function hrpExpand(hrp: string): number[] {
   const expanded: number[] = [];
 
   for (let i = 0; i < hrp.length; i += 1) {
@@ -38,7 +38,7 @@ function hrp_expand(hrp: string): number[] {
 }
 
 function bech32_with_payload(hrp: string, payload: number[]): string {
-  const values = [...hrp_expand(hrp), ...payload, 0, 0, 0, 0, 0, 0];
+  const values = [...hrpExpand(hrp), ...payload, 0, 0, 0, 0, 0, 0];
   const mod = polymod(values) ^ 1;
   const checksum: number[] = [];
 

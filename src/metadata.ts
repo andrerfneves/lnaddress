@@ -24,12 +24,12 @@ export function parseMetadata(metadata_string: string): MetadataEntry[] {
       throw new InvalidPayRequestError(`Metadata entry ${index} must be a tuple`);
     }
 
-    const [mime_type, value] = entry;
-    if (typeof mime_type !== "string" || typeof value !== "string") {
+    const [mimeType, value] = entry;
+    if (typeof mimeType !== "string" || typeof value !== "string") {
       throw new InvalidPayRequestError(`Metadata entry ${index} must contain string values`);
     }
 
-    return [mime_type, value];
+    return [mimeType, value];
   });
 }
 
@@ -38,22 +38,22 @@ export function getMetadataHash(metadata_string: string): string {
   return [...sha256(bytes)].map(to_hex).join("");
 }
 
-export function get_description(metadata: MetadataEntry[]): string | undefined {
-  return metadata.find(([mime_type]) => mime_type === "text/plain")?.[1];
+export function getDescription(metadata: MetadataEntry[]): string | undefined {
+  return metadata.find(([mimeType]) => mimeType === "text/plain")?.[1];
 }
 
-export function get_image(metadata: MetadataEntry[]): MetadataImage | undefined {
-  const entry = metadata.find(([mime_type]) => mime_type.startsWith("image/"));
+export function getImage(metadata: MetadataEntry[]): MetadataImage | undefined {
+  const entry = metadata.find(([mimeType]) => mimeType.startsWith("image/"));
 
   if (!entry) {
     return undefined;
   }
 
-  const [mime_type, data] = entry;
-  const data_uri_mime_type = mime_type.endsWith(";base64") ? mime_type : `${mime_type};base64`;
+  const [mimeType, data] = entry;
+  const dataUri_mimeType = mimeType.endsWith(";base64") ? mimeType : `${mimeType};base64`;
   return {
-    mime_type,
+    mimeType,
     data,
-    data_uri: `data:${data_uri_mime_type},${data}`,
+    dataUri: `data:${dataUri_mimeType},${data}`,
   };
 }

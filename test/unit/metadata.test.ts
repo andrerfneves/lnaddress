@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { InvalidPayRequestError, getMetadataHash, parseMetadata } from "../../src";
-import { get_image } from "../../src/metadata";
+import { getImage } from "../../src/metadata";
 
 describe("metadata utilities", () => {
   test("parses metadata tuples", () => {
@@ -25,10 +25,10 @@ describe("metadata utilities", () => {
   });
 
   test("builds image data URIs without duplicating base64 markers", () => {
-    expect(get_image(parseMetadata('[["image/png","abc123"]]'))?.data_uri).toBe(
+    expect(getImage(parseMetadata('[["image/png","abc123"]]'))?.dataUri).toBe(
       "data:image/png;base64,abc123",
     );
-    expect(get_image(parseMetadata('[["image/png;base64","abc123"]]'))?.data_uri).toBe(
+    expect(getImage(parseMetadata('[["image/png;base64","abc123"]]'))?.dataUri).toBe(
       "data:image/png;base64,abc123",
     );
   });

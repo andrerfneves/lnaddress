@@ -9,4 +9,5 @@ export default defineConfig({
   target: "es2022",
   splitting: false,
   treeshake: true,
+  noExternal: ["@noble/secp256k1"],
 });

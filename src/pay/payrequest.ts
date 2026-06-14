@@ -1,8 +1,5 @@
 import { z } from "zod";
-import { InvalidPayRequestError, InvalidPaymentOptionError } from "./errors";
-import { assertHttpUrl, toMsatBigint, unknownToRecord } from "./internal";
-import { getDescription, getImage, getMetadataHash, parseMetadata } from "./metadata";
-import { parseNodePubkeys } from "./node-pubkeys";
+import { InvalidPayRequestError, InvalidPaymentOptionError } from "../core/errors";
 import type {
   Currency,
   CurrencyConvertible,
@@ -12,7 +9,10 @@ import type {
   PayerDataField,
   PaymentOption,
   UrlSafetyOptions,
-} from "./types";
+} from "../core/types";
+import { getDescription, getImage, getMetadataHash, parseMetadata } from "../extensions/metadata";
+import { parseNodePubkeys } from "../extensions/node-pubkeys";
+import { assertHttpUrl, toMsatBigint, unknownToRecord } from "../utils/internal";
 
 const payRequestSchema = z
   .object({

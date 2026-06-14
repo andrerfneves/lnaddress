@@ -1,6 +1,6 @@
-import { InvalidCallbackResponseError } from "./errors";
-import { assertHttpUrl } from "./internal";
-import type { SuccessAction, UrlSafetyOptions } from "./types";
+import { InvalidCallbackResponseError } from "../core/errors";
+import type { SuccessAction, UrlSafetyOptions } from "../core/types";
+import { assertHttpUrl } from "../utils/internal";
 
 function aesDecryptNotAvailable(): never {
   throw new Error(

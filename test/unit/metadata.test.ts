@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { InvalidPayRequestError, getMetadataHash, parseMetadata } from "../../src";
-import { getImage } from "../../src/metadata";
+import { getImage } from "../../src/extensions/metadata";
 
 describe("metadata utilities", () => {
   test("parses metadata tuples", () => {

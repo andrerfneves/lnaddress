@@ -1,4 +1,5 @@
-import { NetworkError, VerifyError } from "./errors";
+import { NetworkError, VerifyError } from "../core/errors";
+import type { PaymentInstruction, VerifyPaymentOptions, VerifyResult } from "../core/types";
 import {
   assertHttpUrl,
   assertRedirectPolicy,
@@ -9,8 +10,7 @@ import {
   readString,
   requestInit,
   unknownToRecord,
-} from "./internal";
-import type { PaymentInstruction, VerifyPaymentOptions, VerifyResult } from "./types";
+} from "../utils/internal";
 
 function verifyUrlFromInput(paymentOrVerifyUrl: PaymentInstruction | string): string {
   if (typeof paymentOrVerifyUrl === "string") {

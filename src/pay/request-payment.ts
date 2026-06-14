@@ -1,11 +1,3 @@
-import { assertBolt11Payment } from "./bolt11";
-import {
-  amountToPositiveIntegerString,
-  assertCurrencyCodeForAmount,
-  callbackAmountValue,
-  findEffectiveCurrency,
-  validateCurrency,
-} from "./currencies";
 import {
   AmountOutOfRangeError,
   CommentNotAllowedError,
@@ -14,7 +6,27 @@ import {
   InvalidPaymentOptionError,
   MissingMandatoryPayerDataError,
   NetworkError,
-} from "./errors";
+} from "../core/errors";
+import type {
+  Bolt11PaymentInstruction,
+  ConvertedAmount,
+  DestinationPaymentInstruction,
+  NodePubkeyVerification,
+  PayRequest,
+  PaymentInstruction,
+  RequestPaymentOptions,
+  ResolveOptions,
+} from "../core/types";
+import {
+  amountToPositiveIntegerString,
+  assertCurrencyCodeForAmount,
+  callbackAmountValue,
+  findEffectiveCurrency,
+  validateCurrency,
+} from "../extensions/currencies";
+import { verifyNodePubkeys } from "../extensions/node-pubkeys";
+import { parseSuccessAction } from "../extensions/success-action";
+import { assertBolt11Payment } from "../lightning/bolt11";
 import {
   assertHttpUrl,
   assertRedirectPolicy,
@@ -26,22 +38,10 @@ import {
   requestInit,
   toMsatBigint,
   unknownToRecord,
-} from "./internal";
-import { verifyNodePubkeys } from "./node-pubkeys";
+} from "../utils/internal";
 import { isPayRequest } from "./payrequest";
 import { assertProviderPolicy } from "./provider-policy";
 import { resolve } from "./resolve";
-import { parseSuccessAction } from "./success-action";
-import type {
-  Bolt11PaymentInstruction,
-  ConvertedAmount,
-  DestinationPaymentInstruction,
-  NodePubkeyVerification,
-  PayRequest,
-  PaymentInstruction,
-  RequestPaymentOptions,
-  ResolveOptions,
-} from "./types";
 
 export function validateCallbackAmount(
   payRequest: PayRequest,

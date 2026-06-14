@@ -1,13 +1,13 @@
 import { Point } from "@noble/secp256k1";
-import { InvalidPayRequestError, NodePubkeyMismatchError } from "./errors";
-import { unknownToRecord } from "./internal";
+import { InvalidPayRequestError, NodePubkeyMismatchError } from "../core/errors";
 import type {
   Bolt11PayeeNodeIdSource,
   NodePubkey,
   NodePubkeyPolicy,
   NodePubkeyVerification,
   PayRequest,
-} from "./types";
+} from "../core/types";
+import { unknownToRecord } from "../utils/internal";
 
 const compressedSecp256k1PubkeyPattern = /^(02|03)[0-9a-f]{64}$/i;
 

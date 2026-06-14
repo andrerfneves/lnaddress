@@ -6,7 +6,7 @@ import {
   InvalidCallbackResponseError,
   InvalidPayRequestError,
   InvalidRequestPaymentOptionsError,
-} from "../../src/errors";
+} from "../../src/core/errors";
 import { testBolt11Invoice } from "../fixtures/bolt11";
 
 function jsonResponse(body: unknown): Response {

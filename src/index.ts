@@ -14,19 +14,19 @@ export {
   NetworkError,
   NodePubkeyMismatchError,
   VerifyError,
-} from "./errors";
-export { isLightningAddress, parseLightningAddress } from "./lightning-address";
-export { decodeLnurl, encodeLnurl } from "./lnurl";
+} from "./core/errors";
+export { isLightningAddress, parseLightningAddress } from "./address/lightning-address";
+export { decodeLnurl, encodeLnurl } from "./address/lnurl";
 export {
   assertDestinationPayment,
   assertDestinationRail,
   destinationMatchesRail,
   isDestinationPayment,
-} from "./destination";
-export type { DestinationRail } from "./destination";
-export { getMetadataHash, parseMetadata } from "./metadata";
-export { validateCurrency } from "./currencies";
-export { parsePayRequestResponse } from "./payrequest";
+} from "./extensions/destination";
+export type { DestinationRail } from "./extensions/destination";
+export { getMetadataHash, parseMetadata } from "./extensions/metadata";
+export { validateCurrency } from "./extensions/currencies";
+export { parsePayRequestResponse } from "./pay/payrequest";
 export {
   requestPayment,
   pay,
@@ -34,16 +34,16 @@ export {
   validateComment,
   validateMandatoryPayerData,
   validatePaymentOption,
-} from "./request-payment";
-export { resolve } from "./resolve";
+} from "./pay/request-payment";
+export { resolve } from "./pay/resolve";
 export {
   LNURL_SERVICE_PATH,
   fetchServiceKeys,
   parseServiceKeysResponse,
   serviceKeysUrl,
-} from "./service-keys";
-export { decryptSuccessAction, parseSuccessAction } from "./success-action";
-export { verifyPayment } from "./verify";
+} from "./extensions/service-keys";
+export { decryptSuccessAction, parseSuccessAction } from "./extensions/success-action";
+export { verifyPayment } from "./pay/verify";
 export type {
   Bolt11PaymentInstruction,
   Bolt11Network,
@@ -78,4 +78,4 @@ export type {
   SuccessAction,
   VerifyPaymentOptions,
   VerifyResult,
-} from "./types";
+} from "./core/types";

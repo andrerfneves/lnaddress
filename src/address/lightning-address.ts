@@ -1,5 +1,5 @@
-import { InvalidLightningAddressError } from "./errors";
-import type { LightningAddress } from "./types";
+import { InvalidLightningAddressError } from "../core/errors";
+import type { LightningAddress } from "../core/types";
 
 const usernamePattern = /^[a-z0-9._+-]+$/;
 const domainLabelPattern = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;

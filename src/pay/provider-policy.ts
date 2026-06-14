@@ -1,5 +1,5 @@
-import { InvalidCallbackResponseError } from "./errors";
-import type { PayRequest, RequestPaymentOptions } from "./types";
+import { InvalidCallbackResponseError } from "../core/errors";
+import type { PayRequest, RequestPaymentOptions } from "../core/types";
 
 function sameSite(hostname: string, expectedHostname: string): boolean {
   return hostname === expectedHostname || hostname.endsWith(`.${expectedHostname}`);

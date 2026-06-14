@@ -1,5 +1,5 @@
-import { sha256 } from "@noble/hashes/sha2.js";
 import { getPublicKey, signAsync } from "@noble/secp256k1";
+import { sha256 } from "js-sha256";
 
 const charset = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
 const generator = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
@@ -160,10 +160,12 @@ export async function testBolt11Invoice(
     ...nodeIdField,
     ...expiryField,
   ];
-  const signingHash = sha256(
-    concatBytes(
-      new TextEncoder().encode(hrp),
-      new Uint8Array(convertBits(signingData, 5, 8, true)),
+  const signingHash = Uint8Array.from(
+    sha256.array(
+      concatBytes(
+        new TextEncoder().encode(hrp),
+        new Uint8Array(convertBits(signingData, 5, 8, true)),
+      ),
     ),
   );
   const recoveredSignature = await signAsync(signingHash, signingKey, {

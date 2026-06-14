@@ -1,10 +1,6 @@
-import { sha256 } from "@noble/hashes/sha2.js";
+import { sha256 } from "js-sha256";
 import { InvalidPayRequestError } from "../core/errors";
 import type { MetadataEntry, MetadataImage } from "../core/types";
-
-function toHex(value: number): string {
-  return value.toString(16).padStart(2, "0");
-}
 
 export function parseMetadata(metadataString: string): MetadataEntry[] {
   let decoded: unknown;
@@ -36,8 +32,7 @@ export function parseMetadata(metadataString: string): MetadataEntry[] {
 }
 
 export function getMetadataHash(metadataString: string): string {
-  const bytes = new TextEncoder().encode(metadataString);
-  return [...sha256(bytes)].map(toHex).join("");
+  return sha256(metadataString);
 }
 
 export function getDescription(metadata: MetadataEntry[]): string | undefined {

@@ -1,5 +1,8 @@
 import type { FetchLike } from "lnaddress";
 
+const playgroundBolt11Invoice =
+  "lnbc250000p1p5ww7qqhp5s4rd659qkra3mncxwkamxxf0l2fnwe5w8qutznmmrh206n7uwdxqnp4qvdcf32k0vfxgsyet5ldt246q4jaw8scx3sysx0lnstlt6w4m5rc7xqxfvcqcqzxc0wgaxw65vk8770auuku3uyr6qxfyug5g5v3lswc8dtxjcda6vyx0h8vu0ffc9q02cppgcvv3h5zdvexpas0rgkh82uz6hjcc8v0spzpn66w";
+
 type ProviderState = {
   bolt11Settled: boolean;
   liquidSettled: boolean;
@@ -64,7 +67,7 @@ export function createPlaygroundFetch(): FetchLike {
 
       return json({
         status: "OK",
-        pr: "lnbc1qqqqqqqqqqqqqq",
+        pr: playgroundBolt11Invoice,
         routes: [],
         verify: `${mockOrigin}/verify/bolt11`,
         successAction: {
@@ -90,7 +93,7 @@ export function createPlaygroundFetch(): FetchLike {
         status: "OK",
         settled,
         preimage: settled ? "00".repeat(32) : null,
-        pr: "lnbc1qqqqqqqqqqqqqq",
+        pr: playgroundBolt11Invoice,
       });
     }
 

@@ -2,6 +2,11 @@
   "name": "lnaddress-playground",
   "private": true,
   "type": "module",
+  "author": {
+    "email": "an@seven.sx",
+    "name": "Andre Neves",
+    "url": "https://seven.sx"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

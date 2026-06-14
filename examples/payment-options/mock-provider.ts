@@ -32,7 +32,10 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-const verifyStates = new Map<string, { settled: boolean; paymentReference: string | null }>();
+const verifyStates = new Map<
+  string,
+  { settled: boolean; paymentReference: string | null }
+>();
 
 const server = Bun.serve({
   port: PORT,
@@ -73,7 +76,10 @@ const server = Bun.serve({
       const payerData = url.searchParams.get("payerdata");
 
       if (!amount || !paymentOption) {
-        return json({ status: "ERROR", reason: "Missing amount or paymentOption" }, 400);
+        return json(
+          { status: "ERROR", reason: "Missing amount or paymentOption" },
+          400,
+        );
       }
 
       const verifyId = crypto.randomUUID();
@@ -114,7 +120,8 @@ const server = Bun.serve({
             status: "OK",
             paymentOption: "onchain",
             paymentDestination: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
-            paymentURI: "bitcoin:bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh?amount=0.001",
+            paymentURI:
+              "bitcoin:bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh?amount=0.001",
             verify: verifyUrl,
           });
 
@@ -138,7 +145,10 @@ const server = Bun.serve({
           });
 
         default:
-          return json({ status: "ERROR", reason: "Unsupported paymentOption" }, 400);
+          return json(
+            { status: "ERROR", reason: "Unsupported paymentOption" },
+            400,
+          );
       }
     }
 
@@ -188,12 +198,17 @@ setTimeout(async () => {
   try {
     // 1. Resolve
     console.log(`  1. Resolve alice@localhost:${PORT}`);
-    const payRequest = await resolve(`http://localhost:${PORT}/.well-known/lnurlp/alice`, {
-      allowPrivateNetwork: true,
-    });
+    const payRequest = await resolve(
+      `http://localhost:${PORT}/.well-known/lnurlp/alice`,
+      {
+        allowPrivateNetwork: true,
+      },
+    );
     console.log(
       "     →",
-      payRequest.paymentOptions?.map((o) => `${o.id}:${o.available ? "✓" : "✗"}`).join(", "),
+      payRequest.paymentOptions
+        ?.map((o) => `${o.id}:${o.available ? "✓" : "✗"}`)
+        .join(", "),
     );
 
     // 2. Validate

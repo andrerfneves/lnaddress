@@ -26,11 +26,20 @@ function normalizeDomain(value: string): string {
   return value.toLowerCase().replace(/\.$/, "");
 }
 
-function serviceKeysError(message: string, cause?: unknown): InvalidServiceKeysError {
-  return new InvalidServiceKeysError(message, cause === undefined ? undefined : { cause });
+function serviceKeysError(
+  message: string,
+  cause?: unknown,
+): InvalidServiceKeysError {
+  return new InvalidServiceKeysError(
+    message,
+    cause === undefined ? undefined : { cause },
+  );
 }
 
-export function serviceKeysUrl(input: string, options: UrlSafetyOptions = {}): URL {
+export function serviceKeysUrl(
+  input: string,
+  options: UrlSafetyOptions = {},
+): URL {
   const value = input.trim();
   if (!value) {
     throw new InvalidServiceKeysError("Service keys domain or URL is required");
@@ -42,7 +51,9 @@ export function serviceKeysUrl(input: string, options: UrlSafetyOptions = {}): U
     }
 
     if (/[/?#@\\]/.test(value)) {
-      throw new TypeError("domain input must not include a path, query, fragment, or userinfo");
+      throw new TypeError(
+        "domain input must not include a path, query, fragment, or userinfo",
+      );
     }
 
     const parsed = new URL(`https://${value}`);
@@ -79,9 +90,12 @@ function normalizePublicKey(value: unknown, label: string): string {
   try {
     Point.fromHex(normalized).assertValidity();
   } catch (cause) {
-    throw new InvalidServiceKeysError(`${label} must be a valid secp256k1 public key`, {
-      cause,
-    });
+    throw new InvalidServiceKeysError(
+      `${label} must be a valid secp256k1 public key`,
+      {
+        cause,
+      },
+    );
   }
 
   return normalized;
@@ -93,13 +107,18 @@ function parseExpiresAt(value: unknown, label: string): number | undefined {
   }
 
   if (!Number.isSafeInteger(value) || (value as number) < 0) {
-    throw new InvalidServiceKeysError(`${label} must be a non-negative UNIX timestamp`);
+    throw new InvalidServiceKeysError(
+      `${label} must be a non-negative UNIX timestamp`,
+    );
   }
 
   return value as number;
 }
 
-function parseAlgorithm(value: unknown, label: string): DomainServiceKeyAlgorithm {
+function parseAlgorithm(
+  value: unknown,
+  label: string,
+): DomainServiceKeyAlgorithm {
   if (value !== "secp256k1") {
     throw new InvalidServiceKeysError(`${label} must be secp256k1`);
   }
@@ -126,13 +145,18 @@ function parseCertChain(value: unknown, label: string): string[] | undefined {
 
   return value.map((entry, index) => {
     if (typeof entry !== "string" || !isPemCertificate(entry)) {
-      throw new InvalidServiceKeysError(`${label}[${index}] must be a PEM-encoded certificate`);
+      throw new InvalidServiceKeysError(
+        `${label}[${index}] must be a PEM-encoded certificate`,
+      );
     }
     return entry;
   });
 }
 
-function parseKeyArray(value: unknown, label: string): DomainServiceKey[] | undefined {
+function parseKeyArray(
+  value: unknown,
+  label: string,
+): DomainServiceKey[] | undefined {
   if (value === undefined) {
     return undefined;
   }
@@ -148,27 +172,40 @@ function parseKeyArray(value: unknown, label: string): DomainServiceKey[] | unde
     const raw = requireRecord(entry, `${label}[${index}]`);
 
     if (typeof raw.id !== "string" || raw.id.trim() === "") {
-      throw new InvalidServiceKeysError(`${label}[${index}].id must be a non-empty string`);
+      throw new InvalidServiceKeysError(
+        `${label}[${index}].id must be a non-empty string`,
+      );
     }
     const id = raw.id;
     if (seenIds.has(id)) {
-      throw new InvalidServiceKeysError(`${label} contains duplicate key id: ${id}`);
+      throw new InvalidServiceKeysError(
+        `${label} contains duplicate key id: ${id}`,
+      );
     }
     seenIds.add(id);
 
     const key: DomainServiceKey = {
       id,
       algorithm: parseAlgorithm(raw.algorithm, `${label}[${index}].algorithm`),
-      publicKey: normalizePublicKey(raw.publicKey, `${label}[${index}].publicKey`),
+      publicKey: normalizePublicKey(
+        raw.publicKey,
+        `${label}[${index}].publicKey`,
+      ),
       raw,
     };
 
-    const expiresAt = parseExpiresAt(raw.expiresAt, `${label}[${index}].expiresAt`);
+    const expiresAt = parseExpiresAt(
+      raw.expiresAt,
+      `${label}[${index}].expiresAt`,
+    );
     if (expiresAt !== undefined) {
       key.expiresAt = expiresAt;
     }
 
-    const certChain = parseCertChain(raw.certChain, `${label}[${index}].certChain`);
+    const certChain = parseCertChain(
+      raw.certChain,
+      `${label}[${index}].certChain`,
+    );
     if (certChain !== undefined) {
       key.certChain = certChain;
     }
@@ -203,7 +240,9 @@ export function parseServiceKeysResponse(
   let domain: string | undefined;
   if (record.domain !== undefined) {
     if (typeof record.domain !== "string" || record.domain.trim() === "") {
-      throw new InvalidServiceKeysError("domain must be a non-empty string when present");
+      throw new InvalidServiceKeysError(
+        "domain must be a non-empty string when present",
+      );
     }
     domain = normalizeDomain(record.domain);
     if (context.sourceUrl) {
@@ -224,7 +263,9 @@ export function parseServiceKeysResponse(
     ...(domain !== undefined ? { domain } : {}),
     ...(signingKeys !== undefined ? { signingKeys } : {}),
     ...(encryptionKeys !== undefined ? { encryptionKeys } : {}),
-    ...(context.sourceUrl !== undefined ? { sourceUrl: context.sourceUrl } : {}),
+    ...(context.sourceUrl !== undefined
+      ? { sourceUrl: context.sourceUrl }
+      : {}),
     raw: record,
   };
 }
@@ -242,7 +283,10 @@ export async function fetchServiceKeys(
     response = await fetchWithRedirectPolicy(fetcher, url, init, options);
   } catch (cause) {
     cleanup();
-    throw new NetworkError(`Failed to fetch LNURL service keys: ${url.toString()}`, { cause });
+    throw new NetworkError(
+      `Failed to fetch LNURL service keys: ${url.toString()}`,
+      { cause },
+    );
   }
 
   try {
@@ -258,7 +302,10 @@ export async function fetchServiceKeys(
     try {
       body = await readJsonResponse(response);
     } catch (cause) {
-      throw new InvalidServiceKeysError("LNURL service keys response is not valid JSON", { cause });
+      throw new InvalidServiceKeysError(
+        "LNURL service keys response is not valid JSON",
+        { cause },
+      );
     }
 
     return parseServiceKeysResponse(body, { sourceUrl: url.toString() });

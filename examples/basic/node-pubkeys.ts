@@ -1,4 +1,8 @@
-import { NodePubkeyMismatchError, parsePayRequestResponse, requestPayment } from "../../src";
+import {
+  NodePubkeyMismatchError,
+  parsePayRequestResponse,
+  requestPayment,
+} from "../../src";
 import {
   alternateTestNodePubkey,
   testBolt11Invoice,
@@ -26,11 +30,16 @@ const payment = await requestPayment(payRequest, {
   fetch: async () =>
     json({
       status: "OK",
-      pr: await testBolt11Invoice(25_000, payRequest.metadataHash, { signer: "alternate" }),
+      pr: await testBolt11Invoice(25_000, payRequest.metadataHash, {
+        signer: "alternate",
+      }),
     }),
 });
 
-if (payment.type === "bolt11" && payment.nodePubkeyVerification?.status === "mismatch") {
+if (
+  payment.type === "bolt11" &&
+  payment.nodePubkeyVerification?.status === "mismatch"
+) {
   console.warn(payment.nodePubkeyVerification.warning);
   console.warn({
     expected: payment.nodePubkeyVerification.expectedPubkeys,
@@ -46,7 +55,9 @@ try {
     fetch: async () =>
       json({
         status: "OK",
-        pr: await testBolt11Invoice(25_000, payRequest.metadataHash, { signer: "alternate" }),
+        pr: await testBolt11Invoice(25_000, payRequest.metadataHash, {
+          signer: "alternate",
+        }),
       }),
   });
 } catch (error) {

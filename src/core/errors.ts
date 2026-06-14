@@ -18,7 +18,11 @@ export class LnAddressError extends Error {
   readonly code: LnAddressErrorCode;
   override readonly cause?: unknown;
 
-  constructor(code: LnAddressErrorCode, message: string, options?: { cause?: unknown }) {
+  constructor(
+    code: LnAddressErrorCode,
+    message: string,
+    options?: { cause?: unknown },
+  ) {
     super(message);
     this.name = new.target.name;
     this.code = code;
@@ -27,7 +31,10 @@ export class LnAddressError extends Error {
 }
 
 export class InvalidLightningAddressError extends LnAddressError {
-  constructor(message = "Invalid Lightning Address", options?: { cause?: unknown }) {
+  constructor(
+    message = "Invalid Lightning Address",
+    options?: { cause?: unknown },
+  ) {
     super("INVALID_LIGHTNING_ADDRESS", message, options);
   }
 }
@@ -39,19 +46,28 @@ export class InvalidLnurlError extends LnAddressError {
 }
 
 export class NetworkError extends LnAddressError {
-  constructor(message = "Network request failed", options?: { cause?: unknown }) {
+  constructor(
+    message = "Network request failed",
+    options?: { cause?: unknown },
+  ) {
     super("NETWORK_ERROR", message, options);
   }
 }
 
 export class InvalidPayRequestError extends LnAddressError {
-  constructor(message = "Invalid LNURL-pay request", options?: { cause?: unknown }) {
+  constructor(
+    message = "Invalid LNURL-pay request",
+    options?: { cause?: unknown },
+  ) {
     super("INVALID_PAY_REQUEST", message, options);
   }
 }
 
 export class AmountOutOfRangeError extends LnAddressError {
-  constructor(message = "Amount is outside the allowed range", options?: { cause?: unknown }) {
+  constructor(
+    message = "Amount is outside the allowed range",
+    options?: { cause?: unknown },
+  ) {
     super("AMOUNT_OUT_OF_RANGE", message, options);
   }
 }
@@ -66,7 +82,10 @@ export class CommentNotAllowedError extends LnAddressError {
 }
 
 export class CommentTooLongError extends LnAddressError {
-  constructor(message = "Comment exceeds the allowed length", options?: { cause?: unknown }) {
+  constructor(
+    message = "Comment exceeds the allowed length",
+    options?: { cause?: unknown },
+  ) {
     super("COMMENT_TOO_LONG", message, options);
   }
 }
@@ -85,19 +104,28 @@ export class MissingMandatoryPayerDataError extends LnAddressError {
 }
 
 export class InvalidCallbackResponseError extends LnAddressError {
-  constructor(message = "Invalid payment callback response", options?: { cause?: unknown }) {
+  constructor(
+    message = "Invalid payment callback response",
+    options?: { cause?: unknown },
+  ) {
     super("INVALID_CALLBACK_RESPONSE", message, options);
   }
 }
 
 export class InvalidPaymentOptionError extends LnAddressError {
-  constructor(message = "Invalid payment option", options?: { cause?: unknown }) {
+  constructor(
+    message = "Invalid payment option",
+    options?: { cause?: unknown },
+  ) {
     super("INVALID_PAYMENT_OPTION", message, options);
   }
 }
 
 export class InvalidRequestPaymentOptionsError extends LnAddressError {
-  constructor(message = "Invalid request payment options", options?: { cause?: unknown }) {
+  constructor(
+    message = "Invalid request payment options",
+    options?: { cause?: unknown },
+  ) {
     super("INVALID_REQUEST_PAYMENT_OPTIONS", message, options);
   }
 }
@@ -112,13 +140,19 @@ export class NodePubkeyMismatchError extends LnAddressError {
 }
 
 export class InvalidServiceKeysError extends LnAddressError {
-  constructor(message = "Invalid LNURL service keys document", options?: { cause?: unknown }) {
+  constructor(
+    message = "Invalid LNURL service keys document",
+    options?: { cause?: unknown },
+  ) {
     super("INVALID_SERVICE_KEYS", message, options);
   }
 }
 
 export class VerifyError extends LnAddressError {
-  constructor(message = "Invalid payment verification response", options?: { cause?: unknown }) {
+  constructor(
+    message = "Invalid payment verification response",
+    options?: { cause?: unknown },
+  ) {
     super("VERIFY_ERROR", message, options);
   }
 }

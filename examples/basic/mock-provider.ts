@@ -32,7 +32,8 @@ export function createMockLnurlFetch(): typeof fetch {
         callback: `${origin}/callback/bolt11`,
         minSendable: 1_000,
         maxSendable: 100_000,
-        metadata: '[["text/plain","Alice test wallet"],["text/identifier","alice@lnaddress.test"]]',
+        metadata:
+          '[["text/plain","Alice test wallet"],["text/identifier","alice@lnaddress.test"]]',
         commentAllowed: 80,
         payerData: {
           name: { mandatory: true },

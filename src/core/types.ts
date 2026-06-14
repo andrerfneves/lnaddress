@@ -1,4 +1,7 @@
-export type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+export type FetchLike = (
+  input: RequestInfo | URL,
+  init?: RequestInit,
+) => Promise<Response>;
 
 export type UrlSafetyOptions = {
   allowOnion?: boolean;
@@ -6,7 +9,11 @@ export type UrlSafetyOptions = {
 };
 
 export type Bolt11Network = "bitcoin" | "testnet" | "regtest" | "signet";
-export type RedirectPolicy = "follow" | "error" | "same-origin" | "no-downgrade";
+export type RedirectPolicy =
+  | "follow"
+  | "error"
+  | "same-origin"
+  | "no-downgrade";
 export type ProviderPolicy = "off" | "same-origin" | "same-site";
 export type NodePubkeyPolicy = "warn" | "enforce" | "off";
 export type Bolt11PayeeNodeIdSource = "n" | "signature";
@@ -202,7 +209,9 @@ export type DestinationPaymentInstruction = {
   raw: unknown;
 };
 
-export type PaymentInstruction = Bolt11PaymentInstruction | DestinationPaymentInstruction;
+export type PaymentInstruction =
+  | Bolt11PaymentInstruction
+  | DestinationPaymentInstruction;
 
 export type VerifyResult = {
   status: "OK" | "ERROR";

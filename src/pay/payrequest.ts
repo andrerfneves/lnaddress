@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { InvalidPayRequestError, InvalidPaymentOptionError } from "../core/errors";
+import {
+  InvalidPayRequestError,
+  InvalidPaymentOptionError,
+} from "../core/errors";
 import type {
   Currency,
   CurrencyConvertible,
@@ -10,9 +13,18 @@ import type {
   PaymentOption,
   UrlSafetyOptions,
 } from "../core/types";
-import { getDescription, getImage, getMetadataHash, parseMetadata } from "../extensions/metadata";
+import {
+  getDescription,
+  getImage,
+  getMetadataHash,
+  parseMetadata,
+} from "../extensions/metadata";
 import { parseNodePubkeys } from "../extensions/node-pubkeys";
-import { assertHttpUrl, toMsatBigint, unknownToRecord } from "../utils/internal";
+import {
+  assertHttpUrl,
+  toMsatBigint,
+  unknownToRecord,
+} from "../utils/internal";
 
 const payRequestSchema = z
   .object({
@@ -75,20 +87,33 @@ function assertCurrencyCode(code: string, label: string): void {
 
 function parseCurrencyInteger(value: unknown, label: string): number {
   if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
-    throw new InvalidPayRequestError(`${label} must be a non-negative safe integer`);
+    throw new InvalidPayRequestError(
+      `${label} must be a non-negative safe integer`,
+    );
   }
 
   return value;
 }
 
-function parseCurrencyConvertible(raw: unknown, index: number): CurrencyConvertible {
+function parseCurrencyConvertible(
+  raw: unknown,
+  index: number,
+): CurrencyConvertible {
   const record = unknownToRecord(raw);
   if (!record) {
-    throw new InvalidPayRequestError(`currencies entry ${index} convertible must be an object`);
+    throw new InvalidPayRequestError(
+      `currencies entry ${index} convertible must be an object`,
+    );
   }
 
-  const min = parseCurrencyInteger(record.min, `currencies entry ${index} convertible.min`);
-  const max = parseCurrencyInteger(record.max, `currencies entry ${index} convertible.max`);
+  const min = parseCurrencyInteger(
+    record.min,
+    `currencies entry ${index} convertible.min`,
+  );
+  const max = parseCurrencyInteger(
+    record.max,
+    `currencies entry ${index} convertible.max`,
+  );
 
   if (min > max) {
     throw new InvalidPayRequestError(
@@ -110,20 +135,28 @@ function parseCurrencies(raw: unknown): Currency[] | undefined {
   for (const [index, entry] of raw.entries()) {
     const record = unknownToRecord(entry);
     if (!record) {
-      throw new InvalidPayRequestError(`currencies entry ${index} must be an object`);
+      throw new InvalidPayRequestError(
+        `currencies entry ${index} must be an object`,
+      );
     }
 
     if (typeof record.code !== "string") {
-      throw new InvalidPayRequestError(`currencies entry ${index} must have a string code`);
+      throw new InvalidPayRequestError(
+        `currencies entry ${index} must have a string code`,
+      );
     }
     assertCurrencyCode(record.code, `currencies entry ${index} currency code`);
 
     if (typeof record.name !== "string") {
-      throw new InvalidPayRequestError(`currencies entry ${index} must have a string name`);
+      throw new InvalidPayRequestError(
+        `currencies entry ${index} must have a string name`,
+      );
     }
 
     if (typeof record.symbol !== "string") {
-      throw new InvalidPayRequestError(`currencies entry ${index} must have a string symbol`);
+      throw new InvalidPayRequestError(
+        `currencies entry ${index} must have a string symbol`,
+      );
     }
 
     if (
@@ -147,7 +180,9 @@ function parseCurrencies(raw: unknown): Currency[] | undefined {
     }
 
     if (seenCodes.has(record.code)) {
-      throw new InvalidPayRequestError(`currencies contains duplicate code: ${record.code}`);
+      throw new InvalidPayRequestError(
+        `currencies contains duplicate code: ${record.code}`,
+      );
     }
     seenCodes.add(record.code);
 
@@ -161,7 +196,10 @@ function parseCurrencies(raw: unknown): Currency[] | undefined {
     };
 
     if (record.convertible !== undefined) {
-      currency.convertible = parseCurrencyConvertible(record.convertible, index);
+      currency.convertible = parseCurrencyConvertible(
+        record.convertible,
+        index,
+      );
     }
 
     currencies.push(currency);
@@ -181,19 +219,27 @@ function parsePaymentOptions(raw: unknown): PaymentOption[] | undefined {
   for (const [index, entry] of raw.entries()) {
     const record = unknownToRecord(entry);
     if (!record) {
-      throw new InvalidPaymentOptionError(`paymentOptions entry ${index} must be an object`);
+      throw new InvalidPaymentOptionError(
+        `paymentOptions entry ${index} must be an object`,
+      );
     }
 
     if (typeof record.id !== "string") {
-      throw new InvalidPaymentOptionError(`paymentOptions entry ${index} must have a string id`);
+      throw new InvalidPaymentOptionError(
+        `paymentOptions entry ${index} must have a string id`,
+      );
     }
 
     if (typeof record.type !== "string") {
-      throw new InvalidPaymentOptionError(`paymentOptions entry ${index} must have a string type`);
+      throw new InvalidPaymentOptionError(
+        `paymentOptions entry ${index} must have a string type`,
+      );
     }
 
     if (seenIds.has(record.id)) {
-      throw new InvalidPaymentOptionError(`paymentOptions contains duplicate id: ${record.id}`);
+      throw new InvalidPaymentOptionError(
+        `paymentOptions contains duplicate id: ${record.id}`,
+      );
     }
     seenIds.add(record.id);
 
@@ -265,15 +311,20 @@ export function parsePayRequestResponse(
   const parsed = payRequestSchema.safeParse(raw);
 
   if (!parsed.success) {
-    throw new InvalidPayRequestError("Resolved response is not a valid LUD-06 payRequest", {
-      cause: parsed.error,
-    });
+    throw new InvalidPayRequestError(
+      "Resolved response is not a valid LUD-06 payRequest",
+      {
+        cause: parsed.error,
+      },
+    );
   }
 
   try {
     assertHttpUrl(parsed.data.callback, context);
   } catch (cause) {
-    throw new InvalidPayRequestError("Pay request callback URL is invalid", { cause });
+    throw new InvalidPayRequestError("Pay request callback URL is invalid", {
+      cause,
+    });
   }
 
   let minSendableMsat: bigint;
@@ -283,7 +334,9 @@ export function parsePayRequestResponse(
     minSendableMsat = toMsatBigint(parsed.data.minSendable, "minSendable");
     maxSendableMsat = toMsatBigint(parsed.data.maxSendable, "maxSendable");
   } catch (cause) {
-    throw new InvalidPayRequestError("Pay request amount bounds are invalid", { cause });
+    throw new InvalidPayRequestError("Pay request amount bounds are invalid", {
+      cause,
+    });
   }
 
   if (minSendableMsat > maxSendableMsat) {
@@ -295,7 +348,9 @@ export function parsePayRequestResponse(
   const metadata = parseMetadata(parsed.data.metadata);
   const description = getDescription(metadata);
   if (!description) {
-    throw new InvalidPayRequestError("Pay request metadata must include a text/plain description");
+    throw new InvalidPayRequestError(
+      "Pay request metadata must include a text/plain description",
+    );
   }
 
   const payRequest: PayRequest = {

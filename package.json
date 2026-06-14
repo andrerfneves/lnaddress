@@ -4,6 +4,11 @@
   "description": "Lightning Address-first TypeScript client for LNURL-pay.",
   "license": "MIT",
   "type": "module",
+  "author": {
+    "name": "Andre Neves",
+    "url": "https://seven.sx",
+    "email": "an@seven.sx"
+  },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -15,9 +20,21 @@
     },
     "./package.json": "./package.json"
   },
-  "files": ["dist", "README.md", "LICENSE", "CHANGELOG.md"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
   "sideEffects": false,
-  "keywords": ["lightning", "bitcoin", "lnurl", "lnurl-pay", "lightning-address", "bolt11"],
+  "keywords": [
+    "lightning",
+    "bitcoin",
+    "lnurl",
+    "lnurl-pay",
+    "lightning-address",
+    "bolt11"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/andrerfneves/lnaddress.git"

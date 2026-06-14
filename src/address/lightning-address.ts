@@ -11,15 +11,25 @@ function isValidDomain(hostname: string): boolean {
 
   const labels = hostname.split(".");
   const tld = labels.at(-1);
-  return !!tld && /[a-z]/.test(tld) && labels.every((label) => domainLabelPattern.test(label));
+  return (
+    !!tld &&
+    /[a-z]/.test(tld) &&
+    labels.every((label) => domainLabelPattern.test(label))
+  );
 }
 
 export function parseLightningAddress(address: string): LightningAddress {
   const value = address.trim();
   const atIndex = value.indexOf("@");
 
-  if (atIndex <= 0 || atIndex !== value.lastIndexOf("@") || atIndex === value.length - 1) {
-    throw new InvalidLightningAddressError("Lightning Address must be in username@domain form");
+  if (
+    atIndex <= 0 ||
+    atIndex !== value.lastIndexOf("@") ||
+    atIndex === value.length - 1
+  ) {
+    throw new InvalidLightningAddressError(
+      "Lightning Address must be in username@domain form",
+    );
   }
 
   const username = value.slice(0, atIndex);
@@ -32,14 +42,19 @@ export function parseLightningAddress(address: string): LightningAddress {
   }
 
   if (domainInput.includes(":")) {
-    throw new InvalidLightningAddressError("Lightning Address domain is invalid");
+    throw new InvalidLightningAddressError(
+      "Lightning Address domain is invalid",
+    );
   }
 
   let url: URL;
   try {
     url = new URL(`https://${domainInput}`);
   } catch (cause) {
-    throw new InvalidLightningAddressError("Lightning Address domain is invalid", { cause });
+    throw new InvalidLightningAddressError(
+      "Lightning Address domain is invalid",
+      { cause },
+    );
   }
 
   if (
@@ -52,7 +67,9 @@ export function parseLightningAddress(address: string): LightningAddress {
     url.hash ||
     !isValidDomain(url.hostname.toLowerCase())
   ) {
-    throw new InvalidLightningAddressError("Lightning Address domain is invalid");
+    throw new InvalidLightningAddressError(
+      "Lightning Address domain is invalid",
+    );
   }
 
   const domain = url.hostname.toLowerCase();

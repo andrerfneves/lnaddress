@@ -49,7 +49,9 @@ export function requestInit(
       } else {
         const abort = () => controller.abort();
         options.signal.addEventListener("abort", abort, { once: true });
-        cleanupCallbacks.push(() => options.signal?.removeEventListener("abort", abort));
+        cleanupCallbacks.push(() =>
+          options.signal?.removeEventListener("abort", abort),
+        );
       }
     }
   } else if (options.signal) {
@@ -70,7 +72,10 @@ function isRedirectStatus(status: number): boolean {
   return status >= 300 && status < 400;
 }
 
-function redirectLocation(requestUrl: URL | string, response: Response): URL | undefined {
+function redirectLocation(
+  requestUrl: URL | string,
+  response: Response,
+): URL | undefined {
   if (!isRedirectStatus(response.status)) {
     return undefined;
   }
@@ -89,7 +94,9 @@ function assertRedirectTarget(
   policy: NonNullable<FetchControls["redirectPolicy"]>,
 ): void {
   if (policy === "error") {
-    throw new NetworkError("Redirected responses are disabled by redirectPolicy");
+    throw new NetworkError(
+      "Redirected responses are disabled by redirectPolicy",
+    );
   }
 
   if (policy === "same-origin" && targetUrl.origin !== originalUrl.origin) {
@@ -150,7 +157,9 @@ export function assertRedirectPolicy(
   }
 
   if (policy === "error") {
-    throw new NetworkError("Redirected responses are disabled by redirectPolicy");
+    throw new NetworkError(
+      "Redirected responses are disabled by redirectPolicy",
+    );
   }
 
   const original = new URL(String(requestUrl));
@@ -160,12 +169,19 @@ export function assertRedirectPolicy(
     throw new NetworkError("Redirected response changed origin");
   }
 
-  if (policy === "no-downgrade" && original.protocol === "https:" && final.protocol === "http:") {
+  if (
+    policy === "no-downgrade" &&
+    original.protocol === "https:" &&
+    final.protocol === "http:"
+  ) {
     throw new NetworkError("Redirected response downgraded from https to http");
   }
 }
 
-export function parseJsonObject(raw: unknown, label: string): Record<string, unknown> {
+export function parseJsonObject(
+  raw: unknown,
+  label: string,
+): Record<string, unknown> {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     throw new TypeError(`${label} must be an object`);
   }
@@ -173,7 +189,10 @@ export function parseJsonObject(raw: unknown, label: string): Record<string, unk
   return raw as Record<string, unknown>;
 }
 
-export function readString(raw: Record<string, unknown>, keys: string[]): string | undefined {
+export function readString(
+  raw: Record<string, unknown>,
+  keys: string[],
+): string | undefined {
   for (const key of keys) {
     const value = raw[key];
     if (typeof value === "string") {
@@ -184,7 +203,10 @@ export function readString(raw: Record<string, unknown>, keys: string[]): string
   return undefined;
 }
 
-export function readBoolean(raw: Record<string, unknown>, keys: string[]): boolean | undefined {
+export function readBoolean(
+  raw: Record<string, unknown>,
+  keys: string[],
+): boolean | undefined {
   for (const key of keys) {
     const value = raw[key];
     if (typeof value === "boolean") {
@@ -195,7 +217,10 @@ export function readBoolean(raw: Record<string, unknown>, keys: string[]): boole
   return undefined;
 }
 
-export function readUnknown(raw: Record<string, unknown>, keys: string[]): unknown {
+export function readUnknown(
+  raw: Record<string, unknown>,
+  keys: string[],
+): unknown {
   for (const key of keys) {
     if (key in raw) {
       return raw[key];
@@ -209,7 +234,9 @@ function normalizedHostname(hostname: string): string {
   return hostname.toLowerCase().replace(/\.$/, "");
 }
 
-function parseIpv4(hostname: string): [number, number, number, number] | undefined {
+function parseIpv4(
+  hostname: string,
+): [number, number, number, number] | undefined {
   const parts = hostname.split(".");
   if (parts.length !== 4) {
     return undefined;
@@ -230,7 +257,12 @@ function parseIpv4(hostname: string): [number, number, number, number] | undefin
   return octets as [number, number, number, number];
 }
 
-function isPrivateIpv4([first, second]: [number, number, number, number]): boolean {
+function isPrivateIpv4([first, second]: [
+  number,
+  number,
+  number,
+  number,
+]): boolean {
   return (
     first === 0 ||
     first === 10 ||
@@ -276,7 +308,10 @@ function isOnionHost(hostname: string): boolean {
   return host === "onion" || host.endsWith(".onion");
 }
 
-export function assertHttpUrl(url: string, options: UrlSafetyOptions = {}): URL {
+export function assertHttpUrl(
+  url: string,
+  options: UrlSafetyOptions = {},
+): URL {
   let parsed: URL;
 
   try {
@@ -294,7 +329,9 @@ export function assertHttpUrl(url: string, options: UrlSafetyOptions = {}): URL 
   }
 
   if (!options.allowPrivateNetwork && isPrivateNetworkHost(parsed.hostname)) {
-    throw new TypeError(`Private or local network URLs require allowPrivateNetwork: ${url}`);
+    throw new TypeError(
+      `Private or local network URLs require allowPrivateNetwork: ${url}`,
+    );
   }
 
   return parsed;
@@ -345,7 +382,9 @@ export function toMsatBigint(value: unknown, field: string): bigint {
   throw new TypeError(`${field} must be an integer millisatoshi amount`);
 }
 
-export function unknownToRecord(value: unknown): Record<string, unknown> | undefined {
+export function unknownToRecord(
+  value: unknown,
+): Record<string, unknown> | undefined {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return undefined;
   }

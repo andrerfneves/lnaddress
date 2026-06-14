@@ -1,5 +1,9 @@
 import { NetworkError, VerifyError } from "../core/errors";
-import type { PaymentInstruction, VerifyPaymentOptions, VerifyResult } from "../core/types";
+import type {
+  PaymentInstruction,
+  VerifyPaymentOptions,
+  VerifyResult,
+} from "../core/types";
 import {
   assertHttpUrl,
   assertRedirectPolicy,
@@ -12,7 +16,9 @@ import {
   unknownToRecord,
 } from "../utils/internal";
 
-function verifyUrlFromInput(paymentOrVerifyUrl: PaymentInstruction | string): string {
+function verifyUrlFromInput(
+  paymentOrVerifyUrl: PaymentInstruction | string,
+): string {
   if (typeof paymentOrVerifyUrl === "string") {
     return paymentOrVerifyUrl;
   }
@@ -44,7 +50,10 @@ export async function verifyPayment(
   try {
     response = await fetchWithRedirectPolicy(fetcher, parsedUrl, init, options);
   } catch (cause) {
-    throw new NetworkError(`Failed to verify payment: ${parsedUrl.toString()}`, { cause });
+    throw new NetworkError(
+      `Failed to verify payment: ${parsedUrl.toString()}`,
+      { cause },
+    );
   } finally {
     cleanup();
   }
@@ -52,7 +61,9 @@ export async function verifyPayment(
   assertRedirectPolicy(parsedUrl, response, options);
 
   if (!response.ok) {
-    throw new NetworkError(`Failed to verify payment: ${response.status} ${response.statusText}`);
+    throw new NetworkError(
+      `Failed to verify payment: ${response.status} ${response.statusText}`,
+    );
   }
 
   let raw: unknown;

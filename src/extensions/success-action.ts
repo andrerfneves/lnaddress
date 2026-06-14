@@ -15,9 +15,7 @@ function base64ToBytes(value: string): Uint8Array {
 
 function hexToBytes(value: string): Uint8Array {
   if (!/^[0-9a-fA-F]{64}$/.test(value)) {
-    throw new InvalidCallbackResponseError(
-      "AES successAction preimage must be 32-byte hex",
-    );
+    throw new InvalidCallbackResponseError("AES successAction preimage must be 32-byte hex");
   }
 
   const bytes = new Uint8Array(32);
@@ -28,10 +26,7 @@ function hexToBytes(value: string): Uint8Array {
 }
 
 function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
-  return bytes.buffer.slice(
-    bytes.byteOffset,
-    bytes.byteOffset + bytes.byteLength,
-  ) as ArrayBuffer;
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 }
 
 export function parseSuccessAction(
@@ -56,19 +51,12 @@ export function parseSuccessAction(
     };
   }
 
-  if (
-    tag === "url" &&
-    typeof action.description === "string" &&
-    typeof action.url === "string"
-  ) {
+  if (tag === "url" && typeof action.description === "string" && typeof action.url === "string") {
     let url: URL;
     try {
       url = assertHttpUrl(action.url, options);
     } catch (cause) {
-      throw new InvalidCallbackResponseError(
-        "URL successAction URL is invalid",
-        { cause },
-      );
+      throw new InvalidCallbackResponseError("URL successAction URL is invalid", { cause });
     }
 
     return {
@@ -104,9 +92,7 @@ export async function decryptSuccessAction(
   preimage: string,
 ): Promise<string> {
   if (action.tag !== "aes" || !("ciphertext" in action) || !("iv" in action)) {
-    throw new InvalidCallbackResponseError(
-      "successAction must be an AES action",
-    );
+    throw new InvalidCallbackResponseError("successAction must be an AES action");
   }
 
   const key = await crypto.subtle.importKey(

@@ -1,15 +1,7 @@
 import { InvalidCallbackResponseError } from "../core/errors";
-import type {
-  DestinationPaymentInstruction,
-  PaymentInstruction,
-} from "../core/types";
+import type { DestinationPaymentInstruction, PaymentInstruction } from "../core/types";
 
-export type DestinationRail =
-  | "lightning"
-  | "bitcoin"
-  | "liquid"
-  | "arkade"
-  | "spark";
+export type DestinationRail = "lightning" | "bitcoin" | "liquid" | "arkade" | "spark";
 
 const railSchemes: Record<DestinationRail, string[]> = {
   lightning: ["lightning:"],
@@ -29,9 +21,7 @@ export function assertDestinationPayment(
   payment: PaymentInstruction,
 ): DestinationPaymentInstruction {
   if (!isDestinationPayment(payment)) {
-    throw new InvalidCallbackResponseError(
-      "Payment instruction is not a destination payment",
-    );
+    throw new InvalidCallbackResponseError("Payment instruction is not a destination payment");
   }
 
   return payment;
@@ -50,9 +40,7 @@ export function destinationMatchesRail(
     return false;
   }
 
-  return schemes.some((scheme) =>
-    payment.paymentUri?.toLowerCase().startsWith(scheme),
-  );
+  return schemes.some((scheme) => payment.paymentUri?.toLowerCase().startsWith(scheme));
 }
 
 export function assertDestinationRail(
@@ -60,9 +48,7 @@ export function assertDestinationRail(
   rail: DestinationRail,
 ): DestinationPaymentInstruction {
   if (!destinationMatchesRail(payment, rail)) {
-    throw new InvalidCallbackResponseError(
-      `Destination payment is not a ${rail} payment`,
-    );
+    throw new InvalidCallbackResponseError(`Destination payment is not a ${rail} payment`);
   }
 
   return payment;

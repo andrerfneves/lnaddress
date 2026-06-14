@@ -2,9 +2,7 @@ import { InvalidCallbackResponseError } from "../core/errors";
 import type { PayRequest, RequestPaymentOptions } from "../core/types";
 
 function sameSite(hostname: string, expectedHostname: string): boolean {
-  return (
-    hostname === expectedHostname || hostname.endsWith(`.${expectedHostname}`)
-  );
+  return hostname === expectedHostname || hostname.endsWith(`.${expectedHostname}`);
 }
 
 function providerBase(payRequest: PayRequest): URL | undefined {
@@ -37,14 +35,10 @@ export function assertProviderPolicy(
 
   const parsed = typeof url === "string" ? new URL(url) : url;
   if (policy === "same-origin" && parsed.origin !== base.origin) {
-    throw new InvalidCallbackResponseError(
-      `${label} does not match provider origin`,
-    );
+    throw new InvalidCallbackResponseError(`${label} does not match provider origin`);
   }
 
   if (policy === "same-site" && !sameSite(parsed.hostname, base.hostname)) {
-    throw new InvalidCallbackResponseError(
-      `${label} does not match provider site`,
-    );
+    throw new InvalidCallbackResponseError(`${label} does not match provider site`);
   }
 }

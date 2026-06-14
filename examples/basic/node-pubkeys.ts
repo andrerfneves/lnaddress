@@ -1,8 +1,4 @@
-import {
-  NodePubkeyMismatchError,
-  parsePayRequestResponse,
-  requestPayment,
-} from "../../src";
+import { NodePubkeyMismatchError, parsePayRequestResponse, requestPayment } from "../../src";
 import {
   alternateTestNodePubkey,
   testBolt11Invoice,
@@ -36,10 +32,7 @@ const payment = await requestPayment(payRequest, {
     }),
 });
 
-if (
-  payment.type === "bolt11" &&
-  payment.nodePubkeyVerification?.status === "mismatch"
-) {
+if (payment.type === "bolt11" && payment.nodePubkeyVerification?.status === "mismatch") {
   console.warn(payment.nodePubkeyVerification.warning);
   console.warn({
     expected: payment.nodePubkeyVerification.expectedPubkeys,

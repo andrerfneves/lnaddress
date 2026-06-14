@@ -54,12 +54,7 @@ function verifyChecksum(hrp: string, data: number[]): boolean {
   return polymod([...hrpExpand(hrp), ...data]) === 1;
 }
 
-function convertBits(
-  data: number[],
-  fromBits: number,
-  toBits: number,
-  pad: boolean,
-): number[] {
+function convertBits(data: number[], fromBits: number, toBits: number, pad: boolean): number[] {
   let acc = 0;
   let bits = 0;
   const ret: number[] = [];
@@ -91,19 +86,13 @@ function convertBits(
   return ret;
 }
 
-export function encodeLnurl(
-  url: string,
-  options: UrlSafetyOptions = {},
-): string {
+export function encodeLnurl(url: string, options: UrlSafetyOptions = {}): string {
   let parsed: URL;
 
   try {
     parsed = assertHttpUrl(url, options);
   } catch (cause) {
-    throw new InvalidLnurlError(
-      "LNURL can only encode valid http or https URLs",
-      { cause },
-    );
+    throw new InvalidLnurlError("LNURL can only encode valid http or https URLs", { cause });
   }
 
   const bytes = [...new TextEncoder().encode(parsed.toString())];
@@ -113,41 +102,30 @@ export function encodeLnurl(
   return `lnurl1${combined.map((value) => charset[value]).join("")}`;
 }
 
-export function decodeLnurl(
-  lnurl: string,
-  options: UrlSafetyOptions = {},
-): string {
+export function decodeLnurl(lnurl: string, options: UrlSafetyOptions = {}): string {
   const value = lnurl.trim();
 
   if (value !== value.toLowerCase() && value !== value.toUpperCase()) {
-    throw new InvalidLnurlError(
-      "LNURL bech32 strings must not mix upper and lower case",
-    );
+    throw new InvalidLnurlError("LNURL bech32 strings must not mix upper and lower case");
   }
 
   const normalized = value.toLowerCase();
   const separatorIndex = normalized.lastIndexOf("1");
 
   if (separatorIndex <= 0 || separatorIndex + 7 > normalized.length) {
-    throw new InvalidLnurlError(
-      "LNURL bech32 separator or checksum is invalid",
-    );
+    throw new InvalidLnurlError("LNURL bech32 separator or checksum is invalid");
   }
 
   const hrp = normalized.slice(0, separatorIndex);
   if (hrp !== "lnurl") {
-    throw new InvalidLnurlError(
-      "LNURL bech32 human-readable part must be lnurl",
-    );
+    throw new InvalidLnurlError("LNURL bech32 human-readable part must be lnurl");
   }
 
   const dataPart = normalized.slice(separatorIndex + 1);
   const data = [...dataPart].map((char) => {
     const index = charset.indexOf(char);
     if (index === -1) {
-      throw new InvalidLnurlError(
-        "LNURL bech32 string contains an invalid character",
-      );
+      throw new InvalidLnurlError("LNURL bech32 string contains an invalid character");
     }
     return index;
   });
@@ -163,11 +141,8 @@ export function decodeLnurl(
   try {
     return assertHttpUrl(url, options).toString();
   } catch (cause) {
-    throw new InvalidLnurlError(
-      "Decoded LNURL does not contain a valid http or https URL",
-      {
-        cause,
-      },
-    );
+    throw new InvalidLnurlError("Decoded LNURL does not contain a valid http or https URL", {
+      cause,
+    });
   }
 }

@@ -108,3 +108,5 @@ export function createPlaygroundFetch(): FetchLike {
     return json({ status: "ERROR", reason: "not found" }, { status: 404 });
   };
 }
+
+export const create_playground_fetch = createPlaygroundFetch;

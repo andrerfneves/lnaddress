@@ -1,8 +1,5 @@
 import { Point } from "@noble/secp256k1";
-import {
-  InvalidPayRequestError,
-  NodePubkeyMismatchError,
-} from "../core/errors";
+import { InvalidPayRequestError, NodePubkeyMismatchError } from "../core/errors";
 import type {
   Bolt11PayeeNodeIdSource,
   NodePubkey,
@@ -34,12 +31,9 @@ function normalizeNodePubkey(value: unknown, label: string): string {
   try {
     Point.fromHex(normalized).assertValidity();
   } catch (cause) {
-    throw new InvalidPayRequestError(
-      `${label} must be a valid secp256k1 public key`,
-      {
-        cause,
-      },
-    );
+    throw new InvalidPayRequestError(`${label} must be a valid secp256k1 public key`, {
+      cause,
+    });
   }
 
   return normalized;
@@ -55,9 +49,7 @@ export function parseNodePubkeys(raw: unknown): NodePubkey[] | undefined {
   }
 
   if (raw.length === 0) {
-    throw new InvalidPayRequestError(
-      "nodePubkeys must contain at least one entry",
-    );
+    throw new InvalidPayRequestError("nodePubkeys must contain at least one entry");
   }
 
   const seen = new Set<string>();
@@ -66,19 +58,12 @@ export function parseNodePubkeys(raw: unknown): NodePubkey[] | undefined {
   for (const [index, entry] of raw.entries()) {
     const record = unknownToRecord(entry);
     if (!record) {
-      throw new InvalidPayRequestError(
-        `nodePubkeys entry ${index} must be an object`,
-      );
+      throw new InvalidPayRequestError(`nodePubkeys entry ${index} must be an object`);
     }
 
-    const pubkey = normalizeNodePubkey(
-      record.pubkey,
-      `nodePubkeys entry ${index}.pubkey`,
-    );
+    const pubkey = normalizeNodePubkey(record.pubkey, `nodePubkeys entry ${index}.pubkey`);
     if (seen.has(pubkey)) {
-      throw new InvalidPayRequestError(
-        `nodePubkeys contains duplicate pubkey: ${pubkey}`,
-      );
+      throw new InvalidPayRequestError(`nodePubkeys contains duplicate pubkey: ${pubkey}`);
     }
     seen.add(pubkey);
 
@@ -98,9 +83,7 @@ export function verifyNodePubkeys(
   }
 
   const expectedPubkeys = payRequest.nodePubkeys.map((entry) => entry.pubkey);
-  const matchedPubkey = expectedPubkeys.find(
-    (pubkey) => pubkey === invoice.payeeNodeId,
-  );
+  const matchedPubkey = expectedPubkeys.find((pubkey) => pubkey === invoice.payeeNodeId);
 
   if (matchedPubkey) {
     return {

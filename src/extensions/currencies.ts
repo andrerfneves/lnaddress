@@ -3,11 +3,7 @@ import {
   InvalidCallbackResponseError,
   InvalidRequestPaymentOptionsError,
 } from "../core/errors";
-import type {
-  Currency,
-  PayRequest,
-  RequestPaymentOptions,
-} from "../core/types";
+import type { Currency, PayRequest, RequestPaymentOptions } from "../core/types";
 import { amountToMsatString } from "../utils/internal";
 
 export type CurrencyValidationOptions = {
@@ -19,9 +15,7 @@ export function effectiveCurrencies(
   paymentOption?: string,
 ): Currency[] | undefined {
   if (paymentOption !== undefined && payRequest.paymentOptions) {
-    const option = payRequest.paymentOptions.find(
-      (candidate) => candidate.id === paymentOption,
-    );
+    const option = payRequest.paymentOptions.find((candidate) => candidate.id === paymentOption);
     if (option?.currencies) {
       return option.currencies;
     }
@@ -52,33 +46,23 @@ export function validateCurrency(
 
   const currencies = effectiveCurrencies(payRequest, paymentOption);
   if (!currencies) {
-    throw new InvalidRequestPaymentOptionsError(
-      "Pay request does not support currencies",
-    );
+    throw new InvalidRequestPaymentOptionsError("Pay request does not support currencies");
   }
 
   const match = findEffectiveCurrency(payRequest, currency, paymentOption);
   if (!match) {
-    const scope =
-      paymentOption === undefined
-        ? "pay request"
-        : `paymentOption ${paymentOption}`;
+    const scope = paymentOption === undefined ? "pay request" : `paymentOption ${paymentOption}`;
     throw new InvalidRequestPaymentOptionsError(
       `Currency ${currency} is not available for ${scope}`,
     );
   }
 
   if (options.requireConvertible && !match.convertible) {
-    throw new InvalidRequestPaymentOptionsError(
-      `Currency ${currency} is not convertible`,
-    );
+    throw new InvalidRequestPaymentOptionsError(`Currency ${currency} is not convertible`);
   }
 }
 
-export function amountToPositiveIntegerString(
-  amount: number | bigint,
-  field: string,
-): string {
+export function amountToPositiveIntegerString(amount: number | bigint, field: string): string {
   if (typeof amount === "bigint") {
     if (amount <= 0n) {
       throw new AmountOutOfRangeError(`${field} must be a positive integer`);
@@ -94,11 +78,7 @@ export function amountToPositiveIntegerString(
 }
 
 export function assertCurrencyCodeForAmount(currency: string): void {
-  if (
-    currency.length === 0 ||
-    currency.trim() !== currency ||
-    currency.includes(".")
-  ) {
+  if (currency.length === 0 || currency.trim() !== currency || currency.includes(".")) {
     throw new InvalidCallbackResponseError(
       "denominatedAmount.currency must be a non-empty currency code without '.'",
     );
@@ -116,9 +96,7 @@ export function callbackAmountValue(options: RequestPaymentOptions): string {
   }
 
   if (options.amountMsat === undefined) {
-    throw new AmountOutOfRangeError(
-      "amountMsat or denominatedAmount is required",
-    );
+    throw new AmountOutOfRangeError("amountMsat or denominatedAmount is required");
   }
 
   return amountToMsatString(options.amountMsat);

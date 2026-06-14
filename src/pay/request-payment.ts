@@ -53,19 +53,14 @@ export function validateCallbackAmount(
   try {
     amount = toMsatBigint(amountMsat, "amountMsat");
   } catch (cause) {
-    throw new AmountOutOfRangeError(
-      "amountMsat must be a non-negative integer",
-      { cause },
-    );
+    throw new AmountOutOfRangeError("amountMsat must be a non-negative integer", { cause });
   }
 
   let minSendable = payRequest.minSendableMsat;
   let maxSendable = payRequest.maxSendableMsat;
 
   if (paymentOption !== undefined && payRequest.paymentOptions) {
-    const option = payRequest.paymentOptions.find(
-      (o) => o.id === paymentOption,
-    );
+    const option = payRequest.paymentOptions.find((o) => o.id === paymentOption);
     if (option) {
       if (option.minSendableMsat !== undefined) {
         minSendable = option.minSendableMsat;
@@ -83,10 +78,7 @@ export function validateCallbackAmount(
   }
 }
 
-export function validateComment(
-  payRequest: PayRequest,
-  comment?: string,
-): void {
+export function validateComment(payRequest: PayRequest, comment?: string): void {
   if (comment === undefined) {
     return;
   }
@@ -98,9 +90,7 @@ export function validateComment(
   }
 
   if (comment.length > allowed) {
-    throw new CommentTooLongError(
-      `Comment exceeds the allowed length of ${allowed} characters`,
-    );
+    throw new CommentTooLongError(`Comment exceeds the allowed length of ${allowed} characters`);
   }
 }
 
@@ -126,10 +116,7 @@ export function validateMandatoryPayerData(
   }
 }
 
-export function validatePaymentOption(
-  payRequest: PayRequest,
-  paymentOption?: string,
-): void {
+export function validatePaymentOption(payRequest: PayRequest, paymentOption?: string): void {
   if (paymentOption === undefined) {
     return;
   }
@@ -174,10 +161,7 @@ function readVerifyUrl(
   try {
     return assertHttpUrl(verifyUrl, options).toString();
   } catch (cause) {
-    throw new InvalidCallbackResponseError(
-      "Payment callback verify URL is invalid",
-      { cause },
-    );
+    throw new InvalidCallbackResponseError("Payment callback verify URL is invalid", { cause });
   }
 }
 
@@ -185,32 +169,22 @@ function stringifyPayerData(payerData: Record<string, unknown>): string {
   try {
     return JSON.stringify(payerData);
   } catch (cause) {
-    throw new InvalidCallbackResponseError(
-      "payerData must be JSON serializable",
-      { cause },
-    );
+    throw new InvalidCallbackResponseError("payerData must be JSON serializable", { cause });
   }
 }
 
-function validateCurrencyRequest(
-  payRequest: PayRequest,
-  options: RequestPaymentOptions,
-): void {
+function validateCurrencyRequest(payRequest: PayRequest, options: RequestPaymentOptions): void {
   const amountMsat = options.amountMsat;
   const denominatedAmount = options.denominatedAmount;
   const amountMsatProvided = amountMsat !== undefined;
   const denominatedAmountProvided = denominatedAmount !== undefined;
 
   if (amountMsatProvided && denominatedAmountProvided) {
-    throw new AmountOutOfRangeError(
-      "amountMsat and denominatedAmount are mutually exclusive",
-    );
+    throw new AmountOutOfRangeError("amountMsat and denominatedAmount are mutually exclusive");
   }
 
   if (!amountMsatProvided && !denominatedAmountProvided) {
-    throw new AmountOutOfRangeError(
-      "amountMsat or denominatedAmount is required",
-    );
+    throw new AmountOutOfRangeError("amountMsat or denominatedAmount is required");
   }
 
   if (amountMsat !== undefined) {
@@ -218,16 +192,9 @@ function validateCurrencyRequest(
   }
 
   if (denominatedAmount !== undefined) {
-    amountToPositiveIntegerString(
-      denominatedAmount.amount,
-      "denominatedAmount.amount",
-    );
+    amountToPositiveIntegerString(denominatedAmount.amount, "denominatedAmount.amount");
     assertCurrencyCodeForAmount(denominatedAmount.currency);
-    validateCurrency(
-      payRequest,
-      denominatedAmount.currency,
-      options.paymentOption,
-    );
+    validateCurrency(payRequest, denominatedAmount.currency, options.paymentOption);
   }
 
   validateCurrency(payRequest, options.convert, options.paymentOption, {
@@ -237,18 +204,13 @@ function validateCurrencyRequest(
 
 function parseConvertedInteger(value: unknown, field: string): number {
   if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
-    throw new InvalidCallbackResponseError(
-      `${field} must be a non-negative safe integer`,
-    );
+    throw new InvalidCallbackResponseError(`${field} must be a non-negative safe integer`);
   }
 
   return value;
 }
 
-function parseConvertedAmount(
-  raw: unknown,
-  required: boolean,
-): ConvertedAmount | undefined {
+function parseConvertedAmount(raw: unknown, required: boolean): ConvertedAmount | undefined {
   if (raw === undefined || raw === null) {
     if (required) {
       throw new InvalidCallbackResponseError(
@@ -264,14 +226,8 @@ function parseConvertedAmount(
   }
 
   const multiplier = record.multiplier;
-  if (
-    typeof multiplier !== "number" ||
-    !Number.isFinite(multiplier) ||
-    multiplier <= 0
-  ) {
-    throw new InvalidCallbackResponseError(
-      "converted.multiplier must be a positive number",
-    );
+  if (typeof multiplier !== "number" || !Number.isFinite(multiplier) || multiplier <= 0) {
+    throw new InvalidCallbackResponseError("converted.multiplier must be a positive number");
   }
 
   const amount = parseConvertedInteger(record.amount, "converted.amount");
@@ -291,9 +247,7 @@ function validateCallbackStatus(record: Record<string, unknown>): void {
   }
 
   if (status !== "OK") {
-    throw new InvalidCallbackResponseError(
-      "Payment callback status must be OK or ERROR",
-    );
+    throw new InvalidCallbackResponseError("Payment callback status must be OK or ERROR");
   }
 }
 
@@ -306,10 +260,7 @@ function validateCallbackPaymentOption(
     return;
   }
 
-  if (
-    requestedPaymentOption !== undefined &&
-    returnedPaymentOption !== requestedPaymentOption
-  ) {
+  if (requestedPaymentOption !== undefined && returnedPaymentOption !== requestedPaymentOption) {
     throw new InvalidCallbackResponseError(
       `Payment callback paymentOption ${returnedPaymentOption} does not match requested paymentOption ${requestedPaymentOption}`,
     );
@@ -318,12 +269,9 @@ function validateCallbackPaymentOption(
   try {
     validatePaymentOption(payRequest, returnedPaymentOption);
   } catch (cause) {
-    throw new InvalidCallbackResponseError(
-      "Payment callback paymentOption is not advertised",
-      {
-        cause,
-      },
-    );
+    throw new InvalidCallbackResponseError("Payment callback paymentOption is not advertised", {
+      cause,
+    });
   }
 }
 
@@ -336,22 +284,13 @@ function validateConvertedBounds(
     return;
   }
 
-  const currency = findEffectiveCurrency(
-    payRequest,
-    options.convert,
-    options.paymentOption,
-  );
+  const currency = findEffectiveCurrency(payRequest, options.convert, options.paymentOption);
   const convertible = currency?.convertible;
   if (!convertible) {
-    throw new InvalidCallbackResponseError(
-      `Currency ${options.convert} is not convertible`,
-    );
+    throw new InvalidCallbackResponseError(`Currency ${options.convert} is not convertible`);
   }
 
-  if (
-    converted.amount < convertible.min ||
-    converted.amount > convertible.max
-  ) {
+  if (converted.amount < convertible.min || converted.amount > convertible.max) {
     throw new InvalidCallbackResponseError(
       `converted.amount must respect ${options.convert} convertible bounds`,
     );
@@ -365,9 +304,7 @@ async function parseCallbackResponse(
 ): Promise<PaymentInstruction> {
   const record = unknownToRecord(raw);
   if (!record) {
-    throw new InvalidCallbackResponseError(
-      "Payment callback response must be an object",
-    );
+    throw new InvalidCallbackResponseError("Payment callback response must be an object");
   }
 
   validateCallbackStatus(record);
@@ -377,11 +314,7 @@ async function parseCallbackResponse(
   const paymentDestination = readString(record, ["paymentDestination"]);
   const paymentUri = readString(record, ["paymentURI", "paymentUri"]);
   const paymentOption = readString(record, ["paymentOption"]);
-  validateCallbackPaymentOption(
-    payRequest,
-    options.paymentOption,
-    paymentOption,
-  );
+  validateCallbackPaymentOption(payRequest, options.paymentOption, paymentOption);
 
   const converted = parseConvertedAmount(
     readUnknown(record, ["converted"]),
@@ -390,32 +323,15 @@ async function parseCallbackResponse(
   validateConvertedBounds(payRequest, options, converted);
   const verifyUrl = readVerifyUrl(record, options);
   if (verifyUrl) {
-    assertProviderPolicy(
-      payRequest,
-      verifyUrl,
-      options,
-      "Payment callback verify URL",
-    );
+    assertProviderPolicy(payRequest, verifyUrl, options, "Payment callback verify URL");
   }
-  const successAction = parseSuccessAction(
-    readUnknown(record, ["successAction"]),
-    options,
-  );
+  const successAction = parseSuccessAction(readUnknown(record, ["successAction"]), options);
 
   if (pr) {
     let nodePubkeyVerification: NodePubkeyVerification | undefined;
     if (options.validateBolt11 ?? true) {
-      const bolt11 = await assertBolt11Payment(
-        pr,
-        payRequest,
-        options,
-        converted,
-      );
-      nodePubkeyVerification = verifyNodePubkeys(
-        payRequest,
-        bolt11,
-        options.nodePubkeyPolicy,
-      );
+      const bolt11 = await assertBolt11Payment(pr, payRequest, options, converted);
+      nodePubkeyVerification = verifyNodePubkeys(payRequest, bolt11, options.nodePubkeyPolicy);
     }
 
     const instruction: Bolt11PaymentInstruction = {
@@ -490,19 +406,13 @@ async function parseCallbackResponse(
   );
 }
 
-function buildCallbackUrl(
-  payRequest: PayRequest,
-  options: RequestPaymentOptions,
-): URL {
+function buildCallbackUrl(payRequest: PayRequest, options: RequestPaymentOptions): URL {
   let callbackUrl: URL;
 
   try {
     callbackUrl = assertHttpUrl(payRequest.callback, options);
   } catch (cause) {
-    throw new InvalidCallbackResponseError(
-      "Pay request callback URL is invalid",
-      { cause },
-    );
+    throw new InvalidCallbackResponseError("Pay request callback URL is invalid", { cause });
   }
 
   callbackUrl.searchParams.set("amount", callbackAmountValue(options));
@@ -512,10 +422,7 @@ function buildCallbackUrl(
   }
 
   if (options.payerData !== undefined) {
-    callbackUrl.searchParams.set(
-      "payerdata",
-      stringifyPayerData(options.payerData),
-    );
+    callbackUrl.searchParams.set("payerdata", stringifyPayerData(options.payerData));
   }
 
   if (options.paymentOption !== undefined) {
@@ -566,30 +473,17 @@ export async function requestPayment(
   validateMandatoryPayerData(payRequest, options.payerData);
 
   const callbackUrl = buildCallbackUrl(payRequest, options);
-  assertProviderPolicy(
-    payRequest,
-    callbackUrl,
-    options,
-    "Pay request callback URL",
-  );
+  assertProviderPolicy(payRequest, callbackUrl, options, "Pay request callback URL");
   const fetcher = getFetch(options.fetch);
   let response: Response;
   const { init, cleanup } = requestInit(options.headers, options);
 
   try {
-    response = await fetchWithRedirectPolicy(
-      fetcher,
-      callbackUrl,
-      init,
-      options,
-    );
+    response = await fetchWithRedirectPolicy(fetcher, callbackUrl, init, options);
   } catch (cause) {
-    throw new NetworkError(
-      `Failed to request payment instruction: ${callbackUrl.toString()}`,
-      {
-        cause,
-      },
-    );
+    throw new NetworkError(`Failed to request payment instruction: ${callbackUrl.toString()}`, {
+      cause,
+    });
   } finally {
     cleanup();
   }
@@ -606,12 +500,9 @@ export async function requestPayment(
   try {
     raw = await readJsonResponse(response);
   } catch (cause) {
-    throw new InvalidCallbackResponseError(
-      "Payment callback response is not valid JSON",
-      {
-        cause,
-      },
-    );
+    throw new InvalidCallbackResponseError("Payment callback response is not valid JSON", {
+      cause,
+    });
   }
 
   return parseCallbackResponse(raw, payRequest, options);

@@ -1,3 +1,4 @@
+import "./polyfills";
 import {
   type PayRequest,
   type PaymentInstruction,
@@ -18,7 +19,7 @@ import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
 import { Tabs } from "./components/ui/tabs";
 import { Textarea } from "./components/ui/textarea";
-import { create_playground_fetch } from "./lib/mock-provider";
+import { createPlaygroundFetch } from "./lib/mock-provider";
 import "./styles.css";
 
 type Scenario = "bolt11" | "destination";
@@ -80,7 +81,7 @@ function App() {
   const [payment, set_payment] = useState<PaymentInstruction | null>(null);
   const [verify_result, set_verify_result] = useState<VerifyResult | null>(null);
   const [error, set_error] = useState<string | null>(null);
-  const fetch = useMemo(() => create_playground_fetch(), []);
+  const fetch = useMemo(() => createPlaygroundFetch(), []);
 
   const payerData = useMemo(
     () => ({
@@ -147,7 +148,7 @@ function App() {
 
   function build_request_options(): RequestPaymentOptions {
     const options: RequestPaymentOptions = {
-      amount_msat: Number(amount_msat),
+      amountMsat: Number(amount_msat),
       payerData,
       fetch,
     };

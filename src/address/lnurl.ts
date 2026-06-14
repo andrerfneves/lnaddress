@@ -1,6 +1,6 @@
-import { InvalidLnurlError } from "./errors";
-import { assertHttpUrl } from "./internal";
-import type { UrlSafetyOptions } from "./types";
+import { InvalidLnurlError } from "../core/errors";
+import type { UrlSafetyOptions } from "../core/types";
+import { assertHttpUrl } from "../utils/internal";
 
 const charset = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
 const generator = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];

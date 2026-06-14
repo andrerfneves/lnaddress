@@ -1,9 +1,14 @@
 import { recoverPublicKeyAsync, verifyAsync } from "@noble/secp256k1";
-import { InvalidCallbackResponseError } from "./errors";
-import { amountToMsatString } from "./internal";
-import type { Bolt11PayeeNodeInfo } from "./node-pubkeys";
-import { sha256 } from "./sha256";
-import type { Bolt11Network, ConvertedAmount, PayRequest, RequestPaymentOptions } from "./types";
+import { InvalidCallbackResponseError } from "../core/errors";
+import type {
+  Bolt11Network,
+  ConvertedAmount,
+  PayRequest,
+  RequestPaymentOptions,
+} from "../core/types";
+import type { Bolt11PayeeNodeInfo } from "../extensions/node-pubkeys";
+import { amountToMsatString } from "../utils/internal";
+import { sha256 } from "../utils/sha256";
 
 const charset = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
 const generator = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];

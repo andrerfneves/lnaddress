@@ -1,5 +1,5 @@
-import { NetworkError } from "./errors";
-import type { FetchControls, FetchLike, UrlSafetyOptions } from "./types";
+import { NetworkError } from "../core/errors";
+import type { FetchControls, FetchLike, UrlSafetyOptions } from "../core/types";
 
 export function getFetch(fetcher?: FetchLike): FetchLike {
   const selected = fetcher ?? globalThis.fetch;

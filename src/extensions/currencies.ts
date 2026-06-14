@@ -2,9 +2,9 @@ import {
   AmountOutOfRangeError,
   InvalidCallbackResponseError,
   InvalidRequestPaymentOptionsError,
-} from "./errors";
-import { amountToMsatString } from "./internal";
-import type { Currency, PayRequest, RequestPaymentOptions } from "./types";
+} from "../core/errors";
+import type { Currency, PayRequest, RequestPaymentOptions } from "../core/types";
+import { amountToMsatString } from "../utils/internal";
 
 export type CurrencyValidationOptions = {
   requireConvertible?: boolean;

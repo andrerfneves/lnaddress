@@ -1,6 +1,6 @@
-import { InvalidPayRequestError } from "./errors";
-import { sha256 } from "./sha256";
-import type { MetadataEntry, MetadataImage } from "./types";
+import { InvalidPayRequestError } from "../core/errors";
+import type { MetadataEntry, MetadataImage } from "../core/types";
+import { sha256 } from "../utils/sha256";
 
 function toHex(value: number): string {
   return value.toString(16).padStart(2, "0");

@@ -1,5 +1,5 @@
-import { InvalidCallbackResponseError } from "./errors";
-import type { DestinationPaymentInstruction, PaymentInstruction } from "./types";
+import { InvalidCallbackResponseError } from "../core/errors";
+import type { DestinationPaymentInstruction, PaymentInstruction } from "../core/types";
 
 export type DestinationRail = "lightning" | "bitcoin" | "liquid" | "arkade" | "spark";
 

@@ -1,9 +1,12 @@
+import { parseLightningAddress } from "../address/lightning-address";
+import { decodeLnurl } from "../address/lnurl";
 import {
   InvalidLightningAddressError,
   InvalidLnurlError,
   InvalidPayRequestError,
   NetworkError,
-} from "./errors";
+} from "../core/errors";
+import type { LightningAddress, PayRequest, ResolveOptions } from "../core/types";
 import {
   assertHttpUrl,
   assertRedirectPolicy,
@@ -11,11 +14,8 @@ import {
   getFetch,
   readJsonResponse,
   requestInit,
-} from "./internal";
-import { parseLightningAddress } from "./lightning-address";
-import { decodeLnurl } from "./lnurl";
+} from "../utils/internal";
 import { parsePayRequestResponse } from "./payrequest";
-import type { LightningAddress, PayRequest, ResolveOptions } from "./types";
 
 function lightningAddressToUrl(address: LightningAddress): string {
   return `https://${address.domain}/.well-known/lnurlp/${address.username}`;

@@ -1,5 +1,13 @@
 import { Point } from "@noble/secp256k1";
-import { InvalidServiceKeysError, NetworkError } from "./errors";
+import { InvalidServiceKeysError, NetworkError } from "../core/errors";
+import type {
+  DomainServiceKey,
+  DomainServiceKeyAlgorithm,
+  DomainServiceKeys,
+  FetchServiceKeysOptions,
+  ParseServiceKeysContext,
+  UrlSafetyOptions,
+} from "../core/types";
 import {
   assertHttpUrl,
   assertRedirectPolicy,
@@ -8,15 +16,7 @@ import {
   readJsonResponse,
   requestInit,
   unknownToRecord,
-} from "./internal";
-import type {
-  DomainServiceKey,
-  DomainServiceKeyAlgorithm,
-  DomainServiceKeys,
-  FetchServiceKeysOptions,
-  ParseServiceKeysContext,
-  UrlSafetyOptions,
-} from "./types";
+} from "../utils/internal";
 
 export const LNURL_SERVICE_PATH = "/.well-known/lnurl-service";
 

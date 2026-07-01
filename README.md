@@ -203,7 +203,7 @@ console.log(converted.converted);
 
 ## Payment Options
 
-Providers may advertise multiple payment rails via the draft `paymentOptions` extension in the LUD-06 response. `lnaddress` parses them and lets you select one before the callback.
+Providers may advertise multiple payment methods via the draft `paymentOptions` extension in the LUD-06 response. `lnaddress` parses them and lets you select one before the callback. The current v2 draft keeps `amount` in LUD-06 millisatoshis and treats `paymentOption` as method selection, not asset/quote selection.
 
 ```ts
 import { requestPayment, resolve, validatePaymentOption } from "lnaddress";
@@ -212,7 +212,7 @@ const payRequest = await resolve("alice@example.com");
 
 // See available options
 console.log(payRequest.paymentOptions);
-// [{ id: "lightning", type: "lightning" }, { id: "liquid", type: "liquid" }]
+// [{ id: "lightning", type: "lightning" }, { id: "bolt12", type: "bolt12" }, { id: "liquid", type: "liquid" }]
 
 // Select a non-Lightning option
 validatePaymentOption(payRequest, "liquid");
@@ -229,7 +229,7 @@ if (payment.type === "destination") {
 }
 ```
 
-If `paymentOption` is absent, the normal LUD-06 Lightning flow is used. `validatePaymentOption` rejects unknown or unavailable options before the callback is sent. If an option has its own `currencies`, those override the top-level LUD-22 `currencies` for that rail; otherwise it inherits the top-level list.
+If `paymentOption` is absent, the normal LUD-06 Lightning flow is used. `validatePaymentOption` rejects unknown or unavailable options before the callback is sent. For `type: "lightning"`, callback responses must include `pr`; `pr` remains authoritative even if generic `paymentDestination` / `paymentURI` fields are also present. Non-`pr` options such as `bolt12`, `onchain`, `liquid`, `arkade`, `spark`, `bark`, or unknown future methods may return `paymentDestination`, `paymentURI`, or both. URI-only responses are accepted for methods whose complete wallet instruction is a URI/deeplink. If an option has its own `currencies`, those override the top-level LUD-22 `currencies` for that rail; otherwise it inherits the top-level list.
 
 ## Invoice-origin checks with nodePubkeys
 
@@ -305,7 +305,7 @@ The base trust model is HTTPS origin binding plus required raw `publicKey` value
 
 ## Destination Instructions
 
-Some providers return payment destinations instead of BOLT11 invoices. `lnaddress` preserves those responses as a typed destination instruction. Treat destination strings and `paymentUri` as provider data until your application validates the target rail.
+Some providers return payment destinations or URI-only payment instructions instead of BOLT11 invoices. `lnaddress` preserves those responses as a typed destination instruction. Treat destination strings and `paymentUri` as provider data until your application validates the target rail.
 
 ```ts
 const payment = await pay("liquid@example.com", {
@@ -319,7 +319,7 @@ if (payment.type === "destination") {
 }
 ```
 
-The same shape works for BOLT12-style offers and destination rails such as onchain, Liquid, Arkade, or Spark when a provider returns `paymentDestination`, wire-field `paymentURI`, and optionally `verify`. Use `assertDestinationRail(payment, "liquid")` or `destinationMatchesRail` when you need URI-scheme validation for known rails.
+The same shape works for BOLT12-style offers and destination rails such as onchain, Liquid, Arkade, Spark, or Bark when a provider returns `paymentDestination`, wire-field `paymentURI`, or both, plus optionally `verify`. Use `assertDestinationRail(payment, "liquid")`, `assertDestinationRail(payment, "onchain")`, or `destinationMatchesRail` when you need URI-scheme validation for known rails.
 
 ## Examples
 

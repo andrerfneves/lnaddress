@@ -10,7 +10,8 @@ async function narrowsDiscriminatedUnion(payment: PaymentInstruction) {
   if (payment.type === "bolt11") {
     payment.pr satisfies string;
   } else {
-    payment.paymentDestination satisfies string;
+    payment.paymentDestination satisfies string | undefined;
+    payment.paymentUri satisfies string | undefined;
   }
 }
 

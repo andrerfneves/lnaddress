@@ -98,6 +98,11 @@ export async function verifyPayment(
     result.paymentDestination = paymentDestination;
   }
 
+  const paymentUri = readString(record, ["paymentURI", "paymentUri"]);
+  if (paymentUri) {
+    result.paymentUri = paymentUri;
+  }
+
   const paymentOption = readString(record, ["paymentOption"]);
   if (paymentOption !== undefined) {
     result.paymentOption = paymentOption;

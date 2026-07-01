@@ -1,14 +1,25 @@
 import { InvalidCallbackResponseError } from "../core/errors";
 import type { DestinationPaymentInstruction, PaymentInstruction } from "../core/types";
 
-export type DestinationRail = "lightning" | "bitcoin" | "liquid" | "arkade" | "spark";
+export type DestinationRail =
+  | "lightning"
+  | "bolt12"
+  | "bitcoin"
+  | "onchain"
+  | "liquid"
+  | "arkade"
+  | "spark"
+  | "bark";
 
 const railSchemes: Record<DestinationRail, string[]> = {
   lightning: ["lightning:"],
+  bolt12: ["lightning:"],
   bitcoin: ["bitcoin:"],
+  onchain: ["bitcoin:"],
   liquid: ["liquidnetwork:", "liquid:"],
   arkade: ["arkade:"],
   spark: ["spark:"],
+  bark: ["bark:"],
 };
 
 export function isDestinationPayment(
@@ -31,10 +42,6 @@ export function destinationMatchesRail(
   payment: DestinationPaymentInstruction,
   rail: DestinationRail,
 ): boolean {
-  if (!payment.paymentDestination) {
-    return false;
-  }
-
   const schemes = railSchemes[rail];
   if (!payment.paymentUri) {
     return false;

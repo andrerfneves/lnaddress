@@ -195,12 +195,13 @@ export type Bolt11PaymentInstruction = {
 export type DestinationPaymentInstruction = {
   type: "destination";
   paymentOption?: string;
-  paymentDestination: string;
-  paymentUri?: string;
   verifyUrl?: string;
   converted?: ConvertedAmount;
   raw: unknown;
-};
+} & (
+  | { paymentDestination: string; paymentUri?: string }
+  | { paymentDestination?: string; paymentUri: string }
+);
 
 export type PaymentInstruction = Bolt11PaymentInstruction | DestinationPaymentInstruction;
 
@@ -211,6 +212,7 @@ export type VerifyResult = {
   pr?: string;
   paymentOption?: string;
   paymentDestination?: string;
+  paymentUri?: string;
   paymentReference?: string | null;
   reason?: string;
   raw: unknown;

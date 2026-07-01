@@ -37,4 +37,22 @@ describe("destination payment helpers", () => {
     expect(assertDestinationRail(destination, "liquid")).toBe(destination);
     expect(() => assertDestinationRail(destination, "spark")).toThrow(InvalidCallbackResponseError);
   });
+  test("matches v2 payment option rails by URI-only instructions", () => {
+    const uriOnly: PaymentInstruction = {
+      type: "destination",
+      paymentUri: "bitcoin:bc1qexample?amount=0.001",
+      raw: {},
+    };
+
+    const bark: PaymentInstruction = {
+      type: "destination",
+      paymentUri: "bark:payment-destination",
+      raw: {},
+    };
+
+    expect(isDestinationPayment(uriOnly)).toBe(true);
+    expect(destinationMatchesRail(assertDestinationPayment(uriOnly), "onchain")).toBe(true);
+    expect(destinationMatchesRail(assertDestinationPayment(uriOnly), "bitcoin")).toBe(true);
+    expect(destinationMatchesRail(assertDestinationPayment(bark), "bark")).toBe(true);
+  });
 });

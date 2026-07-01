@@ -10,6 +10,7 @@ import type {
 } from "../core/types";
 import { getDescription, getImage, getMetadataHash, parseMetadata } from "../extensions/metadata";
 import { parseNodePubkeys } from "../extensions/node-pubkeys";
+import { parseUnits } from "../extensions/units";
 import { assertHttpUrl, toMsatBigint, unknownToRecord } from "../utils/internal";
 
 const payRequestSchema = z
@@ -22,6 +23,7 @@ const payRequestSchema = z
     commentAllowed: z.number().int().nonnegative().optional(),
     payerData: z.record(z.unknown()).optional(),
     paymentOptions: z.array(z.unknown()).optional(),
+    units: z.array(z.unknown()).optional(),
     nodePubkeys: z.unknown().optional(),
   })
   .passthrough();
@@ -137,6 +139,19 @@ function parsePaymentOptions(raw: unknown): PaymentOption[] | undefined {
       );
     }
 
+    if (record.units !== undefined) {
+      try {
+        const units = parseUnits(record.units, `paymentOptions entry ${index} units`);
+        if (units) {
+          option.units = units;
+        }
+      } catch (cause) {
+        throw new InvalidPaymentOptionError(`paymentOptions entry ${index} has invalid units`, {
+          cause,
+        });
+      }
+    }
+
     paymentOptions.push(option);
   }
 
@@ -212,6 +227,11 @@ export function parsePayRequestResponse(
   const payerData = parsePayerData(parsed.data.payerData);
   if (payerData) {
     payRequest.payerData = payerData;
+  }
+
+  const units = parseUnits(parsed.data.units);
+  if (units) {
+    payRequest.units = units;
   }
 
   const paymentOptions = parsePaymentOptions(parsed.data.paymentOptions);

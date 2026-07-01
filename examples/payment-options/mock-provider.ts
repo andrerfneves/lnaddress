@@ -1,22 +1,8 @@
 /**
- * Mock Payment Options Provider
+ * Mock Payment Options + PaymentQuote Provider
  *
- * A runnable mock server that demonstrates the full paymentOptions flow.
+ * Runnable demo of paymentOptions composed with paymentQuote units.
  * Run with: `bun mock-provider.ts`
- *
- * Endpoints:
- *   GET /.well-known/lnurlp/alice   → LUD-06 payRequest + paymentOptions
- *   GET /callback                    → Returns paymentDestination per selected option
- *   GET /verify/:id                → LUD-21 verify with paymentOption + paymentReference
- *
- * Usage from the library:
- *   const payRequest = await resolve("http://localhost:3000/.well-known/lnurlp/alice", { allowPrivateNetwork: true });
- *   const payment = await requestPayment(payRequest, {
- *     amountMsat: 25000,
- *     paymentOption: "liquid",
- *     allowPrivateNetwork: true,
- *   });
- *   const result = await verifyPayment(payment, { allowPrivateNetwork: true });
  */
 
 import { requestPayment, resolve, verifyPayment } from "../../dist/index.js";
@@ -24,6 +10,30 @@ import { requestPayment, resolve, verifyPayment } from "../../dist/index.js";
 const PORT = 3000;
 
 const aliceMetadata = '[["text/plain","Alice — multi-rail payment"]]';
+const usd = {
+  code: "USD",
+  name: "US Dollar",
+  symbol: "$",
+  decimals: 2,
+  minAmount: "100",
+  maxAmount: "100000",
+};
+const usdt = {
+  code: "USDT",
+  name: "Tether USD on Liquid",
+  symbol: "₮",
+  decimals: 6,
+  assetId: "liquid-usdt-demo-asset",
+};
+
+type VerifyState = {
+  settled: boolean;
+  paymentOption: string;
+  paymentDestination?: string;
+  paymentUri?: string;
+  paymentReference: string | null;
+  paymentQuote?: ReturnType<typeof buildLiquidQuote>;
+};
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -32,7 +42,25 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-const verifyStates = new Map<string, { settled: boolean; paymentReference: string | null }>();
+function buildLiquidQuote(amount: string, unit: string, receiveUnit = "USDT") {
+  const requestedAmount = BigInt(amount);
+  const receiveAmount = unit === "USD" ? requestedAmount * 10000n : requestedAmount;
+  const feeAmount = 25000n;
+  const paymentAmount = receiveAmount + feeAmount;
+
+  return {
+    id: `quote_${crypto.randomUUID()}`,
+    expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    requested: { amount, unit },
+    payment: { amount: paymentAmount.toString(), unit: receiveUnit },
+    receive: { amount: receiveAmount.toString(), unit: receiveUnit },
+    fees: [
+      { amount: feeAmount.toString(), unit: receiveUnit, description: "Liquid settlement fee" },
+    ],
+  };
+}
+
+const verifyStates = new Map<string, VerifyState>();
 
 const server = Bun.serve({
   port: PORT,
@@ -41,7 +69,6 @@ const server = Bun.serve({
     const url = new URL(request.url);
     const origin = `http://${url.host}`;
 
-    // 1. LUD-06 payRequest with paymentOptions
     if (url.pathname === "/.well-known/lnurlp/alice") {
       return json({
         tag: "payRequest",
@@ -54,62 +81,71 @@ const server = Bun.serve({
           name: { mandatory: true },
           email: { mandatory: false },
         },
+        units: [usd],
         paymentOptions: [
           { id: "lightning", type: "lightning", available: true },
-          { id: "lightning-bolt12", type: "lightning-bolt12", available: true },
+          { id: "bolt12", type: "bolt12", available: true },
           { id: "onchain", type: "onchain", available: true },
-          { id: "liquid", type: "liquid", available: true },
+          { id: "liquid-usdt", type: "liquid", available: true, units: [usd, usdt] },
           { id: "arkade", type: "arkade", available: false },
           { id: "spark", type: "spark", available: true },
+          { id: "bark", type: "bark", available: true },
         ],
       });
     }
 
-    // 2. Callback — returns paymentDestination per selected option
     if (url.pathname === "/callback") {
       const amount = url.searchParams.get("amount");
-      const paymentOption = url.searchParams.get("paymentOption");
-      const comment = url.searchParams.get("comment");
-      const payerData = url.searchParams.get("payerdata");
+      const unit = url.searchParams.get("unit") ?? "msat";
+      const receiveUnit = url.searchParams.get("receiveUnit") ?? undefined;
+      const paymentOption = url.searchParams.get("paymentOption") ?? "lightning";
 
-      if (!amount || !paymentOption) {
-        return json({ status: "ERROR", reason: "Missing amount or paymentOption" }, 400);
+      if (!amount) {
+        return json({ status: "ERROR", reason: "Missing amount" }, 400);
       }
 
       const verifyId = crypto.randomUUID();
       const verifyUrl = `${origin}/verify/${verifyId}`;
-      verifyStates.set(verifyId, { settled: false, paymentReference: null });
 
-      // Simulate async settlement after 3 seconds
-      setTimeout(() => {
-        const state = verifyStates.get(verifyId);
-        if (state) {
-          state.settled = true;
-          state.paymentReference = `${paymentOption}-ref-${verifyId.slice(0, 8)}`;
-        }
-      }, 3000);
+      function store(state: Omit<VerifyState, "settled" | "paymentReference">) {
+        verifyStates.set(verifyId, { ...state, settled: false, paymentReference: null });
+        setTimeout(() => {
+          const current = verifyStates.get(verifyId);
+          if (current) {
+            current.settled = true;
+            current.paymentReference = `${paymentOption}-ref-${verifyId.slice(0, 8)}`;
+          }
+        }, 3000);
+      }
 
       switch (paymentOption) {
         case "lightning":
+          store({ paymentOption: "lightning" });
           return json({
             status: "OK",
             paymentOption: "lightning",
             pr: "lnbc100n1p3qgxcqpp5...",
-            paymentDestination: "lnbc100n1p3qgxcqpp5...",
             paymentURI: "lightning:lnbc100n1p3qgxcqpp5...",
             verify: verifyUrl,
           });
 
-        case "lightning-bolt12":
+        case "bolt12":
+          store({
+            paymentOption: "bolt12",
+            paymentUri: "lightning:lno1pg257enxv4ezqcneypekxarpw3jxj",
+          });
           return json({
             status: "OK",
-            paymentOption: "lightning-bolt12",
-            paymentDestination: "lno1pg257enxv4ezqcneypekxarpw3jxj",
+            paymentOption: "bolt12",
             paymentURI: "lightning:lno1pg257enxv4ezqcneypekxarpw3jxj",
             verify: verifyUrl,
           });
 
         case "onchain":
+          store({
+            paymentOption: "onchain",
+            paymentDestination: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+          });
           return json({
             status: "OK",
             paymentOption: "onchain",
@@ -118,18 +154,27 @@ const server = Bun.serve({
             verify: verifyUrl,
           });
 
-        case "liquid":
+        case "liquid-usdt": {
+          const paymentQuote = buildLiquidQuote(amount, unit, receiveUnit ?? "USDT");
+          const paymentUri = `liquidnetwork:liquid-address-for-demo?assetid=${usdt.assetId}&amount=${paymentQuote.payment.amount}`;
+          store({
+            paymentOption: "liquid-usdt",
+            paymentDestination: "liquid-address-for-demo",
+            paymentUri,
+            paymentQuote,
+          });
           return json({
             status: "OK",
-            paymentOption: "liquid",
-            paymentDestination:
-              "lq1qq2x6tjgk6r2v6jlj3mq5x3t2q6f0m4p3k7x9a4c5d6e7f8g9h0i1j2k3l4m5n6o7p8",
-            paymentURI:
-              "liquidnetwork:lq1qq2x6tjgk6r2v6jlj3mq5x3t2q6f0m4p3k7x9a4c5d6e7f8g9h0i1j2k3l4m5n6o7p8?amount=0.001",
+            paymentOption: "liquid-usdt",
+            paymentDestination: "liquid-address-for-demo",
+            paymentURI: paymentUri,
+            paymentQuote,
             verify: verifyUrl,
           });
+        }
 
         case "spark":
+          store({ paymentOption: "spark", paymentDestination: "spark-payment-destination-abc123" });
           return json({
             status: "OK",
             paymentOption: "spark",
@@ -142,7 +187,6 @@ const server = Bun.serve({
       }
     }
 
-    // 3. LUD-21 verify — returns paymentOption + paymentReference
     if (url.pathname.startsWith("/verify/")) {
       const id = url.pathname.split("/verify/")[1];
       const state = verifyStates.get(id);
@@ -154,10 +198,11 @@ const server = Bun.serve({
       return json({
         status: "OK",
         settled: state.settled,
-        paymentOption: "liquid", // would be stored per-session in a real provider
-        paymentDestination:
-          "lq1qq2x6tjgk6r2v6jlj3mq5x3t2q6f0m4p3k7x9a4c5d6e7f8g9h0i1j2k3l4m5n6o7p8",
+        paymentOption: state.paymentOption,
+        paymentDestination: state.paymentDestination,
+        paymentURI: state.paymentUri,
         paymentReference: state.paymentReference,
+        paymentQuote: state.paymentQuote,
       });
     }
 
@@ -168,62 +213,56 @@ const server = Bun.serve({
 const origin = `http://localhost:${PORT}`;
 
 console.log(`
-  🚀 Mock Payment Options Provider running at ${origin}
+  🚀 Mock Payment Options + PaymentQuote Provider running at ${origin}
 
   Endpoints:
     GET ${origin}/.well-known/lnurlp/alice
-    GET ${origin}/callback?amount=<msat>&paymentOption=<id>
+    GET ${origin}/callback?amount=<integer>&unit=<unit>&receiveUnit=<unit>&paymentOption=<id>
     GET ${origin}/verify/<id>
 
-  Available options: lightning, lightning-bolt12, onchain, liquid, spark
-  (ark is advertised as unavailable)
+  Available options: lightning, bolt12, onchain, liquid-usdt, spark, bark
+  (arkade is advertised as unavailable)
 
   Run the client demo in 3 seconds...
 `);
 
-// Auto-run a client demo
 setTimeout(async () => {
-  console.log("\n  ─── Client Demo \u2500──\n");
+  console.log("\n  ─── Client Demo ───\n");
 
   try {
-    // 1. Resolve
     console.log(`  1. Resolve alice@localhost:${PORT}`);
     const payRequest = await resolve(`http://localhost:${PORT}/.well-known/lnurlp/alice`, {
       allowPrivateNetwork: true,
     });
     console.log(
       "     →",
-      payRequest.paymentOptions?.map((o) => `${o.id}:${o.available ? "✓" : "✗"}`).join(", "),
+      payRequest.paymentOptions
+        ?.map((o) => `${o.id}:${o.available === false ? "✗" : "✓"}`)
+        .join(", "),
     );
+    console.log("     → units:", payRequest.units?.map((unit) => unit.code).join(", "));
 
-    // 2. Validate
-    console.log("\n  2. Validate paymentOption: liquid");
-    // validatePaymentOption is available from the library but not imported here
-    // The validation happens inside requestPayment
-
-    // 3. Request payment
-    console.log("\n  3. Request payment (liquid, 25000 msat)");
+    console.log("\n  2. Request payment (100.00 USD → receive USDT over Liquid)");
     const payment = await requestPayment(payRequest, {
-      amountMsat: 25000,
-      paymentOption: "liquid",
+      unitAmount: { amount: 10_000, unit: "USD" },
+      receiveUnit: "USDT",
+      paymentOption: "liquid-usdt",
       payerData: { name: "Demo Wallet" },
       allowPrivateNetwork: true,
     });
     console.log("     → type:", payment.type);
     console.log("     → paymentOption:", payment.paymentOption);
-    console.log("     → paymentDestination:", payment.paymentDestination);
     console.log("     → paymentURI:", payment.paymentUri);
-    console.log("     → verifyUrl:", payment.verifyUrl);
+    console.log("     → quote:", payment.paymentQuote);
 
-    // 4. Verify immediately (not settled yet)
-    console.log("\n  4. Verify immediately...");
+    console.log("\n  3. Verify immediately...");
     const early = await verifyPayment(payment, { allowPrivateNetwork: true });
     console.log("     → settled:", early.settled);
     console.log("     → paymentReference:", early.paymentReference);
+    console.log("     → quote id:", early.paymentQuote?.id);
 
-    // 5. Wait and verify again
-    console.log("\n  5. Wait 3.5s for settlement...");
-    await new Promise((r) => setTimeout(r, 3500));
+    console.log("\n  4. Wait 3.5s for settlement...");
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 3500));
     const later = await verifyPayment(payment, { allowPrivateNetwork: true });
     console.log("     → settled:", later.settled);
     console.log("     → paymentOption:", later.paymentOption);
@@ -236,3 +275,5 @@ setTimeout(async () => {
 
   console.log("  Server still running. Ctrl+C to stop.\n");
 }, 3000);
+
+void server;

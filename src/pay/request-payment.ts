@@ -18,9 +18,15 @@ import type {
 } from "../core/types";
 import { verifyNodePubkeys } from "../extensions/node-pubkeys";
 import { parseSuccessAction } from "../extensions/success-action";
+import {
+  callbackAmountValue,
+  parsePaymentQuote,
+  paymentQuoteRequired,
+  validatePaymentQuoteRequest,
+  validateUnit,
+} from "../extensions/units";
 import { assertBolt11Payment } from "../lightning/bolt11";
 import {
-  amountToMsatString,
   assertHttpUrl,
   assertRedirectPolicy,
   fetchWithRedirectPolicy,
@@ -167,11 +173,32 @@ function stringifyPayerData(payerData: Record<string, unknown>): string {
 }
 
 function validateCallbackRequest(payRequest: PayRequest, options: RequestPaymentOptions): void {
-  if (options.amountMsat === undefined) {
-    throw new AmountOutOfRangeError("amountMsat is required");
+  const amountMsatProvided = options.amountMsat !== undefined;
+  const unitAmountProvided = options.unitAmount !== undefined;
+
+  if (amountMsatProvided && unitAmountProvided) {
+    throw new AmountOutOfRangeError("amountMsat and unitAmount are mutually exclusive");
   }
 
-  validateCallbackAmount(payRequest, options.amountMsat, options.paymentOption);
+  if (!amountMsatProvided && !unitAmountProvided) {
+    throw new AmountOutOfRangeError("amountMsat or unitAmount is required");
+  }
+
+  if (amountMsatProvided) {
+    validateCallbackAmount(
+      payRequest,
+      options.amountMsat as number | bigint,
+      options.paymentOption,
+    );
+  }
+
+  if (unitAmountProvided) {
+    validateUnit(payRequest, options.unitAmount?.unit, options.paymentOption, {
+      amount: options.unitAmount?.amount,
+    });
+  }
+
+  validateUnit(payRequest, options.receiveUnit, options.paymentOption);
 }
 
 function validateCallbackStatus(record: Record<string, unknown>): void {
@@ -250,6 +277,12 @@ async function parseCallbackResponse(
     paymentOption,
   );
 
+  const paymentQuote = parsePaymentQuote(
+    readUnknown(record, ["paymentQuote"]),
+    paymentQuoteRequired(options),
+  );
+  validatePaymentQuoteRequest(paymentQuote, options);
+
   const verifyUrl = readVerifyUrl(record, options);
   if (verifyUrl) {
     assertProviderPolicy(payRequest, verifyUrl, options, "Payment callback verify URL");
@@ -259,7 +292,7 @@ async function parseCallbackResponse(
   if (pr) {
     let nodePubkeyVerification: NodePubkeyVerification | undefined;
     if (options.validateBolt11 ?? true) {
-      const bolt11 = await assertBolt11Payment(pr, payRequest, options);
+      const bolt11 = await assertBolt11Payment(pr, payRequest, options, paymentQuote);
       nodePubkeyVerification = verifyNodePubkeys(payRequest, bolt11, options.nodePubkeyPolicy);
     }
 
@@ -283,6 +316,10 @@ async function parseCallbackResponse(
 
     if (paymentUri) {
       instruction.paymentUri = paymentUri;
+    }
+
+    if (paymentQuote) {
+      instruction.paymentQuote = paymentQuote;
     }
 
     if (verifyUrl) {
@@ -324,6 +361,10 @@ async function parseCallbackResponse(
       instruction.paymentOption = paymentOption;
     }
 
+    if (paymentQuote) {
+      instruction.paymentQuote = paymentQuote;
+    }
+
     if (verifyUrl) {
       instruction.verifyUrl = verifyUrl;
     }
@@ -345,7 +386,15 @@ function buildCallbackUrl(payRequest: PayRequest, options: RequestPaymentOptions
     throw new InvalidCallbackResponseError("Pay request callback URL is invalid", { cause });
   }
 
-  callbackUrl.searchParams.set("amount", amountToMsatString(options.amountMsat));
+  callbackUrl.searchParams.set("amount", callbackAmountValue(options));
+
+  if (options.unitAmount !== undefined) {
+    callbackUrl.searchParams.set("unit", options.unitAmount.unit);
+  }
+
+  if (options.receiveUnit !== undefined) {
+    callbackUrl.searchParams.set("receiveUnit", options.receiveUnit);
+  }
 
   if (options.comment !== undefined) {
     callbackUrl.searchParams.set("comment", options.comment);

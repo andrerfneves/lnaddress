@@ -22,10 +22,16 @@ export type ResolveOptions = UrlSafetyOptions & {
   headers?: HeadersInit;
 } & FetchControls;
 
+export type UnitAmount = {
+  amount: number | bigint;
+  unit: string;
+};
+
 type RequestPaymentBaseOptions = UrlSafetyOptions & {
   comment?: string;
   payerData?: Record<string, unknown>;
   paymentOption?: string;
+  receiveUnit?: string;
   fetch?: FetchLike;
   headers?: HeadersInit;
   validateBolt11?: boolean;
@@ -37,9 +43,11 @@ type RequestPaymentBaseOptions = UrlSafetyOptions & {
   nodePubkeyPolicy?: NodePubkeyPolicy;
 } & FetchControls;
 
-export type RequestPaymentOptions = RequestPaymentBaseOptions & {
-  amountMsat: number | bigint;
-};
+export type RequestPaymentOptions = RequestPaymentBaseOptions &
+  (
+    | { amountMsat: number | bigint; unitAmount?: never }
+    | { amountMsat?: never; unitAmount: UnitAmount }
+  );
 
 export type VerifyPaymentOptions = UrlSafetyOptions & {
   fetch?: FetchLike;
@@ -97,12 +105,47 @@ export type PayerDataField = {
 
 export type PayerData = Record<string, PayerDataField>;
 
+export type PaymentUnit = {
+  code: string;
+  decimals: number;
+  name?: string;
+  symbol?: string;
+  assetId?: string;
+  minAmount?: string;
+  maxAmount?: string;
+  raw: Record<string, unknown>;
+};
+
+export type PaymentQuoteAmount = {
+  amount: string;
+  unit: string;
+  raw: Record<string, unknown>;
+};
+
+export type PaymentQuoteFee = {
+  amount: string;
+  unit: string;
+  description?: string;
+  raw: Record<string, unknown>;
+};
+
+export type PaymentQuote = {
+  id?: string;
+  expiresAt?: string;
+  requested: PaymentQuoteAmount;
+  payment: PaymentQuoteAmount;
+  receive?: PaymentQuoteAmount;
+  fees?: PaymentQuoteFee[];
+  raw: Record<string, unknown>;
+};
+
 export type PaymentOption = {
   id: string;
   type: string;
   available?: boolean;
   minSendableMsat?: bigint;
   maxSendableMsat?: bigint;
+  units?: PaymentUnit[];
   raw: Record<string, unknown>;
 };
 
@@ -140,6 +183,7 @@ export type PayRequest = {
   commentAllowed?: number;
   payerData?: PayerData;
   paymentOptions?: PaymentOption[];
+  units?: PaymentUnit[];
   nodePubkeys?: NodePubkey[];
   raw: unknown;
   sourceUrl?: string;
@@ -153,6 +197,7 @@ export type Bolt11PaymentInstruction = {
   paymentOption?: string;
   paymentDestination?: string;
   paymentUri?: string;
+  paymentQuote?: PaymentQuote;
   verifyUrl?: string;
   successAction?: SuccessAction;
   nodePubkeyVerification?: NodePubkeyVerification;
@@ -162,6 +207,7 @@ export type Bolt11PaymentInstruction = {
 export type DestinationPaymentInstruction = {
   type: "destination";
   paymentOption?: string;
+  paymentQuote?: PaymentQuote;
   verifyUrl?: string;
   raw: unknown;
 } & (
@@ -180,6 +226,7 @@ export type VerifyResult = {
   paymentDestination?: string;
   paymentUri?: string;
   paymentReference?: string | null;
+  paymentQuote?: PaymentQuote;
   reason?: string;
   raw: unknown;
 };

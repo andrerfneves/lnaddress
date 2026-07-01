@@ -10,6 +10,7 @@ import {
   validateCallbackAmount,
   validateComment,
   validateMandatoryPayerData,
+  validateUnit,
   verifyPayment,
 } from "lnaddress";
 import { StrictMode, useMemo, useState } from "react";
@@ -24,16 +25,31 @@ import "./styles.css";
 
 type Scenario = "bolt11" | "destination";
 
-const scenarios: Record<Scenario, { label: string; input: string; amount_msat: number }> = {
+type ScenarioConfig = {
+  label: string;
+  input: string;
+  amount: number;
+  amountLabel: string;
+  unit?: string;
+  receiveUnit?: string;
+  paymentOption?: string;
+};
+
+const scenarios: Record<Scenario, ScenarioConfig> = {
   bolt11: {
     label: "BOLT11 invoice",
     input: "alice@playground.lnaddress.test",
-    amount_msat: 25_000,
+    amount: 25_000,
+    amountLabel: "Amount msat",
   },
   destination: {
-    label: "Destination rail",
+    label: "Liquid USDT quote",
     input: "liquid@playground.lnaddress.test",
-    amount_msat: 10_000,
+    amount: 10_000,
+    amountLabel: "Amount (USD cents)",
+    unit: "USD",
+    receiveUnit: "USDT",
+    paymentOption: "liquid-usdt",
   },
 };
 
@@ -73,7 +89,7 @@ function StatusLine({
 function App() {
   const [scenario, set_scenario] = useState<Scenario>("bolt11");
   const [input, set_input] = useState(scenarios.bolt11.input);
-  const [amount_msat, set_amount_msat] = useState(String(scenarios.bolt11.amount_msat));
+  const [amount_value, set_amount_value] = useState(String(scenarios.bolt11.amount));
   const [comment, set_comment] = useState("Thanks from the playground");
   const [payer_name, set_payer_name] = useState("Alice");
   const [payer_email, set_payer_email] = useState("alice@example.com");
@@ -101,16 +117,18 @@ function App() {
     }
 
     return {
-      amount: safe_validate(() => validateCallbackAmount(pay_request, Number(amount_msat))),
-      comment: safe_validate(() => validateComment(pay_request, comment || undefined)),
+      amount: safe_validate(() =>
+        validateScenarioAmount(pay_request, scenarios[scenario], Number(amount_value)),
+      ),
+      comment: safe_validate(() => validateScenarioComment(pay_request, comment || undefined)),
       payerData: safe_validate(() => validateMandatoryPayerData(pay_request, payerData)),
     } as const;
-  }, [amount_msat, comment, pay_request, payerData]);
+  }, [amount_value, comment, pay_request, payerData, scenario]);
 
   function select_scenario(next: Scenario) {
     set_scenario(next);
     set_input(scenarios[next].input);
-    set_amount_msat(String(scenarios[next].amount_msat));
+    set_amount_value(String(scenarios[next].amount));
     set_pay_request(null);
     set_payment(null);
     set_verify_result(null);
@@ -147,13 +165,25 @@ function App() {
   }
 
   function build_request_options(): RequestPaymentOptions {
-    const options: RequestPaymentOptions = {
-      amountMsat: Number(amount_msat),
+    const config = scenarios[scenario];
+    const base = {
       payerData,
       fetch,
     };
 
-    if (comment) {
+    const options: RequestPaymentOptions = config.unit
+      ? {
+          ...base,
+          unitAmount: { amount: Number(amount_value), unit: config.unit },
+          ...(config.receiveUnit ? { receiveUnit: config.receiveUnit } : {}),
+          ...(config.paymentOption ? { paymentOption: config.paymentOption } : {}),
+        }
+      : {
+          ...base,
+          amountMsat: Number(amount_value),
+        };
+
+    if (comment && (pay_request?.commentAllowed ?? 0) > 0) {
       options.comment = comment;
     }
 
@@ -210,13 +240,13 @@ function App() {
             </label>
 
             <div className="field-row">
-              <label htmlFor="amount-msat-input">
-                Amount msat
+              <label htmlFor="amount-input">
+                {scenarios[scenario].amountLabel}
                 <Input
-                  id="amount-msat-input"
+                  id="amount-input"
                   inputMode="numeric"
-                  value={amount_msat}
-                  onChange={(event) => set_amount_msat(event.target.value)}
+                  value={amount_value}
+                  onChange={(event) => set_amount_value(event.target.value)}
                 />
               </label>
               <label htmlFor="payer-name-input">
@@ -260,7 +290,7 @@ function App() {
 
           <aside className="validation-panel">
             <div className="panel-heading">Validation</div>
-            <StatusLine label="Amount" state={validation.amount} />
+            <StatusLine label="Amount / unit" state={validation.amount} />
             <StatusLine label="Comment" state={validation.comment} />
             <StatusLine label="Payer data" state={validation.payerData} />
             {error ? <div className="error-strip">{error}</div> : null}
@@ -275,6 +305,28 @@ function App() {
       </section>
     </main>
   );
+}
+
+function validateScenarioAmount(payRequest: PayRequest, scenario: ScenarioConfig, amount: number) {
+  if (scenario.unit) {
+    validateUnit(payRequest, scenario.unit, scenario.paymentOption, { amount });
+    if (scenario.receiveUnit) {
+      validateUnit(payRequest, scenario.receiveUnit, scenario.paymentOption);
+    }
+    return;
+  }
+
+  validateCallbackAmount(payRequest, amount);
+}
+
+function validateScenarioComment(payRequest: PayRequest, comment?: string) {
+  if (!comment) {
+    return;
+  }
+
+  if ((payRequest.commentAllowed ?? 0) > 0) {
+    validateComment(payRequest, comment);
+  }
 }
 
 function safe_validate(fn: () => void): "valid" | "error" {

@@ -394,8 +394,8 @@
         <div class="step-body">
           <p>
             The wallet resolves <code>alice@example.com</code>. The provider returns a
-            standard LUD-06 <code>payRequest</code> <strong>plus</strong> the new
-            <code>paymentOptions</code> array.
+            standard LUD-06 <code>payRequest</code> <strong>plus</strong>
+            <code>paymentOptions</code> and <code>units</code>.
           </p>
           <div class="json-block">
 <span class="comment">// GET https://example.com/.well-known/lnurlp/alice</span>
@@ -406,15 +406,19 @@
   <span class="key">"minSendable"</span>: <span class="number">1000</span>,
   <span class="key">"maxSendable"</span>: <span class="number">100000</span>,
   <span class="key">"metadata"</span>: <span class="string">"[[\"text/plain\",\"Pay alice@example.com\"]]"</span>,
+  <span class="key">"units"</span>: [
+    { <span class="key">"code"</span>: <span class="string">"USD"</span>, <span class="key">"decimals"</span>: <span class="number">2</span>, <span class="key">"minAmount"</span>: <span class="string">"100"</span> }
+  ],
   <span class="key">"paymentOptions"</span>: [
     { <span class="key">"id"</span>: <span class="string">"lightning"</span>, <span class="key">"type"</span>: <span class="string">"lightning"</span>, <span class="key">"available"</span>: <span class="boolean">true</span> },
-    { <span class="key">"id"</span>: <span class="string">"lightning-bolt12"</span>, <span class="key">"type"</span>: <span class="string">"lightning-bolt12"</span>, <span class="key">"available"</span>: <span class="boolean">true</span> },
+    { <span class="key">"id"</span>: <span class="string">"bolt12"</span>, <span class="key">"type"</span>: <span class="string">"bolt12"</span>, <span class="key">"available"</span>: <span class="boolean">true</span> },
     { <span class="key">"id"</span>: <span class="string">"onchain"</span>, <span class="key">"type"</span>: <span class="string">"onchain"</span>, <span class="key">"available"</span>: <span class="boolean">true</span> },
-    { <span class="key">"id"</span>: <span class="string">"liquid"</span>, <span class="key">"type"</span>: <span class="string">"liquid"</span>, <span class="key">"available"</span>: <span class="boolean">true</span> },
+    { <span class="key">"id"</span>: <span class="string">"liquid-usdt"</span>, <span class="key">"type"</span>: <span class="string">"liquid"</span>, <span class="key">"available"</span>: <span class="boolean">true</span>, <span class="key">"units"</span>: [{ <span class="key">"code"</span>: <span class="string">"USD"</span>, <span class="key">"decimals"</span>: <span class="number">2</span> }, { <span class="key">"code"</span>: <span class="string">"USDT"</span>, <span class="key">"decimals"</span>: <span class="number">6</span> }] },
     { <span class="key">"id"</span>: <span class="string">"arkade"</span>, <span class="key">"type"</span>: <span class="string">"arkade"</span>, <span class="key">"available"</span>: <span class="boolean">false</span> },
     { <span class="key">"id"</span>: <span class="string">"spark"</span>, <span class="key">"type"</span>: <span class="string">"spark"</span>, <span class="key">"available"</span>: <span class="boolean">true</span> }
   ]
-}</n          </div>
+}
+          </div>
           <div class="code-block">
 <span class="kw">import</span> { <span class="fn">resolve</span> } <span class="kw">from</span> <span class="str">"lnaddress"</span>;
 
@@ -436,7 +440,7 @@
         <div class="step-body">
           <p>
             The wallet presents the options to the user. Unavailable ones are disabled.
-            The user picks <strong>Liquid</strong>.
+            The user picks <strong>Liquid USDT</strong>.
           </p>
           <div class="rail-grid">
             <div class="rail-card" onclick="selectRail(this, 'lightning')">
@@ -454,14 +458,14 @@
               <div class="name">Onchain</div>
               <div class="status available">Available</div>
             </div>
-            <div class="rail-card selected" onclick="selectRail(this, 'liquid')">
+            <div class="rail-card selected" onclick="selectRail(this, 'liquid-usdt')">
               <div class="dot" style="background: var(--liquid);"></div>
-              <div class="name">Liquid</div>
+              <div class="name">Liquid USDT</div>
               <div class="status available">Available ✓</div>
             </div>
             <div class="rail-card" onclick="selectRail(this, 'ark')" style="opacity: 0.5; cursor: not-allowed;">
               <div class="dot" style="background: var(--ark);"></div>
-              <div class="name">Ark</div>
+              <div class="name">Arkade</div>
               <div class="status unavailable">Unavailable</div>
             </div>
             <div class="rail-card" onclick="selectRail(this, 'spark')">
@@ -474,7 +478,7 @@
 <span class="kw">import</span> { <span class="fn">validatePaymentOption</span> } <span class="kw">from</span> <span class="str">"lnaddress"</span>;
 
 <span class="comment">// Rejects unknown, unavailable, or missing options</span>
-<span class="fn">validatePaymentOption</span>(<span class="var">payRequest</span>, <span class="str">"liquid"</span>);
+<span class="fn">validatePaymentOption</span>(<span class="var">payRequest</span>, <span class="str">"liquid-usdt"</span>);
 <span class="comment">// → OK</span>
 
 <span class="fn">validatePaymentOption</span>(<span class="var">payRequest</span>, <span class="str">"arkade"</span>);
@@ -493,32 +497,39 @@
         </div>
         <div class="step-body">
           <p>
-            The wallet calls the callback with <code>amount</code> and <code>paymentOption</code>.
-            The provider returns the destination for the selected rail.
+            The wallet calls the callback with <code>amount</code>, <code>unit</code>,
+            <code>receiveUnit</code>, and <code>paymentOption</code>. The provider returns
+            both the destination and a <code>paymentQuote</code> for the selected rail.
           </p>
           <div class="json-block">
-<span class="comment">// GET https://example.com/callback?amount=25000&paymentOption=liquid</span>
+<span class="comment">// GET https://example.com/callback?amount=10000&amp;unit=USD&amp;receiveUnit=USDT&amp;paymentOption=liquid-usdt</span>
 <span class="comment">// Response:</span>
 {
   <span class="key">"status"</span>: <span class="string">"OK"</span>,
-  <span class="key">"paymentOption"</span>: <span class="string">"liquid"</span>,
-  <span class="key">"paymentDestination"</span>: <span class="string">"lq1qq2x6t..."</span>,
-  <span class="key">"paymentURI"</span>: <span class="string">"liquidnetwork:lq1qq2x6t...?amount=0.001"</span>,
+  <span class="key">"paymentOption"</span>: <span class="string">"liquid-usdt"</span>,
+  <span class="key">"paymentURI"</span>: <span class="string">"liquidnetwork:lq1...?assetid=..."</span>,
+  <span class="key">"paymentQuote"</span>: {
+    <span class="key">"id"</span>: <span class="string">"quote_123"</span>,
+    <span class="key">"requested"</span>: { <span class="key">"amount"</span>: <span class="string">"10000"</span>, <span class="key">"unit"</span>: <span class="string">"USD"</span> },
+    <span class="key">"payment"</span>: { <span class="key">"amount"</span>: <span class="string">"10025000"</span>, <span class="key">"unit"</span>: <span class="string">"USDT"</span> },
+    <span class="key">"receive"</span>: { <span class="key">"amount"</span>: <span class="string">"10000000"</span>, <span class="key">"unit"</span>: <span class="string">"USDT"</span> }
+  },
   <span class="key">"verify"</span>: <span class="string">"https://example.com/verify/pay_123"</span>
 }
           </div>
           <div class="code-block">
-<span class="kw">import</span> { <span class="fn">requestPayment</span> } <span class="kw">from</span> <span class="str">"lnaddress"</span>;
+<span class="kw">import</span> { <span class="fn">requestPayment</span>, <span class="fn">validateUnit</span> } <span class="kw">from</span> <span class="str">"lnaddress"</span>;
+
+<span class="fn">validateUnit</span>(<span class="var">payRequest</span>, <span class="str">"USD"</span>, <span class="str">"liquid-usdt"</span>, { <span class="var">amount</span>: <span class="num">10_000</span> });
 
 <span class="kw">const</span> <span class="var">payment</span> = <span class="kw">await</span> <span class="fn">requestPayment</span>(<span class="var">payRequest</span>, {
-  <span class="var">amountMsat</span>: <span class="num">25_000</span>,
-  <span class="var">paymentOption</span>: <span class="str">"liquid"</span>,
+  <span class="var">unitAmount</span>: { <span class="var">amount</span>: <span class="num">10_000</span>, <span class="var">unit</span>: <span class="str">"USD"</span> },
+  <span class="var">receiveUnit</span>: <span class="str">"USDT"</span>,
+  <span class="var">paymentOption</span>: <span class="str">"liquid-usdt"</span>,
 });
 
 <span class="comment">// payment.type === "destination"</span>
-<span class="comment">// payment.paymentOption === "liquid"</span>
-<span class="comment">// payment.paymentDestination === "lq1qq2x6t..."</span>
-<span class="comment">// payment.paymentUri === "liquidnetwork:lq1qq2x6t...?amount=0.001"</span>
+<span class="comment">// payment.paymentQuote?.payment.unit === "USDT"</span>
           </div>
         </div>
       </div>
@@ -543,7 +554,7 @@
 {
   <span class="key">"status"</span>: <span class="string">"OK"</span>,
   <span class="key">"settled"</span>: <span class="boolean">false</span>,
-  <span class="key">"paymentOption"</span>: <span class="string">"liquid"</span>,
+  <span class="key">"paymentOption"</span>: <span class="string">"liquid-usdt"</span>,
   <span class="key">"paymentDestination"</span>: <span class="string">"lq1qq2x6t..."</span>,
   <span class="key">"paymentReference"</span>: <span class="null">null</span>
 }
@@ -552,7 +563,7 @@
 {
   <span class="key">"status"</span>: <span class="string">"OK"</span>,
   <span class="key">"settled"</span>: <span class="boolean">true</span>,
-  <span class="key">"paymentOption"</span>: <span class="string">"liquid"</span>,
+  <span class="key">"paymentOption"</span>: <span class="string">"liquid-usdt"</span>,
   <span class="key">"paymentDestination"</span>: <span class="string">"lq1qq2x6t..."</span>,
   <span class="key">"paymentReference"</span>: <span class="string">"abc123txid"</span>
 }
@@ -562,7 +573,7 @@
 
 <span class="kw">const</span> <span class="var">result</span> = <span class="kw">await</span> <span class="fn">verifyPayment</span>(<span class="var">payment</span>);
 
-<span class="comment">// result.paymentOption === "liquid"</span>
+<span class="comment">// result.paymentOption === "liquid-usdt"</span>
 <span class="comment">// result.paymentReference === "abc123txid"</span>
           </div>
         </div>
@@ -575,7 +586,7 @@
         Before this LUD, Bitcoin rails were fragmented. Lightning, BOLT12, onchain, Liquid —
         each required its own plumbing. Wallets had to know the rail before talking to the user.
         <br><br>
-        With <code>paymentOptions</code>, the <strong>LNURL-pay endpoint becomes the router</strong>.
+        With <code>paymentOptions</code> and <code>paymentQuote</code>, the <strong>LNURL-pay endpoint becomes the router and quote surface</strong>.
         The user resolves one address. The provider says what's available. The user picks.
         The same callback, the same verify, the same flow. One protocol, every rail.
         <br><br>
@@ -591,8 +602,9 @@
 <span class="kw">import</span> { <span class="fn">pay</span>, <span class="fn">verifyPayment</span> } <span class="kw">from</span> <span class="str">"lnaddress"</span>;
 
 <span class="kw">const</span> <span class="var">payment</span> = <span class="kw">await</span> <span class="fn">pay</span>(<span class="str">"alice@example.com"</span>, {
-  <span class="var">amountMsat</span>: <span class="num">25_000</span>,
-  <span class="var">paymentOption</span>: <span class="str">"liquid"</span>,
+  <span class="var">unitAmount</span>: { <span class="var">amount</span>: <span class="num">10_000</span>, <span class="var">unit</span>: <span class="str">"USD"</span> },
+  <span class="var">receiveUnit</span>: <span class="str">"USDT"</span>,
+  <span class="var">paymentOption</span>: <span class="str">"liquid-usdt"</span>,
 });
 
 <span class="kw">if</span> (<span class="var">payment</span>.<span class="var">type</span> === <span class="str">"destination"</span>) {

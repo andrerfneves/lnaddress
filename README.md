@@ -40,6 +40,7 @@ if (payment.type === "bolt11") {
 | LUD-18 | `payerData` | Supported |
 | LUD-21 | verify URL | Supported |
 | LUD-XX | `paymentOptions` for multi-rail pay | Supported |
+| LUD-XX | `paymentQuote` units, receive units, and quote details | Supported |
 | LUD-XX | `nodePubkeys` invoice-origin checks for `payRequest` | Supported |
 | LUD-XX | domain service-key discovery at `/.well-known/lnurl-service` | Supported |
 
@@ -198,6 +199,42 @@ if (payment.type === "destination") {
 
 If `paymentOption` is absent, the normal LUD-06 Lightning flow is used. `validatePaymentOption` rejects unknown or unavailable options before the callback is sent. For `type: "lightning"`, callback responses must include `pr`; `pr` remains authoritative even if generic `paymentDestination` / `paymentURI` fields are also present. Non-`pr` options such as `bolt12`, `onchain`, `liquid`, `arkade`, `spark`, `bark`, or unknown future methods may return `paymentDestination`, `paymentURI`, or both. URI-only responses are accepted for methods whose complete wallet instruction is a URI/deeplink.
 
+## PaymentQuote units and quotes
+
+The draft `paymentQuote` extension uses generic `units`, `unit`, `receiveUnit`, and `paymentQuote` fields. `lnaddress` parses top-level and option-level `units`, validates unit-denominated requests before callback, requires `paymentQuote` whenever `unitAmount` or `receiveUnit` is used, and exposes parsed quote details on payment and verify results.
+
+```ts
+import { requestPayment, resolve, validateUnit } from "lnaddress";
+
+const payRequest = await resolve("merchant@example.com");
+
+// Top-level units apply to the default flow. Option-level units override them.
+console.log(payRequest.units);
+console.log(payRequest.paymentOptions?.find((option) => option.id === "liquid-usdt")?.units);
+
+validateUnit(payRequest, "USD", "liquid-usdt", { amount: 10_000 });
+validateUnit(payRequest, "USDT", "liquid-usdt");
+
+const payment = await requestPayment(payRequest, {
+  unitAmount: { amount: 10_000, unit: "USD" }, // 100.00 USD when decimals=2
+  receiveUnit: "USDT",
+  paymentOption: "liquid-usdt",
+});
+
+console.log(payment.paymentQuote);
+// {
+//   id: "quote_123",
+//   requested: { amount: "10000", unit: "USD" },
+//   payment: { amount: "10025000", unit: "USDT" },
+//   receive: { amount: "10000000", unit: "USDT" },
+//   fees: [{ amount: "25000", unit: "USDT", description: "Liquid settlement fee" }]
+// }
+```
+
+If `unitAmount` is absent, `amountMsat` keeps normal LUD-06 millisatoshi semantics. You may still pass `receiveUnit` with `amountMsat`; the callback will include `receiveUnit=<code>` and the returned `paymentQuote.requested.unit` must be `"msat"`.
+
+For BOLT11 responses to `unitAmount` requests, `paymentQuote.payment.unit` must be `"msat"`; invoice validation checks the BOLT11 amount against `paymentQuote.payment.amount`.
+
 ## Invoice-origin checks with nodePubkeys
 
 The draft `nodePubkeys` LUD-XX proposal ([lnurl/luds#297](https://github.com/lnurl/luds/pull/297)) lets a provider advertise the Lightning node public keys that may generate invoices for a payRequest. `lnaddress` parses those keys and, when BOLT11 validation is enabled, compares the invoice payee node id against the advertised list.
@@ -293,7 +330,7 @@ The same shape works for BOLT12-style offers and destination rails such as oncha
 This repository includes copy-pasteable examples and a richer mocked playground:
 
 - `examples/basic`: small scripts for resolve, BOLT11 requests, comments, payer data, verify, destination payments, nodePubkeys, and domain service keys.
-- `examples/payment-options`: standalone multi-rail `paymentOptions` explainer and mock provider.
+- `examples/payment-options`: standalone multi-rail `paymentOptions` + `paymentQuote` explainer and mock provider.
 - `examples/playground`: a Vite React playground with shadcn-style local components that exercises the library end to end against mocked provider flows.
 
 ```sh
@@ -333,6 +370,12 @@ await pay("alice@example.com", {
   redirectPolicy: "same-origin",
   providerPolicy: "same-origin",
   nodePubkeyPolicy: "warn",
+});
+
+const quoted = await requestPayment("merchant@example.com", {
+  unitAmount: { amount: 10_000, unit: "USD" },
+  receiveUnit: "USDT",
+  paymentOption: "liquid-usdt",
 });
 ```
 
@@ -418,6 +461,7 @@ validateCallbackAmount(payRequest, amountMsat);
 validateComment(payRequest, comment);
 validateMandatoryPayerData(payRequest, payerData);
 validatePaymentOption(payRequest, paymentOption);
+validateUnit(payRequest, unitCode, paymentOption, { amount });
 serviceKeysUrl(domainOrUrl);
 parseServiceKeysResponse(raw, context);
 fetchServiceKeys(domainOrUrl, options);
@@ -434,7 +478,10 @@ import type {
   PayRequest,
   PaymentInstruction,
   PaymentOption,
+  PaymentQuote,
+  PaymentUnit,
   RequestPaymentOptions,
+  UnitAmount,
   VerifyResult,
 } from "lnaddress";
 ```
@@ -461,6 +508,7 @@ if (payment.type === "bolt11") {
 - `metadataHash` is computed from the exact metadata string returned by the provider.
 - `validateBolt11` is enabled by default and checks invoice structure, amount, network, expiry, signature, and payee node id when present.
 - BOLT11 description-hash validation is opt-in with `validateMetadataHash: true` because current LUD-06 behavior no longer requires it by default.
+- If a provider returns `paymentQuote`, display requested amount, payment amount, receiver amount, fees, and expiry before payment.
 - If a provider advertises `nodePubkeys`, BOLT11 payments include `nodePubkeyVerification` so wallets can show invoice-origin warnings. Mismatches are non-blocking by default (`nodePubkeyPolicy: "warn"`) and can be made strict with `"enforce"`.
 - Domain service-key discovery validates flat `signingKeys` / `encryptionKeys` documents from `/.well-known/lnurl-service`; optional `certChain` metadata is preserved but not trusted beyond caller policy.
 - LUD-09 AES success actions can be decrypted asynchronously with `decryptSuccessAction`.

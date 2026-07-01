@@ -28,6 +28,7 @@ export {
 } from "./extensions/destination";
 export type { DestinationRail } from "./extensions/destination";
 export { getMetadataHash, parseMetadata } from "./extensions/metadata";
+export { validateUnit } from "./extensions/units";
 export { parsePayRequestResponse } from "./pay/payrequest";
 export {
   requestPayment,
@@ -72,6 +73,11 @@ export type {
   PayerDataField,
   PaymentInstruction,
   PaymentOption,
+  PaymentQuote,
+  PaymentQuoteAmount,
+  PaymentQuoteFee,
+  PaymentUnit,
+  UnitAmount,
   ProviderPolicy,
   RequestPaymentOptions,
   ResolveOptions,

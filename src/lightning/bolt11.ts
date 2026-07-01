@@ -1,6 +1,6 @@
 import { decode as decodePaymentRequest } from "bolt11";
 import { InvalidCallbackResponseError } from "../core/errors";
-import type { Bolt11Network, PayRequest, RequestPaymentOptions } from "../core/types";
+import type { Bolt11Network, PayRequest, PaymentQuote, RequestPaymentOptions } from "../core/types";
 import type { Bolt11PayeeNodeInfo } from "../extensions/node-pubkeys";
 import { amountToMsatString } from "../utils/internal";
 
@@ -110,10 +110,36 @@ function decodeBolt11(pr: string): DecodedInvoice {
   return invoice;
 }
 
+function expectedBolt11AmountMsat(
+  options: RequestPaymentOptions,
+  paymentQuote?: PaymentQuote,
+): bigint {
+  if (options.amountMsat !== undefined) {
+    const expected = BigInt(amountToMsatString(options.amountMsat));
+    if (paymentQuote?.payment.unit === "msat" && BigInt(paymentQuote.payment.amount) !== expected) {
+      throw new InvalidCallbackResponseError(
+        `paymentQuote.payment amount ${paymentQuote.payment.amount} does not match requested amount ${expected.toString()}`,
+      );
+    }
+    return expected;
+  }
+
+  if (!paymentQuote) {
+    throw new InvalidCallbackResponseError("BOLT11 unitAmount responses must include paymentQuote");
+  }
+
+  if (paymentQuote.payment.unit !== "msat") {
+    throw new InvalidCallbackResponseError("BOLT11 paymentQuote.payment.unit must be msat");
+  }
+
+  return BigInt(paymentQuote.payment.amount);
+}
+
 export async function assertBolt11Payment(
   pr: string,
   payRequest: PayRequest,
   options: RequestPaymentOptions,
+  paymentQuote?: PaymentQuote,
 ): Promise<Bolt11PayeeNodeInfo> {
   const invoice = decodeBolt11(pr);
 
@@ -127,10 +153,11 @@ export async function assertBolt11Payment(
     throw new InvalidCallbackResponseError("BOLT11 invoice must include an amount");
   }
 
-  const expectedAmount = BigInt(amountToMsatString(options.amountMsat));
+  const expectedAmount = expectedBolt11AmountMsat(options, paymentQuote);
   if (invoice.amountMsat !== expectedAmount) {
+    const source = options.unitAmount !== undefined ? "paymentQuote.payment" : "requested amount";
     throw new InvalidCallbackResponseError(
-      `BOLT11 invoice amount ${invoice.amountMsat.toString()} does not match requested amount ${expectedAmount.toString()}`,
+      `BOLT11 invoice amount ${invoice.amountMsat.toString()} does not match ${source} ${expectedAmount.toString()}`,
     );
   }
 

@@ -3,9 +3,26 @@ import type { FetchLike } from "lnaddress";
 const playgroundBolt11Invoice =
   "lnbc250000p1p5ww7qqhp5s4rd659qkra3mncxwkamxxf0l2fnwe5w8qutznmmrh206n7uwdxqnp4qvdcf32k0vfxgsyet5ldt246q4jaw8scx3sysx0lnstlt6w4m5rc7xqxfvcqcqzxc0wgaxw65vk8770auuku3uyr6qxfyug5g5v3lswc8dtxjcda6vyx0h8vu0ffc9q02cppgcvv3h5zdvexpas0rgkh82uz6hjcc8v0spzpn66w";
 
+const usd = {
+  code: "USD",
+  name: "US Dollar",
+  symbol: "$",
+  decimals: 2,
+  minAmount: "100",
+  maxAmount: "100000",
+};
+const usdt = {
+  code: "USDT",
+  name: "Tether USD on Liquid",
+  symbol: "₮",
+  decimals: 6,
+  assetId: "playground-liquid-usdt",
+};
+
 type ProviderState = {
   bolt11Settled: boolean;
   liquidSettled: boolean;
+  liquidQuote?: ReturnType<typeof liquidQuote>;
 };
 
 export const mockOrigin = "https://playground.lnaddress.test";
@@ -16,6 +33,24 @@ function json(body: unknown, init?: ResponseInit): Response {
     headers: { "content-type": "application/json" },
     ...init,
   });
+}
+
+function liquidQuote(amount: string, unit: string, receiveUnit = "USDT") {
+  const requestedAmount = BigInt(amount);
+  const receiveAmount = unit === "USD" ? requestedAmount * 10000n : requestedAmount;
+  const feeAmount = 25000n;
+  const paymentAmount = receiveAmount + feeAmount;
+
+  return {
+    id: "playground_quote_liquid_usdt",
+    expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    requested: { amount, unit },
+    payment: { amount: paymentAmount.toString(), unit: receiveUnit },
+    receive: { amount: receiveAmount.toString(), unit: receiveUnit },
+    fees: [
+      { amount: feeAmount.toString(), unit: receiveUnit, description: "Liquid settlement fee" },
+    ],
+  };
 }
 
 export function createPlaygroundFetch(): FetchLike {
@@ -53,7 +88,11 @@ export function createPlaygroundFetch(): FetchLike {
         callback: `${mockOrigin}/callback/liquid`,
         minSendable: 5_000,
         maxSendable: 500_000,
-        metadata: '[["text/plain","Liquid destination playground"]]',
+        metadata: '[["text/plain","Liquid USDT quote playground"]]',
+        units: [usd],
+        paymentOptions: [
+          { id: "liquid-usdt", type: "liquid", available: true, units: [usd, usdt] },
+        ],
       });
     }
 
@@ -78,10 +117,18 @@ export function createPlaygroundFetch(): FetchLike {
     }
 
     if (url.pathname === "/callback/liquid") {
+      const amount = url.searchParams.get("amount") ?? "10000";
+      const unit = url.searchParams.get("unit") ?? "USD";
+      const receiveUnit = url.searchParams.get("receiveUnit") ?? "USDT";
+      const quote = liquidQuote(amount, unit, receiveUnit);
+      state.liquidQuote = quote;
+
       return json({
         status: "OK",
+        paymentOption: "liquid-usdt",
         paymentDestination: "liquid-address-for-playground",
-        paymentURI: "liquidnetwork:liquid-address-for-playground",
+        paymentURI: `liquidnetwork:liquid-address-for-playground?assetid=${usdt.assetId}&amount=${quote.payment.amount}`,
+        paymentQuote: quote,
         verify: `${mockOrigin}/verify/liquid`,
       });
     }
@@ -103,8 +150,10 @@ export function createPlaygroundFetch(): FetchLike {
       return json({
         status: "OK",
         settled,
+        paymentOption: "liquid-usdt",
         paymentDestination: "liquid-address-for-playground",
         paymentReference: settled ? "liquid-playground-txid" : null,
+        paymentQuote: state.liquidQuote,
       });
     }
 

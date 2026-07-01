@@ -275,6 +275,19 @@ function validateCallbackPaymentOption(
   }
 }
 
+function selectedPaymentOptionType(
+  payRequest: PayRequest,
+  requestedPaymentOption: string | undefined,
+  returnedPaymentOption: string | undefined,
+): string | undefined {
+  const selectedId = returnedPaymentOption ?? requestedPaymentOption;
+  if (selectedId === undefined) {
+    return undefined;
+  }
+
+  return payRequest.paymentOptions?.find((option) => option.id === selectedId)?.type;
+}
+
 function validateConvertedBounds(
   payRequest: PayRequest,
   options: RequestPaymentOptions,
@@ -315,6 +328,11 @@ async function parseCallbackResponse(
   const paymentUri = readString(record, ["paymentURI", "paymentUri"]);
   const paymentOption = readString(record, ["paymentOption"]);
   validateCallbackPaymentOption(payRequest, options.paymentOption, paymentOption);
+  const paymentOptionType = selectedPaymentOptionType(
+    payRequest,
+    options.paymentOption,
+    paymentOption,
+  );
 
   const converted = parseConvertedAmount(
     readUnknown(record, ["converted"]),
@@ -375,19 +393,28 @@ async function parseCallbackResponse(
     return instruction;
   }
 
-  if (paymentDestination) {
-    const instruction: DestinationPaymentInstruction = {
-      type: "destination",
-      paymentDestination,
-      raw,
-    };
+  if (paymentOptionType === "lightning") {
+    throw new InvalidCallbackResponseError(
+      'Payment callback response for paymentOption type "lightning" must include pr',
+    );
+  }
+
+  if (paymentDestination || paymentUri) {
+    const instruction: DestinationPaymentInstruction = paymentDestination
+      ? {
+          type: "destination",
+          paymentDestination,
+          ...(paymentUri ? { paymentUri } : {}),
+          raw,
+        }
+      : {
+          type: "destination",
+          paymentUri: paymentUri as string,
+          raw,
+        };
 
     if (paymentOption) {
       instruction.paymentOption = paymentOption;
-    }
-
-    if (paymentUri) {
-      instruction.paymentUri = paymentUri;
     }
 
     if (verifyUrl) {
@@ -402,7 +429,7 @@ async function parseCallbackResponse(
   }
 
   throw new InvalidCallbackResponseError(
-    "Payment callback response must include pr or paymentDestination",
+    "Payment callback response must include pr, paymentDestination, or paymentURI",
   );
 }
 

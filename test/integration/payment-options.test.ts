@@ -24,9 +24,12 @@ const basePayRequest = {
 
 const paymentOptions = [
   { id: "lightning", type: "lightning", available: true },
-  { id: "lightning-bolt12", type: "lightning-bolt12", available: true },
+  { id: "bolt12", type: "bolt12", available: true },
   { id: "onchain", type: "onchain", available: true },
   { id: "liquid", type: "liquid", available: false },
+  { id: "arkade", type: "arkade", available: true },
+  { id: "spark", type: "spark", available: true },
+  { id: "bark", type: "bark", available: true },
 ];
 
 describe("paymentOptions parsing", () => {
@@ -36,7 +39,7 @@ describe("paymentOptions parsing", () => {
       paymentOptions,
     });
 
-    expect(payRequest.paymentOptions).toHaveLength(4);
+    expect(payRequest.paymentOptions).toHaveLength(7);
     expect(payRequest.paymentOptions?.[0]).toEqual({
       id: "lightning",
       type: "lightning",
@@ -210,6 +213,59 @@ describe("requestPayment with paymentOption", () => {
     expect(payment).toMatchObject({ type: "bolt11", paymentOption: "lightning" });
   });
 
+  test("rejects explicitly selected lightning option when callback omits pr", async () => {
+    const payRequest = parsePayRequestResponse({
+      ...basePayRequest,
+      paymentOptions: [{ id: "lightning", type: "lightning", available: true }],
+    });
+
+    await expect(
+      requestPayment(payRequest, {
+        amountMsat: 2000,
+        paymentOption: "lightning",
+        fetch: async () =>
+          jsonResponse({
+            status: "OK",
+            paymentOption: "lightning",
+            paymentDestination: "lnbc1...",
+            paymentURI: "lightning:lnbc1...",
+          }),
+      }),
+    ).rejects.toThrow(/pr/i);
+  });
+
+  test("accepts URI-only callback responses for non-pr payment options", async () => {
+    const payRequest = parsePayRequestResponse({
+      ...basePayRequest,
+      paymentOptions: [{ id: "contract", type: "example-contract-call", available: true }],
+    });
+
+    const payment = await requestPayment(payRequest, {
+      amountMsat: 10_000,
+      paymentOption: "contract",
+      fetch: async () =>
+        jsonResponse({
+          status: "OK",
+          paymentOption: "contract",
+          paymentURI: "examplepay:contract/abc?amount=10000",
+          verify: "https://example.com/verify/contract",
+        }),
+    });
+
+    expect(payment).toEqual({
+      type: "destination",
+      paymentOption: "contract",
+      paymentUri: "examplepay:contract/abc?amount=10000",
+      verifyUrl: "https://example.com/verify/contract",
+      raw: {
+        status: "OK",
+        paymentOption: "contract",
+        paymentURI: "examplepay:contract/abc?amount=10000",
+        verify: "https://example.com/verify/contract",
+      },
+    });
+  });
+
   test("rejects callback paymentOption that does not match requested option", async () => {
     const payRequest = parsePayRequestResponse({
       ...basePayRequest,
@@ -248,6 +304,23 @@ describe("verifyPayment with paymentOption", () => {
     expect(result.paymentOption).toBe("onchain");
     expect(result.paymentDestination).toBe("bc1q...");
     expect(result.paymentReference).toBe("abc123txid");
+  });
+
+  test("parses paymentURI from URI-only non-BOLT11 verify responses", async () => {
+    const result = await verifyPayment("https://example.com/verify", {
+      fetch: async () =>
+        jsonResponse({
+          status: "OK",
+          settled: false,
+          paymentOption: "contract",
+          paymentURI: "examplepay:contract/abc?amount=10000",
+          paymentReference: null,
+        }),
+    });
+
+    expect(result.paymentOption).toBe("contract");
+    expect(result.paymentUri).toBe("examplepay:contract/abc?amount=10000");
+    expect(result.paymentReference).toBeNull();
   });
 
   test("handles null paymentReference", async () => {

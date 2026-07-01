@@ -1,5 +1,11 @@
 import { NetworkError, VerifyError } from "../core/errors";
-import type { PaymentInstruction, VerifyPaymentOptions, VerifyResult } from "../core/types";
+import type {
+  PaymentInstruction,
+  PaymentQuote,
+  VerifyPaymentOptions,
+  VerifyResult,
+} from "../core/types";
+import { parsePaymentQuote } from "../extensions/units";
 import {
   assertHttpUrl,
   assertRedirectPolicy,
@@ -113,6 +119,16 @@ export async function verifyPayment(
     result.paymentReference = paymentReference;
   } else if ("paymentReference" in record && record.paymentReference === null) {
     result.paymentReference = null;
+  }
+
+  let paymentQuote: PaymentQuote | undefined;
+  try {
+    paymentQuote = parsePaymentQuote(record.paymentQuote, false);
+  } catch (cause) {
+    throw new VerifyError("Invalid paymentQuote in verify response", { cause });
+  }
+  if (paymentQuote) {
+    result.paymentQuote = paymentQuote;
   }
 
   const reason = readString(record, ["reason", "message", "error"]);

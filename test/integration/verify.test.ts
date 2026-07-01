@@ -82,6 +82,19 @@ describe("verifyPayment", () => {
     ).rejects.toThrow(VerifyError);
   });
 
+  test("wraps malformed paymentQuote echoes as VerifyError", async () => {
+    await expect(
+      verifyPayment("https://example.com/verify/bad-quote", {
+        fetch: async () =>
+          jsonResponse({
+            status: "OK",
+            settled: true,
+            paymentQuote: { requested: { amount: "1.5", unit: "USD" } },
+          }),
+      }),
+    ).rejects.toThrow(VerifyError);
+  });
+
   test("requires a verifyUrl when verifying a payment instruction", async () => {
     await expect(
       verifyPayment({

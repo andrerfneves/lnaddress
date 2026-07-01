@@ -105,9 +105,10 @@ describe("built package imports", () => {
     writeFileSync(
       esmFile,
       [
-        'import { isLightningAddress, serviceKeysUrl, validateCurrency } from "lnaddress";',
+        'import { isLightningAddress, serviceKeysUrl, validatePaymentOption, validateUnit } from "lnaddress";',
         'if (!isLightningAddress("alice@example.com")) throw new Error("bad esm export");',
-        'if (typeof validateCurrency !== "function") throw new Error("missing validateCurrency");',
+        'if (typeof validatePaymentOption !== "function") throw new Error("missing validatePaymentOption");',
+        'if (typeof validateUnit !== "function") throw new Error("missing validateUnit");',
         'if (serviceKeysUrl("example.com").pathname !== "/.well-known/lnurl-service") throw new Error("bad serviceKeysUrl export");',
       ].join("\n"),
     );

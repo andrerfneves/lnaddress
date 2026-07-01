@@ -22,16 +22,16 @@ export type ResolveOptions = UrlSafetyOptions & {
   headers?: HeadersInit;
 } & FetchControls;
 
-export type DenominatedAmount = {
+export type UnitAmount = {
   amount: number | bigint;
-  currency: string;
+  unit: string;
 };
 
 type RequestPaymentBaseOptions = UrlSafetyOptions & {
   comment?: string;
   payerData?: Record<string, unknown>;
   paymentOption?: string;
-  convert?: string;
+  receiveUnit?: string;
   fetch?: FetchLike;
   headers?: HeadersInit;
   validateBolt11?: boolean;
@@ -45,8 +45,8 @@ type RequestPaymentBaseOptions = UrlSafetyOptions & {
 
 export type RequestPaymentOptions = RequestPaymentBaseOptions &
   (
-    | { amountMsat: number | bigint; denominatedAmount?: never }
-    | { amountMsat?: never; denominatedAmount: DenominatedAmount }
+    | { amountMsat: number | bigint; unitAmount?: never }
+    | { amountMsat?: never; unitAmount: UnitAmount }
   );
 
 export type VerifyPaymentOptions = UrlSafetyOptions & {
@@ -105,25 +105,37 @@ export type PayerDataField = {
 
 export type PayerData = Record<string, PayerDataField>;
 
-export type CurrencyConvertible = {
-  min: number;
-  max: number;
-};
-
-export type Currency = {
+export type PaymentUnit = {
   code: string;
-  name: string;
-  symbol: string;
   decimals: number;
-  multiplier: number;
-  convertible?: CurrencyConvertible;
-  raw?: Record<string, unknown>;
+  name?: string;
+  symbol?: string;
+  assetId?: string;
+  minAmount?: string;
+  maxAmount?: string;
+  raw: Record<string, unknown>;
 };
 
-export type ConvertedAmount = {
-  multiplier: number;
-  amount: number;
-  fee: number;
+export type PaymentQuoteAmount = {
+  amount: string;
+  unit: string;
+  raw: Record<string, unknown>;
+};
+
+export type PaymentQuoteFee = {
+  amount: string;
+  unit: string;
+  description?: string;
+  raw: Record<string, unknown>;
+};
+
+export type PaymentQuote = {
+  id?: string;
+  expiresAt?: string;
+  requested: PaymentQuoteAmount;
+  payment: PaymentQuoteAmount;
+  receive?: PaymentQuoteAmount;
+  fees?: PaymentQuoteFee[];
   raw: Record<string, unknown>;
 };
 
@@ -133,7 +145,7 @@ export type PaymentOption = {
   available?: boolean;
   minSendableMsat?: bigint;
   maxSendableMsat?: bigint;
-  currencies?: Currency[];
+  units?: PaymentUnit[];
   raw: Record<string, unknown>;
 };
 
@@ -171,7 +183,7 @@ export type PayRequest = {
   commentAllowed?: number;
   payerData?: PayerData;
   paymentOptions?: PaymentOption[];
-  currencies?: Currency[];
+  units?: PaymentUnit[];
   nodePubkeys?: NodePubkey[];
   raw: unknown;
   sourceUrl?: string;
@@ -185,9 +197,9 @@ export type Bolt11PaymentInstruction = {
   paymentOption?: string;
   paymentDestination?: string;
   paymentUri?: string;
+  paymentQuote?: PaymentQuote;
   verifyUrl?: string;
   successAction?: SuccessAction;
-  converted?: ConvertedAmount;
   nodePubkeyVerification?: NodePubkeyVerification;
   raw: unknown;
 };
@@ -195,8 +207,8 @@ export type Bolt11PaymentInstruction = {
 export type DestinationPaymentInstruction = {
   type: "destination";
   paymentOption?: string;
+  paymentQuote?: PaymentQuote;
   verifyUrl?: string;
-  converted?: ConvertedAmount;
   raw: unknown;
 } & (
   | { paymentDestination: string; paymentUri?: string }
@@ -214,6 +226,7 @@ export type VerifyResult = {
   paymentDestination?: string;
   paymentUri?: string;
   paymentReference?: string | null;
+  paymentQuote?: PaymentQuote;
   reason?: string;
   raw: unknown;
 };

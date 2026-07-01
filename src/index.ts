@@ -28,7 +28,7 @@ export {
 } from "./extensions/destination";
 export type { DestinationRail } from "./extensions/destination";
 export { getMetadataHash, parseMetadata } from "./extensions/metadata";
-export { validateCurrency } from "./extensions/currencies";
+export { validateUnit } from "./extensions/units";
 export { parsePayRequestResponse } from "./pay/payrequest";
 export {
   requestPayment,
@@ -54,10 +54,6 @@ export type {
   Bolt11PaymentInstruction,
   Bolt11Network,
   Bolt11PayeeNodeIdSource,
-  ConvertedAmount,
-  Currency,
-  CurrencyConvertible,
-  DenominatedAmount,
   DomainServiceKey,
   DomainServiceKeyAlgorithm,
   DomainServiceKeys,
@@ -77,6 +73,11 @@ export type {
   PayerDataField,
   PaymentInstruction,
   PaymentOption,
+  PaymentQuote,
+  PaymentQuoteAmount,
+  PaymentQuoteFee,
+  PaymentUnit,
+  UnitAmount,
   ProviderPolicy,
   RequestPaymentOptions,
   ResolveOptions,

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added draft `paymentQuote` support with `units`, `unitAmount`, `receiveUnit`, parsed quote details, option-level unit overrides, BOLT11 quote amount validation, verify quote echoes, docs, and examples.
+- Removed legacy LUD-22 / PR #251 currency conversion support (`currencies`, `denominatedAmount`, `convert`, and `converted`) ahead of the replacement `paymentQuote` unit/quote layer.
 - Updated draft `paymentOptions` v2 support: generic `bolt12`/`bark` method naming, URI-only non-`pr` callback responses, `paymentURI` in verify responses, stricter `type: "lightning"` `pr` requirement, and expanded destination rail helpers.
 - Added draft Domain Service Keys LUD-XX support for `/.well-known/lnurl-service` URL construction, parsing, fetching, validation, optional per-key `certChain`, docs, and examples.
 - Added draft LUD-XX `nodePubkeys` support for payRequest parsing, BOLT11 invoice-origin verification metadata, non-blocking mismatch warnings, and opt-in strict enforcement.

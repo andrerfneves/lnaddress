@@ -1,8 +1,6 @@
 import { z } from "zod";
 import { InvalidPayRequestError, InvalidPaymentOptionError } from "../core/errors";
 import type {
-  Currency,
-  CurrencyConvertible,
   LightningAddress,
   PayRequest,
   PayerData,
@@ -24,7 +22,6 @@ const payRequestSchema = z
     commentAllowed: z.number().int().nonnegative().optional(),
     payerData: z.record(z.unknown()).optional(),
     paymentOptions: z.array(z.unknown()).optional(),
-    currencies: z.array(z.unknown()).optional(),
     nodePubkeys: z.unknown().optional(),
   })
   .passthrough();
@@ -63,111 +60,6 @@ function parsePayerData(raw: unknown): PayerData | undefined {
   }
 
   return payerData;
-}
-
-function assertCurrencyCode(code: string, label: string): void {
-  if (code.length === 0 || code.trim() !== code || code.includes(".")) {
-    throw new InvalidPayRequestError(
-      `${label} must be a non-empty currency code without whitespace or '.'`,
-    );
-  }
-}
-
-function parseCurrencyInteger(value: unknown, label: string): number {
-  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
-    throw new InvalidPayRequestError(`${label} must be a non-negative safe integer`);
-  }
-
-  return value;
-}
-
-function parseCurrencyConvertible(raw: unknown, index: number): CurrencyConvertible {
-  const record = unknownToRecord(raw);
-  if (!record) {
-    throw new InvalidPayRequestError(`currencies entry ${index} convertible must be an object`);
-  }
-
-  const min = parseCurrencyInteger(record.min, `currencies entry ${index} convertible.min`);
-  const max = parseCurrencyInteger(record.max, `currencies entry ${index} convertible.max`);
-
-  if (min > max) {
-    throw new InvalidPayRequestError(
-      `currencies entry ${index} convertible min must be less than or equal to max`,
-    );
-  }
-
-  return { min, max };
-}
-
-function parseCurrencies(raw: unknown): Currency[] | undefined {
-  if (!Array.isArray(raw)) {
-    return undefined;
-  }
-
-  const currencies: Currency[] = [];
-  const seenCodes = new Set<string>();
-
-  for (const [index, entry] of raw.entries()) {
-    const record = unknownToRecord(entry);
-    if (!record) {
-      throw new InvalidPayRequestError(`currencies entry ${index} must be an object`);
-    }
-
-    if (typeof record.code !== "string") {
-      throw new InvalidPayRequestError(`currencies entry ${index} must have a string code`);
-    }
-    assertCurrencyCode(record.code, `currencies entry ${index} currency code`);
-
-    if (typeof record.name !== "string") {
-      throw new InvalidPayRequestError(`currencies entry ${index} must have a string name`);
-    }
-
-    if (typeof record.symbol !== "string") {
-      throw new InvalidPayRequestError(`currencies entry ${index} must have a string symbol`);
-    }
-
-    if (
-      typeof record.decimals !== "number" ||
-      !Number.isSafeInteger(record.decimals) ||
-      record.decimals < 0
-    ) {
-      throw new InvalidPayRequestError(
-        `currencies entry ${index} must have non-negative safe integer decimals`,
-      );
-    }
-
-    if (
-      typeof record.multiplier !== "number" ||
-      !Number.isFinite(record.multiplier) ||
-      record.multiplier <= 0
-    ) {
-      throw new InvalidPayRequestError(
-        `currencies entry ${index} must have a positive finite multiplier`,
-      );
-    }
-
-    if (seenCodes.has(record.code)) {
-      throw new InvalidPayRequestError(`currencies contains duplicate code: ${record.code}`);
-    }
-    seenCodes.add(record.code);
-
-    const currency: Currency = {
-      code: record.code,
-      name: record.name,
-      symbol: record.symbol,
-      decimals: record.decimals,
-      multiplier: record.multiplier,
-      raw: record,
-    };
-
-    if (record.convertible !== undefined) {
-      currency.convertible = parseCurrencyConvertible(record.convertible, index);
-    }
-
-    currencies.push(currency);
-  }
-
-  return currencies;
 }
 
 function parsePaymentOptions(raw: unknown): PaymentOption[] | undefined {
@@ -243,13 +135,6 @@ function parsePaymentOptions(raw: unknown): PaymentOption[] | undefined {
       throw new InvalidPaymentOptionError(
         `paymentOptions entry ${index} minSendable must be less than or equal to maxSendable`,
       );
-    }
-
-    if (record.currencies !== undefined) {
-      const optionCurrencies = parseCurrencies(record.currencies);
-      if (optionCurrencies) {
-        option.currencies = optionCurrencies;
-      }
     }
 
     paymentOptions.push(option);
@@ -332,11 +217,6 @@ export function parsePayRequestResponse(
   const paymentOptions = parsePaymentOptions(parsed.data.paymentOptions);
   if (paymentOptions) {
     payRequest.paymentOptions = paymentOptions;
-  }
-
-  const currencies = parseCurrencies(parsed.data.currencies);
-  if (currencies) {
-    payRequest.currencies = currencies;
   }
 
   const nodePubkeys = parseNodePubkeys(parsed.data.nodePubkeys);

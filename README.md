@@ -39,7 +39,6 @@ if (payment.type === "bolt11") {
 | LUD-16 | Lightning Address | Supported |
 | LUD-18 | `payerData` | Supported |
 | LUD-21 | verify URL | Supported |
-| LUD-22 | currency-denominated amounts and conversion quotes | Supported |
 | LUD-XX | `paymentOptions` for multi-rail pay | Supported |
 | LUD-XX | `nodePubkeys` invoice-origin checks for `payRequest` | Supported |
 | LUD-XX | domain service-key discovery at `/.well-known/lnurl-service` | Supported |
@@ -169,38 +168,6 @@ import { verifyPayment } from "lnaddress";
 await verifyPayment("https://example.com/verify?k1=...");
 ```
 
-## LUD-22 currencies and conversion
-
-Providers can advertise supported currencies with LUD-22 `currencies`. `lnaddress` preserves those as typed `Currency` objects and can build both LUD-22 callback forms:
-
-```ts
-import { requestPayment, resolve, validateCurrency } from "lnaddress";
-
-const payRequest = await resolve("alice@example.com");
-
-console.log(payRequest.currencies);
-// [{ code: "BRL", decimals: 2, multiplier: 5370, convertible: { min: 100, max: 1000000 }, ... }]
-
-validateCurrency(payRequest, "BRL");
-
-// Denominated amount: GET <callback>?amount=100.BRL
-const denominated = await requestPayment(payRequest, {
-  denominatedAmount: { amount: 100, currency: "BRL" },
-});
-
-// Receiver-side conversion: GET <callback>?amount=538000&convert=BRL
-const converted = await requestPayment(payRequest, {
-  amountMsat: 538_000,
-  convert: "BRL",
-});
-
-console.log(denominated.type);
-console.log(converted.converted);
-// { amount: 100, fee: 1000, multiplier: 5370, raw: ... }
-```
-
-`amountMsat` and `denominatedAmount` are mutually exclusive. `convert` requires the selected currency to advertise `convertible`; the callback response must include `converted`, and BOLT11 responses are checked against the LUD-22 formula `invoice amount msat = converted.amount * converted.multiplier + converted.fee`.
-
 ## Payment Options
 
 Providers may advertise multiple payment methods via the draft `paymentOptions` extension in the LUD-06 response. `lnaddress` parses them and lets you select one before the callback. The current v2 draft keeps `amount` in LUD-06 millisatoshis and treats `paymentOption` as method selection, not asset/quote selection.
@@ -229,7 +196,7 @@ if (payment.type === "destination") {
 }
 ```
 
-If `paymentOption` is absent, the normal LUD-06 Lightning flow is used. `validatePaymentOption` rejects unknown or unavailable options before the callback is sent. For `type: "lightning"`, callback responses must include `pr`; `pr` remains authoritative even if generic `paymentDestination` / `paymentURI` fields are also present. Non-`pr` options such as `bolt12`, `onchain`, `liquid`, `arkade`, `spark`, `bark`, or unknown future methods may return `paymentDestination`, `paymentURI`, or both. URI-only responses are accepted for methods whose complete wallet instruction is a URI/deeplink. If an option has its own `currencies`, those override the top-level LUD-22 `currencies` for that rail; otherwise it inherits the top-level list.
+If `paymentOption` is absent, the normal LUD-06 Lightning flow is used. `validatePaymentOption` rejects unknown or unavailable options before the callback is sent. For `type: "lightning"`, callback responses must include `pr`; `pr` remains authoritative even if generic `paymentDestination` / `paymentURI` fields are also present. Non-`pr` options such as `bolt12`, `onchain`, `liquid`, `arkade`, `spark`, `bark`, or unknown future methods may return `paymentDestination`, `paymentURI`, or both. URI-only responses are accepted for methods whose complete wallet instruction is a URI/deeplink.
 
 ## Invoice-origin checks with nodePubkeys
 
@@ -451,7 +418,6 @@ validateCallbackAmount(payRequest, amountMsat);
 validateComment(payRequest, comment);
 validateMandatoryPayerData(payRequest, payerData);
 validatePaymentOption(payRequest, paymentOption);
-validateCurrency(payRequest, currencyCode);
 serviceKeysUrl(domainOrUrl);
 parseServiceKeysResponse(raw, context);
 fetchServiceKeys(domainOrUrl, options);
@@ -463,10 +429,6 @@ The public API uses camelCase for function names and object fields.
 
 ```ts
 import type {
-  ConvertedAmount,
-  Currency,
-  CurrencyConvertible,
-  DenominatedAmount,
   DomainServiceKey,
   DomainServiceKeys,
   PayRequest,

@@ -11,19 +11,15 @@ const baseResponse = {
 };
 
 describe("pay request parsing", () => {
-  test("parses currency extension fields and preserves raw response", () => {
+  test("preserves raw forward-compatible response fields", () => {
     const raw = {
       ...baseResponse,
-      currencies: [{ code: "USD", name: "US Dollar", symbol: "$", decimals: 2, multiplier: 1000 }],
-      convert: { USD: 1 },
-      converted: { currency: "USD", amount: "0.01" },
+      experimentalField: { enabled: true },
     };
     const payRequest = parsePayRequestResponse(raw);
 
-    expect(payRequest.currencies).toMatchObject([
-      { code: "USD", name: "US Dollar", symbol: "$", decimals: 2, multiplier: 1000 },
-    ]);
     expect(payRequest.raw).toEqual(raw);
+    expect("experimentalField" in payRequest).toBe(false);
   });
 
   test("rejects min greater than max", () => {

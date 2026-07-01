@@ -22,16 +22,10 @@ export type ResolveOptions = UrlSafetyOptions & {
   headers?: HeadersInit;
 } & FetchControls;
 
-export type DenominatedAmount = {
-  amount: number | bigint;
-  currency: string;
-};
-
 type RequestPaymentBaseOptions = UrlSafetyOptions & {
   comment?: string;
   payerData?: Record<string, unknown>;
   paymentOption?: string;
-  convert?: string;
   fetch?: FetchLike;
   headers?: HeadersInit;
   validateBolt11?: boolean;
@@ -43,11 +37,9 @@ type RequestPaymentBaseOptions = UrlSafetyOptions & {
   nodePubkeyPolicy?: NodePubkeyPolicy;
 } & FetchControls;
 
-export type RequestPaymentOptions = RequestPaymentBaseOptions &
-  (
-    | { amountMsat: number | bigint; denominatedAmount?: never }
-    | { amountMsat?: never; denominatedAmount: DenominatedAmount }
-  );
+export type RequestPaymentOptions = RequestPaymentBaseOptions & {
+  amountMsat: number | bigint;
+};
 
 export type VerifyPaymentOptions = UrlSafetyOptions & {
   fetch?: FetchLike;
@@ -105,35 +97,12 @@ export type PayerDataField = {
 
 export type PayerData = Record<string, PayerDataField>;
 
-export type CurrencyConvertible = {
-  min: number;
-  max: number;
-};
-
-export type Currency = {
-  code: string;
-  name: string;
-  symbol: string;
-  decimals: number;
-  multiplier: number;
-  convertible?: CurrencyConvertible;
-  raw?: Record<string, unknown>;
-};
-
-export type ConvertedAmount = {
-  multiplier: number;
-  amount: number;
-  fee: number;
-  raw: Record<string, unknown>;
-};
-
 export type PaymentOption = {
   id: string;
   type: string;
   available?: boolean;
   minSendableMsat?: bigint;
   maxSendableMsat?: bigint;
-  currencies?: Currency[];
   raw: Record<string, unknown>;
 };
 
@@ -171,7 +140,6 @@ export type PayRequest = {
   commentAllowed?: number;
   payerData?: PayerData;
   paymentOptions?: PaymentOption[];
-  currencies?: Currency[];
   nodePubkeys?: NodePubkey[];
   raw: unknown;
   sourceUrl?: string;
@@ -187,7 +155,6 @@ export type Bolt11PaymentInstruction = {
   paymentUri?: string;
   verifyUrl?: string;
   successAction?: SuccessAction;
-  converted?: ConvertedAmount;
   nodePubkeyVerification?: NodePubkeyVerification;
   raw: unknown;
 };
@@ -196,7 +163,6 @@ export type DestinationPaymentInstruction = {
   type: "destination";
   paymentOption?: string;
   verifyUrl?: string;
-  converted?: ConvertedAmount;
   raw: unknown;
 } & (
   | { paymentDestination: string; paymentUri?: string }

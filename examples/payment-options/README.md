@@ -60,6 +60,3 @@ Legacy wallets that don't understand `paymentOptions` ignore it and get the defa
 
 The LNURL-pay protocol becomes the **universal router** for Bitcoin payments.
 
-## Composing with LUD-22 currencies
-
-A provider can attach `currencies` at the top level or inside each `paymentOptions[]` entry. Option-specific currencies override the top-level list for that rail; otherwise the option inherits the top-level LUD-22 currencies. Wallets can then combine `paymentOption=<id>` with `amount=<units>.<code>` and/or `convert=<code>` on the same callback.

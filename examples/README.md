@@ -17,7 +17,7 @@ bun examples/basic/service-keys.ts
 
 ## Payment options explainer
 
-`examples/payment-options` contains a standalone HTML explainer plus a Bun mock provider for the multi-rail `paymentOptions` flow. It also shows how the extension composes with LUD-22 currencies.
+`examples/payment-options` contains a standalone HTML explainer plus a Bun mock provider for the multi-rail `paymentOptions` flow.
 
 ```sh
 cd examples/payment-options

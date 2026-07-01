@@ -9,7 +9,6 @@ import {
 } from "../core/errors";
 import type {
   Bolt11PaymentInstruction,
-  ConvertedAmount,
   DestinationPaymentInstruction,
   NodePubkeyVerification,
   PayRequest,
@@ -17,17 +16,11 @@ import type {
   RequestPaymentOptions,
   ResolveOptions,
 } from "../core/types";
-import {
-  amountToPositiveIntegerString,
-  assertCurrencyCodeForAmount,
-  callbackAmountValue,
-  findEffectiveCurrency,
-  validateCurrency,
-} from "../extensions/currencies";
 import { verifyNodePubkeys } from "../extensions/node-pubkeys";
 import { parseSuccessAction } from "../extensions/success-action";
 import { assertBolt11Payment } from "../lightning/bolt11";
 import {
+  amountToMsatString,
   assertHttpUrl,
   assertRedirectPolicy,
   fetchWithRedirectPolicy,
@@ -173,67 +166,12 @@ function stringifyPayerData(payerData: Record<string, unknown>): string {
   }
 }
 
-function validateCurrencyRequest(payRequest: PayRequest, options: RequestPaymentOptions): void {
-  const amountMsat = options.amountMsat;
-  const denominatedAmount = options.denominatedAmount;
-  const amountMsatProvided = amountMsat !== undefined;
-  const denominatedAmountProvided = denominatedAmount !== undefined;
-
-  if (amountMsatProvided && denominatedAmountProvided) {
-    throw new AmountOutOfRangeError("amountMsat and denominatedAmount are mutually exclusive");
+function validateCallbackRequest(payRequest: PayRequest, options: RequestPaymentOptions): void {
+  if (options.amountMsat === undefined) {
+    throw new AmountOutOfRangeError("amountMsat is required");
   }
 
-  if (!amountMsatProvided && !denominatedAmountProvided) {
-    throw new AmountOutOfRangeError("amountMsat or denominatedAmount is required");
-  }
-
-  if (amountMsat !== undefined) {
-    validateCallbackAmount(payRequest, amountMsat, options.paymentOption);
-  }
-
-  if (denominatedAmount !== undefined) {
-    amountToPositiveIntegerString(denominatedAmount.amount, "denominatedAmount.amount");
-    assertCurrencyCodeForAmount(denominatedAmount.currency);
-    validateCurrency(payRequest, denominatedAmount.currency, options.paymentOption);
-  }
-
-  validateCurrency(payRequest, options.convert, options.paymentOption, {
-    requireConvertible: options.convert !== undefined,
-  });
-}
-
-function parseConvertedInteger(value: unknown, field: string): number {
-  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
-    throw new InvalidCallbackResponseError(`${field} must be a non-negative safe integer`);
-  }
-
-  return value;
-}
-
-function parseConvertedAmount(raw: unknown, required: boolean): ConvertedAmount | undefined {
-  if (raw === undefined || raw === null) {
-    if (required) {
-      throw new InvalidCallbackResponseError(
-        "Payment callback response must include converted when convert is requested",
-      );
-    }
-    return undefined;
-  }
-
-  const record = unknownToRecord(raw);
-  if (!record) {
-    throw new InvalidCallbackResponseError("converted must be an object");
-  }
-
-  const multiplier = record.multiplier;
-  if (typeof multiplier !== "number" || !Number.isFinite(multiplier) || multiplier <= 0) {
-    throw new InvalidCallbackResponseError("converted.multiplier must be a positive number");
-  }
-
-  const amount = parseConvertedInteger(record.amount, "converted.amount");
-  const fee = parseConvertedInteger(record.fee, "converted.fee");
-
-  return { multiplier, amount, fee, raw: record };
+  validateCallbackAmount(payRequest, options.amountMsat, options.paymentOption);
 }
 
 function validateCallbackStatus(record: Record<string, unknown>): void {
@@ -288,28 +226,6 @@ function selectedPaymentOptionType(
   return payRequest.paymentOptions?.find((option) => option.id === selectedId)?.type;
 }
 
-function validateConvertedBounds(
-  payRequest: PayRequest,
-  options: RequestPaymentOptions,
-  converted: ConvertedAmount | undefined,
-): void {
-  if (!converted || options.convert === undefined) {
-    return;
-  }
-
-  const currency = findEffectiveCurrency(payRequest, options.convert, options.paymentOption);
-  const convertible = currency?.convertible;
-  if (!convertible) {
-    throw new InvalidCallbackResponseError(`Currency ${options.convert} is not convertible`);
-  }
-
-  if (converted.amount < convertible.min || converted.amount > convertible.max) {
-    throw new InvalidCallbackResponseError(
-      `converted.amount must respect ${options.convert} convertible bounds`,
-    );
-  }
-}
-
 async function parseCallbackResponse(
   raw: unknown,
   payRequest: PayRequest,
@@ -334,11 +250,6 @@ async function parseCallbackResponse(
     paymentOption,
   );
 
-  const converted = parseConvertedAmount(
-    readUnknown(record, ["converted"]),
-    options.convert !== undefined,
-  );
-  validateConvertedBounds(payRequest, options, converted);
   const verifyUrl = readVerifyUrl(record, options);
   if (verifyUrl) {
     assertProviderPolicy(payRequest, verifyUrl, options, "Payment callback verify URL");
@@ -348,7 +259,7 @@ async function parseCallbackResponse(
   if (pr) {
     let nodePubkeyVerification: NodePubkeyVerification | undefined;
     if (options.validateBolt11 ?? true) {
-      const bolt11 = await assertBolt11Payment(pr, payRequest, options, converted);
+      const bolt11 = await assertBolt11Payment(pr, payRequest, options);
       nodePubkeyVerification = verifyNodePubkeys(payRequest, bolt11, options.nodePubkeyPolicy);
     }
 
@@ -380,10 +291,6 @@ async function parseCallbackResponse(
 
     if (successAction) {
       instruction.successAction = successAction;
-    }
-
-    if (converted) {
-      instruction.converted = converted;
     }
 
     if (nodePubkeyVerification) {
@@ -421,10 +328,6 @@ async function parseCallbackResponse(
       instruction.verifyUrl = verifyUrl;
     }
 
-    if (converted) {
-      instruction.converted = converted;
-    }
-
     return instruction;
   }
 
@@ -442,7 +345,7 @@ function buildCallbackUrl(payRequest: PayRequest, options: RequestPaymentOptions
     throw new InvalidCallbackResponseError("Pay request callback URL is invalid", { cause });
   }
 
-  callbackUrl.searchParams.set("amount", callbackAmountValue(options));
+  callbackUrl.searchParams.set("amount", amountToMsatString(options.amountMsat));
 
   if (options.comment !== undefined) {
     callbackUrl.searchParams.set("comment", options.comment);
@@ -454,10 +357,6 @@ function buildCallbackUrl(payRequest: PayRequest, options: RequestPaymentOptions
 
   if (options.paymentOption !== undefined) {
     callbackUrl.searchParams.set("paymentOption", options.paymentOption);
-  }
-
-  if (options.convert !== undefined) {
-    callbackUrl.searchParams.set("convert", options.convert);
   }
 
   return callbackUrl;
@@ -495,7 +394,7 @@ export async function requestPayment(
     : await resolve(payRequestOrInput, resolveOptions);
 
   validatePaymentOption(payRequest, options.paymentOption);
-  validateCurrencyRequest(payRequest, options);
+  validateCallbackRequest(payRequest, options);
   validateComment(payRequest, options.comment);
   validateMandatoryPayerData(payRequest, options.payerData);
 

@@ -243,18 +243,120 @@ function isPrivateIpv4([first, second]: [number, number, number, number]): boole
   );
 }
 
+/**
+ * Parse an IPv6 address into 16 bytes.
+ * Returns undefined for invalid or non-IPv6 strings.
+ * Handles bracketed forms ([::1]) and dotted-decimal IPv4-mapped suffixes.
+ */
+function parseIpv6Bytes(hostname: string): Uint8Array | undefined {
+  let value = hostname.replace(/^\[/, "").replace(/\]$/, "").toLowerCase();
+
+  // Shortest valid IPv6 is "::" (2 chars); longest is 39 chars.
+  if (value.length < 2 || value.length > 45) return undefined;
+
+  // Reject characters outside IPv6 hex digits, colons, dots, and IPv4 suffix.
+  if (!/^[0-9a-f:.]+$/.test(value)) return undefined;
+
+  // Expand IPv4-mapped dotted-decimal suffix to hex groups.
+  // e.g. ::ffff:192.168.0.1 → ::ffff:c0a8:1
+  const lastColon = value.lastIndexOf(":");
+  if (lastColon !== -1 && value.slice(lastColon + 1).includes(".")) {
+    const suffix = value.slice(lastColon + 1);
+    const ipv4 = parseIpv4(suffix);
+    if (!ipv4) return undefined;
+    const [a, b, c, d] = ipv4;
+    const hi = ((a << 8) | b).toString(16);
+    const lo = ((c << 8) | d).toString(16);
+    value = `${value.slice(0, lastColon + 1) + hi}:${lo}`;
+  }
+
+  // Handle "::" expansion. Count colons to determine compression size.
+  const groups = value.split(":");
+  const hasDoubleColon = value.includes("::");
+
+  if (hasDoubleColon) {
+    // Multiple "::" is invalid.
+    if (value.indexOf("::") !== value.lastIndexOf("::")) return undefined;
+
+    // Count non-empty groups to figure out how many zero groups to insert.
+    const nonEmpty = groups.filter((g) => g !== "");
+    const zeroCount = 8 - nonEmpty.length;
+    if (zeroCount < 1) return undefined;
+
+    // Split at "::" and insert zero groups.
+    const parts = value.split("::");
+    const left = parts[0] ? parts[0].split(":") : [];
+    const right = parts[1] ? parts[1].split(":") : [];
+    const expanded = [...left, ...Array(zeroCount).fill("0"), ...right];
+    if (expanded.length !== 8) return undefined;
+    return ipv6GroupsToBytes(expanded);
+  }
+
+  if (groups.length !== 8) return undefined;
+  return ipv6GroupsToBytes(groups);
+}
+
+function ipv6GroupsToBytes(groups: string[]): Uint8Array | undefined {
+  const bytes = new Uint8Array(16);
+  for (let i = 0; i < 8; i++) {
+    const group = groups[i];
+    if (!group || group.length === 0 || group.length > 4) return undefined;
+    if (!/^[0-9a-f]+$/.test(group)) return undefined;
+    const value = Number.parseInt(group, 16);
+    if (!Number.isFinite(value) || value < 0 || value > 0xffff) return undefined;
+    bytes[i * 2] = (value >> 8) & 0xff;
+    bytes[i * 2 + 1] = value & 0xff;
+  }
+  return bytes;
+}
+
 function isPrivateIpv6(hostname: string): boolean {
-  const value = hostname.replace(/^\[/, "").replace(/\]$/, "").toLowerCase();
-  return (
-    value === "::" ||
-    value === "::1" ||
-    value.startsWith("fe80:") ||
-    value.startsWith("fc") ||
-    value.startsWith("fd") ||
-    value.startsWith("::ffff:127.") ||
-    value.startsWith("::ffff:10.") ||
-    value.startsWith("::ffff:192.168.")
-  );
+  const bytes = parseIpv6Bytes(hostname);
+  if (!bytes) return false;
+
+  // :: (unspecified) and ::1 (loopback)
+  const isUnspecified = bytes.every((b) => b === 0);
+  const isLoopback = bytes.slice(0, 15).every((b) => b === 0) && bytes[15] === 1;
+  if (isUnspecified || isLoopback) return true;
+
+  // Link-local fe80::/10
+  if ((bytes[0] ?? 0) === 0xfe && ((bytes[1] ?? 0) & 0xc0) === 0x80) return true;
+
+  // Unique local addresses fc00::/7
+  if (((bytes[0] ?? 0) & 0xfe) === 0xfc) return true;
+
+  // IPv4-mapped IPv6: ::ffff:0:0/96 — first 10 bytes are 0, bytes 10-11 are 0xff
+  const isIpv4Mapped =
+    bytes.slice(0, 10).every((b) => b === 0) &&
+    (bytes[10] ?? 0) === 0xff &&
+    (bytes[11] ?? 0) === 0xff;
+
+  if (isIpv4Mapped) {
+    // Extract the embedded IPv4 address (last 4 bytes) and reuse isPrivateIpv4.
+    const embedded = [bytes[12] ?? 0, bytes[13] ?? 0, bytes[14] ?? 0, bytes[15] ?? 0] as [
+      number,
+      number,
+      number,
+      number,
+    ];
+    return isPrivateIpv4(embedded);
+  }
+
+  // IPv4-compatible IPv6: ::x.x.x.x (deprecated but still resolves in some stacks).
+  // First 12 bytes are 0, bytes 10-11 are also 0 (not 0xffff).
+  const isIpv4Compatible =
+    bytes.slice(0, 12).every((b) => b === 0) && (bytes[12] ?? 0) !== 0 && (bytes[13] ?? 0) !== 0;
+  if (isIpv4Compatible) {
+    const embedded = [bytes[12] ?? 0, bytes[13] ?? 0, bytes[14] ?? 0, bytes[15] ?? 0] as [
+      number,
+      number,
+      number,
+      number,
+    ];
+    return isPrivateIpv4(embedded);
+  }
+
+  return false;
 }
 
 function isPrivateNetworkHost(hostname: string): boolean {

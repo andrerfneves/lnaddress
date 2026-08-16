@@ -554,3 +554,7 @@ Dry run locally:
 ```sh
 bun run release:dry
 ```
+
+## Contributing
+
+PRs welcome. Open an issue first for non-trivial changes. Keep the public API surface minimal — this library stays focused on Lightning Address and LNURL-pay only.

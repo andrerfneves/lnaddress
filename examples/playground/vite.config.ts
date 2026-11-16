@@ -1,16 +1,13 @@
+import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
-import { nodePolyfills } from "vite-plugin-node-polyfills";
+
+const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
 
 export default defineConfig({
-  plugins: [
-    react(),
-    ...nodePolyfills({
-      globals: {
-        Buffer: false,
-        global: false,
-        process: false,
-      },
-    }),
-  ],
+  plugins: [react()],
+  server: {
+    // The mock provider signs invoices with the shared test fixture in ../../test.
+    fs: { allow: [repoRoot] },
+  },
 });

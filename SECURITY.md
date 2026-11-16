@@ -10,9 +10,10 @@ it does not make remote providers trusted.
 - LNURL bech32 checksums, human-readable part, padding, and decoded HTTP(S) URL.
 - LNURL-pay `payRequest` shape, callback URL protocol, amount bounds, metadata,
   comments, mandatory payer data, and optional provider identity policy.
-- BOLT11 invoice checksum, amount, expected network, expiry, ECDSA signature
-  recovery and verification, and payee node id matching when the invoice includes
-  an `n` tag. If a payRequest advertises `nodePubkeys`, the invoice payee is
+- BOLT11 invoice checksum, network prefix (`lnbc`, `lntb`, `lntbs`, `lnbcrt`),
+  amount, expected network, expiry, and presence of a payment hash. The
+  signature is verified against the `n` payee node id when present, and the
+  payee is recovered from it otherwise. If a payRequest advertises `nodePubkeys`, the invoice payee is
   compared with the advertised nodes and returned as non-blocking verification
   metadata by default. Metadata description-hash validation is available as an
   opt-in strict mode with `validateMetadataHash: true`.
@@ -20,7 +21,10 @@ it does not make remote providers trusted.
 - Domain service-key documents from `/.well-known/lnurl-service`: flat `signingKeys` / `encryptionKeys`, exact optional domain binding, valid compressed secp256k1 public keys, duplicate key-id rejection within each key-use array, key-level `expiresAt`, and optional PEM-shaped `certChain` arrays.
 - LUD-09 `successAction` message, URL, and AES shapes. URL actions must use
   HTTP(S), and AES actions can be decrypted with `decryptSuccessAction`.
-- LUD-21 verification response shape.
+- LUD-21 verification responses. When verifying a BOLT11 instruction, an echoed
+  `pr` must match the requested invoice, and a returned `preimage` must hash to
+  the invoice payment hash (`preimageVerified: true`). `settled: true` without a
+  preimage remains a provider claim.
 - Destination payment responses as typed destination instructions, with optional
   helper validation for known URI rails. Destination strings and URIs remain
   untrusted provider data until app-level rail validation succeeds.
@@ -47,14 +51,26 @@ range blocking, or redirect limits.
 
 Built-in controls:
 
-- `timeoutMs` aborts slow resolve, callback, verify, and service-key requests.
-- `signal` lets callers cancel in-flight requests.
-- `redirectPolicy` rejects redirects, cross-origin redirects, or HTTPS to HTTP
-  downgrades before following redirect targets.
+- `timeoutMs` aborts resolve, callback, verify, and service-key requests that
+  have not fully arrived, headers and body, in time.
+- `signal` lets callers cancel in-flight requests, including body reads.
+- `maxResponseBytes` (default 1 MiB) bounds response body size.
+- Redirects are followed by the library, not by `fetch`. Under every
+  `redirectPolicy`, including the default `"follow"`, each redirect target is run
+  through the onion/private-network checks below before it is requested.
+  `redirectPolicy` can additionally reject all redirects, cross-origin
+  redirects, or HTTPS to HTTP downgrades. `Authorization`, `Proxy-Authorization`,
+  and `Cookie` headers are dropped on cross-origin hops.
+- Browsers hide redirect targets from manual redirect handling. There the
+  library repeats the request with native redirects and checks the final URL
+  afterwards, so the browser itself (CORS, mixed-content and private-network
+  rules) is what prevents the intermediate request.
 - `providerPolicy` can restrict callback and verify URLs to the same origin or
   same hostname/subdomain as the resolved provider.
 - `.onion`, localhost, loopback, link-local, and private-network HTTP(S) URLs are
   rejected unless callers opt in with `allowOnion` or `allowPrivateNetwork`.
+  These checks inspect the URL hostname only; DNS names that resolve to private
+  addresses are not detected.
 
 ## Onion And Private Network Support
 
@@ -88,13 +104,17 @@ The default `nodePubkeyPolicy: "warn"` follows the proposal's wallet UX: mismatc
 ## BOLT11 Notes
 
 `validateBolt11` is enabled by default. It verifies invoice structure, amount,
-network policy, expiry, signature, `n` payee node id when present, and optional
-`nodePubkeys` invoice-origin comparison. Metadata description-hash validation is
+network policy, expiry, and the payment hash. The signature is checked against
+the `n` payee node id when present (the payee is recovered from it otherwise),
+and the optional `nodePubkeys` invoice-origin comparison runs. Decoding is
+implemented in `src/lightning/bolt11.ts` on `@noble/secp256k1` and `js-sha256`,
+and tested against the BOLT11 specification's vectors. Metadata description-hash validation is
 opt-in with `validateMetadataHash: true`. These checks do not establish that the
 provider is honest or that the invoice will settle. Always
 use `verifyPayment` when the provider supplies a verify URL.
 
 ## Reporting Vulnerabilities
 
-Please report security issues privately through the repository owner instead of
-opening public issues with exploit details.
+Please report security issues privately through GitHub's
+[private vulnerability reporting](https://github.com/andrerfneves/lnaddress/security/advisories/new)
+for this repository instead of opening public issues with exploit details.

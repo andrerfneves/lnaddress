@@ -90,6 +90,9 @@ function bytesToHex(bytes: Uint8Array | number[]): string {
 }
 
 export const testNodePubkey = bytesToHex(getPublicKey(privateKey));
+/** Preimage whose sha256 is the default invoice payment hash (`testPaymentHash`). */
+export const testPreimage = "11".repeat(32);
+export const testPaymentHash = sha256(hexToBytes(testPreimage));
 export const alternateTestNodePubkey = bytesToHex(getPublicKey(alternatePrivateKey));
 
 function concatBytes(...chunks: Uint8Array[]): Uint8Array {
@@ -127,12 +130,16 @@ export async function testBolt11Invoice(
   amountMsat: number | bigint,
   metadataHash: string,
   options: {
-    network?: "bc" | "tb" | "bcrt" | "sb";
+    /** HRP network prefix. Any string is accepted so tests can build invalid prefixes. */
+    network?: "bc" | "tb" | "tbs" | "bcrt" | (string & {});
     timestamp?: number;
     expirySeconds?: number;
     mismatchedPayeeNode?: boolean;
     signer?: "default" | "alternate";
     omitPayeeNode?: boolean;
+    /** 32-byte hex payment hash. Defaults to `testPaymentHash`. */
+    paymentHash?: string;
+    omitPaymentHash?: boolean;
   } = {},
 ): Promise<string> {
   const amount = typeof amountMsat === "bigint" ? amountMsat : BigInt(amountMsat);
@@ -152,8 +159,23 @@ export async function testBolt11Invoice(
     expiryWords.length === 0
       ? []
       : [charset.indexOf("x"), expiryWords.length >> 5, expiryWords.length & 31, ...expiryWords];
+  const paymentHashWords = convertBits(
+    hexToBytes(options.paymentHash ?? testPaymentHash),
+    8,
+    5,
+    true,
+  );
+  const paymentHashField = options.omitPaymentHash
+    ? []
+    : [
+        charset.indexOf("p"),
+        paymentHashWords.length >> 5,
+        paymentHashWords.length & 31,
+        ...paymentHashWords,
+      ];
   const signingData = [
     ...timestamp,
+    ...paymentHashField,
     hTag,
     ...hLength,
     ...hashWords,

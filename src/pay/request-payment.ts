@@ -5,7 +5,6 @@ import {
   InvalidCallbackResponseError,
   InvalidPaymentOptionError,
   MissingMandatoryPayerDataError,
-  NetworkError,
 } from "../core/errors";
 import type {
   Bolt11PaymentInstruction,
@@ -26,15 +25,11 @@ import {
   validateUnit,
 } from "../extensions/units";
 import { assertBolt11Payment } from "../lightning/bolt11";
+import { JsonBodyError, fetchJson } from "../utils/http";
 import {
   assertHttpUrl,
-  assertRedirectPolicy,
-  fetchWithRedirectPolicy,
-  getFetch,
-  readJsonResponse,
   readString,
   readUnknown,
-  requestInit,
   toMsatBigint,
   unknownToRecord,
 } from "../utils/internal";
@@ -437,6 +432,9 @@ export async function requestPayment(
   if (options.redirectPolicy !== undefined) {
     resolveOptions.redirectPolicy = options.redirectPolicy;
   }
+  if (options.maxResponseBytes !== undefined) {
+    resolveOptions.maxResponseBytes = options.maxResponseBytes;
+  }
 
   const payRequest = isPayRequest(payRequestOrInput)
     ? payRequestOrInput
@@ -449,35 +447,16 @@ export async function requestPayment(
 
   const callbackUrl = buildCallbackUrl(payRequest, options);
   assertProviderPolicy(payRequest, callbackUrl, options, "Pay request callback URL");
-  const fetcher = getFetch(options.fetch);
-  let response: Response;
-  const { init, cleanup } = requestInit(options.headers, options);
-
-  try {
-    response = await fetchWithRedirectPolicy(fetcher, callbackUrl, init, options);
-  } catch (cause) {
-    throw new NetworkError(`Failed to request payment instruction: ${callbackUrl.toString()}`, {
-      cause,
-    });
-  } finally {
-    cleanup();
-  }
-
-  assertRedirectPolicy(callbackUrl, response, options);
-
-  if (!response.ok) {
-    throw new NetworkError(
-      `Failed to request payment instruction: ${response.status} ${response.statusText}`,
-    );
-  }
-
   let raw: unknown;
   try {
-    raw = await readJsonResponse(response);
+    raw = await fetchJson(callbackUrl, options, "request payment instruction");
   } catch (cause) {
-    throw new InvalidCallbackResponseError("Payment callback response is not valid JSON", {
-      cause,
-    });
+    if (cause instanceof JsonBodyError) {
+      throw new InvalidCallbackResponseError("Payment callback response is not valid JSON", {
+        cause,
+      });
+    }
+    throw cause;
   }
 
   return parseCallbackResponse(raw, payRequest, options);

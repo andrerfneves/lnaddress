@@ -1,5 +1,5 @@
 import { Point } from "@noble/secp256k1";
-import { InvalidServiceKeysError, NetworkError } from "../core/errors";
+import { InvalidServiceKeysError } from "../core/errors";
 import type {
   DomainServiceKey,
   DomainServiceKeyAlgorithm,
@@ -8,15 +8,8 @@ import type {
   ParseServiceKeysContext,
   UrlSafetyOptions,
 } from "../core/types";
-import {
-  assertHttpUrl,
-  assertRedirectPolicy,
-  fetchWithRedirectPolicy,
-  getFetch,
-  readJsonResponse,
-  requestInit,
-  unknownToRecord,
-} from "../utils/internal";
+import { JsonBodyError, fetchJson } from "../utils/http";
+import { assertHttpUrl, unknownToRecord } from "../utils/internal";
 
 export const LNURL_SERVICE_PATH = "/.well-known/lnurl-service";
 
@@ -234,35 +227,15 @@ export async function fetchServiceKeys(
   options: FetchServiceKeysOptions = {},
 ): Promise<DomainServiceKeys> {
   const url = serviceKeysUrl(domainOrUrl, options);
-  const fetcher = getFetch(options.fetch);
-  const { init, cleanup } = requestInit(options.headers, options);
-  let response: Response;
-
+  let body: unknown;
   try {
-    response = await fetchWithRedirectPolicy(fetcher, url, init, options);
+    body = await fetchJson(url, options, "fetch LNURL service keys");
   } catch (cause) {
-    cleanup();
-    throw new NetworkError(`Failed to fetch LNURL service keys: ${url.toString()}`, { cause });
-  }
-
-  try {
-    assertRedirectPolicy(url, response, options);
-
-    if (!response.ok) {
-      throw new NetworkError(
-        `Failed to fetch LNURL service keys: ${response.status} ${response.statusText}`,
-      );
-    }
-
-    let body: unknown;
-    try {
-      body = await readJsonResponse(response);
-    } catch (cause) {
+    if (cause instanceof JsonBodyError) {
       throw new InvalidServiceKeysError("LNURL service keys response is not valid JSON", { cause });
     }
-
-    return parseServiceKeysResponse(body, { sourceUrl: url.toString() });
-  } finally {
-    cleanup();
+    throw cause;
   }
+
+  return parseServiceKeysResponse(body, { sourceUrl: url.toString() });
 }

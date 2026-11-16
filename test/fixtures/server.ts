@@ -1,5 +1,5 @@
 import { getMetadataHash } from "../../src";
-import { testBolt11Invoice } from "./bolt11";
+import { testBolt11Invoice, testPreimage } from "./bolt11";
 
 type ServerState = {
   liquidSettled: boolean;
@@ -91,7 +91,7 @@ export function startLnurlTestServer() {
       }
 
       if (url.pathname === "/verify/bolt11") {
-        return json({ status: "OK", settled: true, preimage: "00".repeat(32) });
+        return json({ status: "OK", settled: true, preimage: testPreimage });
       }
 
       if (url.pathname === "/verify/liquid") {

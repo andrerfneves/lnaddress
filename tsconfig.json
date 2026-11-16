@@ -15,6 +15,14 @@
     "verbatimModuleSyntax": true,
     "allowSyntheticDefaultImports": true
   },
-  "include": ["src", "test/unit", "test/integration", "test/e2e", "test/fixtures", "test/types"],
+  "include": [
+    "src",
+    "test/unit",
+    "test/integration",
+    "test/e2e",
+    "test/fixtures",
+    "test/types",
+    "test/examples"
+  ],
   "exclude": ["dist", "node_modules"]
 }

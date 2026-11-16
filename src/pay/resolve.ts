@@ -4,17 +4,10 @@ import {
   InvalidLightningAddressError,
   InvalidLnurlError,
   InvalidPayRequestError,
-  NetworkError,
 } from "../core/errors";
 import type { LightningAddress, PayRequest, ResolveOptions } from "../core/types";
-import {
-  assertHttpUrl,
-  assertRedirectPolicy,
-  fetchWithRedirectPolicy,
-  getFetch,
-  readJsonResponse,
-  requestInit,
-} from "../utils/internal";
+import { JsonBodyError, fetchJson } from "../utils/http";
+import { assertHttpUrl } from "../utils/internal";
 import { parsePayRequestResponse } from "./payrequest";
 
 function lightningAddressToUrl(address: LightningAddress): string {
@@ -127,35 +120,14 @@ function inputToUrl(
 
 export async function resolve(input: string, options: ResolveOptions = {}): Promise<PayRequest> {
   const { url, address } = inputToUrl(input, options);
-  const fetcher = getFetch(options.fetch);
-  let response: Response;
-  const { init, cleanup } = requestInit(options.headers, options);
-
-  try {
-    response = await fetchWithRedirectPolicy(fetcher, url, init, options);
-  } catch (cause) {
-    throw new NetworkError(`Failed to resolve LNURL-pay endpoint: ${url}`, {
-      cause,
-    });
-  } finally {
-    cleanup();
-  }
-
-  assertRedirectPolicy(url, response, options);
-
-  if (!response.ok) {
-    throw new NetworkError(
-      `Failed to resolve LNURL-pay endpoint: ${response.status} ${response.statusText}`,
-    );
-  }
-
   let raw: unknown;
   try {
-    raw = await readJsonResponse(response);
+    raw = await fetchJson(new URL(url), options, "resolve LNURL-pay endpoint");
   } catch (cause) {
-    throw new InvalidPayRequestError("Resolved response is not valid JSON", {
-      cause,
-    });
+    if (cause instanceof JsonBodyError) {
+      throw new InvalidPayRequestError("Resolved response is not valid JSON", { cause });
+    }
+    throw cause;
   }
 
   const parseContext = {

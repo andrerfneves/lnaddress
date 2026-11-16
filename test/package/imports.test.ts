@@ -52,13 +52,23 @@ function packFixture(): { fixture: string; packageDir: string } {
 
   const packageDir = join(extracted, "package");
   const fixture = join(tmpRoot, "fixture");
-  const installed = join(fixture, "node_modules", "lnaddress");
-  mkdirSync(dirname(installed), { recursive: true });
+  const nodeModules = join(fixture, "node_modules");
+  const installed = join(nodeModules, "lnaddress");
+  mkdirSync(nodeModules, { recursive: true });
 
-  try {
-    symlinkSync(packageDir, installed, "dir");
-  } catch {
-    cpSync(packageDir, installed, { recursive: true });
+  // Copy rather than symlink: Node resolves dependencies from a module's real path,
+  // so the installed package must sit next to its dependencies like a real install.
+  cpSync(packageDir, installed, { recursive: true });
+
+  // Provide only the declared runtime dependencies, so a missing entry in
+  // package.json "dependencies" fails here instead of resolving from the repo.
+  const { dependencies = {} } = JSON.parse(
+    readFileSync(join(packageDir, "package.json"), "utf8"),
+  ) as { dependencies?: Record<string, string> };
+  for (const name of Object.keys(dependencies)) {
+    const target = join(nodeModules, name);
+    mkdirSync(dirname(target), { recursive: true });
+    symlinkSync(join(repoRoot, "node_modules", name), target, "dir");
   }
 
   return { fixture, packageDir };
@@ -124,7 +134,9 @@ describe("built package imports", () => {
       ].join("\n"),
     );
 
-    run(process.execPath, [esmFile], fixture);
-    run(process.execPath, [cjsFile], fixture);
-  });
+    // Run under Node, not Bun: Bun would auto-install anything missing from node_modules.
+    run("node", [esmFile], fixture);
+    run("node", [cjsFile], fixture);
+    // A cold `npm pack` can take well over bun's 5s default test timeout.
+  }, 60_000);
 });

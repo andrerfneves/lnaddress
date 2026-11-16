@@ -15,6 +15,8 @@ bun examples/basic/node-pubkeys.ts
 bun examples/basic/service-keys.ts
 ```
 
+`mock-provider.ts` signs real BOLT11 invoices for the requested amount (with the test key in `test/fixtures/bolt11.ts`), so the scripts pass the library's default invoice validation. `bun run test:examples` from the repo root type-checks and runs every script.
+
 ## Payment options explainer
 
 `examples/payment-options` contains a standalone HTML explainer plus a Bun mock provider for the multi-rail `paymentOptions` flow.

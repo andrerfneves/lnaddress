@@ -83,6 +83,7 @@ describe("LUD compliance vectors", () => {
     ).resolves.toMatchObject({
       status: "OK",
       settled: true,
+      preimageVerified: true,
     });
   });
 });

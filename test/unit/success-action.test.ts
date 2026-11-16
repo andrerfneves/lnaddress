@@ -99,7 +99,7 @@ describe("successAction parsing", () => {
     expect(action?.tag).toBe("aes");
     if (action?.tag === "aes" && "decrypt" in action) {
       expect(await decryptSuccessAction(action, preimage)).toBe("paid");
-      expect(() => action.decrypt(preimage)).toThrow();
+      expect(await action.decrypt(preimage)).toBe("paid");
     }
   });
 });

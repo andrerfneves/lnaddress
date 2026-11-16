@@ -2,12 +2,6 @@ import { InvalidCallbackResponseError } from "../core/errors";
 import type { SuccessAction, UrlSafetyOptions } from "../core/types";
 import { assertHttpUrl } from "../utils/internal";
 
-function aesDecryptNotAvailable(): never {
-  throw new Error(
-    "AES successAction decryption is not available synchronously. Use the raw ciphertext and Web Crypto in userland.",
-  );
-}
-
 function base64ToBytes(value: string): Uint8Array {
   const decoded = atob(value);
   return Uint8Array.from(decoded, (char) => char.charCodeAt(0));
@@ -44,41 +38,50 @@ export function parseSuccessAction(
     return undefined;
   }
 
-  if (tag === "message" && typeof action.message === "string") {
-    return {
-      tag,
-      message: action.message,
-    };
-  }
-
-  if (tag === "url" && typeof action.description === "string" && typeof action.url === "string") {
-    let url: URL;
-    try {
-      url = assertHttpUrl(action.url, options);
-    } catch (cause) {
-      throw new InvalidCallbackResponseError("URL successAction URL is invalid", { cause });
+  if (tag === "message") {
+    if (typeof action.message === "string") {
+      return {
+        tag,
+        message: action.message,
+      };
     }
-
-    return {
-      tag,
-      description: action.description,
-      url: url.toString(),
-    };
+    return undefined;
   }
 
-  if (
-    tag === "aes" &&
-    typeof action.description === "string" &&
-    typeof action.ciphertext === "string" &&
-    typeof action.iv === "string"
-  ) {
-    return {
-      tag,
-      description: action.description,
-      ciphertext: action.ciphertext,
-      iv: action.iv,
-      decrypt: aesDecryptNotAvailable,
-    };
+  if (tag === "url") {
+    if (typeof action.description === "string" && typeof action.url === "string") {
+      let url: URL;
+      try {
+        url = assertHttpUrl(action.url, options);
+      } catch (cause) {
+        throw new InvalidCallbackResponseError("URL successAction URL is invalid", { cause });
+      }
+
+      return {
+        tag,
+        description: action.description,
+        url: url.toString(),
+      };
+    }
+    return undefined;
+  }
+
+  if (tag === "aes") {
+    if (
+      typeof action.description === "string" &&
+      typeof action.ciphertext === "string" &&
+      typeof action.iv === "string"
+    ) {
+      const aes: SuccessAction = {
+        tag,
+        description: action.description,
+        ciphertext: action.ciphertext,
+        iv: action.iv,
+        decrypt: (preimage: string) => decryptSuccessAction(aes, preimage),
+      };
+      return aes;
+    }
+    return undefined;
   }
 
   return {

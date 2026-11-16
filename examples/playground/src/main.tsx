@@ -1,4 +1,3 @@
-import "./polyfills";
 import {
   type PayRequest,
   type PaymentInstruction,
@@ -97,6 +96,8 @@ function App() {
   const [payment, set_payment] = useState<PaymentInstruction | null>(null);
   const [verify_result, set_verify_result] = useState<VerifyResult | null>(null);
   const [error, set_error] = useState<string | null>(null);
+  // Only one request runs at a time, so a slow response can't overwrite a newer one.
+  const [busy, set_busy] = useState(false);
   const fetch = useMemo(() => createPlaygroundFetch(), []);
 
   const payerData = useMemo(
@@ -135,33 +136,53 @@ function App() {
     set_error(null);
   }
 
-  async function run_resolve() {
-    set_error(null);
+  function change_input(next: string) {
+    // A resolved PayRequest (and anything derived from it) belongs to the old input.
+    set_input(next);
+    set_pay_request(null);
     set_payment(null);
     set_verify_result(null);
+    set_error(null);
+  }
 
+  async function run_step(step: () => Promise<void>) {
+    if (busy) {
+      return;
+    }
+
+    set_busy(true);
+    set_error(null);
     try {
-      const resolved = await resolve(input, { fetch });
-      set_pay_request(resolved);
+      await step();
     } catch (cause) {
       set_error(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      set_busy(false);
     }
   }
 
-  async function run_request() {
-    set_error(null);
-    set_verify_result(null);
+  function run_resolve() {
+    return run_step(async () => {
+      set_pay_request(null);
+      set_payment(null);
+      set_verify_result(null);
+      set_pay_request(await resolve(input, { fetch }));
+    });
+  }
 
-    try {
+  function run_request() {
+    return run_step(async () => {
+      // Clear the previous instruction first so a failed request can't leave it verifiable.
+      set_payment(null);
+      set_verify_result(null);
+
       const request_options = build_request_options();
       const instruction = pay_request
         ? await requestPayment(pay_request, request_options)
         : await pay(input, request_options);
 
       set_payment(instruction);
-    } catch (cause) {
-      set_error(cause instanceof Error ? cause.message : String(cause));
-    }
+    });
   }
 
   function build_request_options(): RequestPaymentOptions {
@@ -190,20 +211,15 @@ function App() {
     return options;
   }
 
-  async function run_verify() {
+  function run_verify() {
     if (!payment) {
       set_error("Request a payment instruction first");
       return;
     }
 
-    set_error(null);
-
-    try {
-      const verified = await verifyPayment(payment, { fetch });
-      set_verify_result(verified);
-    } catch (cause) {
-      set_error(cause instanceof Error ? cause.message : String(cause));
-    }
+    return run_step(async () => {
+      set_verify_result(await verifyPayment(payment, { fetch }));
+    });
   }
 
   return (
@@ -235,7 +251,7 @@ function App() {
               <Input
                 id="lnaddress-input"
                 value={input}
-                onChange={(event) => set_input(event.target.value)}
+                onChange={(event) => change_input(event.target.value)}
               />
             </label>
 
@@ -278,11 +294,13 @@ function App() {
             </label>
 
             <div className="button-row">
-              <Button onClick={run_resolve}>Resolve</Button>
-              <Button onClick={run_request} variant="secondary">
+              <Button disabled={busy} onClick={run_resolve}>
+                Resolve
+              </Button>
+              <Button disabled={busy} onClick={run_request} variant="secondary">
                 Request
               </Button>
-              <Button onClick={run_verify} variant="ghost">
+              <Button disabled={busy || !payment} onClick={run_verify} variant="ghost">
                 Verify
               </Button>
             </div>

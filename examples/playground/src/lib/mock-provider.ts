@@ -1,7 +1,10 @@
-import type { FetchLike } from "lnaddress";
+import { type FetchLike, getMetadataHash } from "lnaddress";
+// Signs real BOLT11 invoices with a fixed test key, so the playground runs with the
+// library's default invoice validation on. Never use this key for real payments.
+import { testBolt11Invoice, testPreimage } from "../../../../test/fixtures/bolt11";
 
-const playgroundBolt11Invoice =
-  "lnbc250000p1p5ww7qqhp5s4rd659qkra3mncxwkamxxf0l2fnwe5w8qutznmmrh206n7uwdxqnp4qvdcf32k0vfxgsyet5ldt246q4jaw8scx3sysx0lnstlt6w4m5rc7xqxfvcqcqzxc0wgaxw65vk8770auuku3uyr6qxfyug5g5v3lswc8dtxjcda6vyx0h8vu0ffc9q02cppgcvv3h5zdvexpas0rgkh82uz6hjcc8v0spzpn66w";
+const aliceMetadata =
+  '[["text/plain","Alice playground wallet"],["text/identifier","alice@playground.lnaddress.test"]]';
 
 const usd = {
   code: "USD",
@@ -23,6 +26,7 @@ type ProviderState = {
   bolt11Settled: boolean;
   liquidSettled: boolean;
   liquidQuote?: ReturnType<typeof liquidQuote>;
+  lastInvoice?: string;
 };
 
 export const mockOrigin = "https://playground.lnaddress.test";
@@ -72,8 +76,7 @@ export function createPlaygroundFetch(): FetchLike {
         callback: `${mockOrigin}/callback/bolt11`,
         minSendable: 1_000,
         maxSendable: 250_000,
-        metadata:
-          '[["text/plain","Alice playground wallet"],["text/identifier","alice@playground.lnaddress.test"]]',
+        metadata: aliceMetadata,
         commentAllowed: 80,
         payerData: {
           name: { mandatory: true },
@@ -104,9 +107,15 @@ export function createPlaygroundFetch(): FetchLike {
         return json({ status: "ERROR", reason: "payerdata required" });
       }
 
+      state.lastInvoice = await testBolt11Invoice(
+        BigInt(amount ?? "0"),
+        getMetadataHash(aliceMetadata),
+      );
+      state.bolt11Settled = false;
+
       return json({
         status: "OK",
-        pr: playgroundBolt11Invoice,
+        pr: state.lastInvoice,
         routes: [],
         verify: `${mockOrigin}/verify/bolt11`,
         successAction: {
@@ -139,8 +148,8 @@ export function createPlaygroundFetch(): FetchLike {
       return json({
         status: "OK",
         settled,
-        preimage: settled ? "00".repeat(32) : null,
-        pr: playgroundBolt11Invoice,
+        preimage: settled ? testPreimage : null,
+        ...(state.lastInvoice ? { pr: state.lastInvoice } : {}),
       });
     }
 

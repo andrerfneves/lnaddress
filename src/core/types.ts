@@ -12,9 +12,14 @@ export type NodePubkeyPolicy = "warn" | "enforce" | "off";
 export type Bolt11PayeeNodeIdSource = "n" | "signature";
 
 export type FetchControls = {
+  /** Cancels the request, including reading the response body. */
   signal?: AbortSignal;
+  /** Aborts the request if the full response (headers and body) has not arrived in time. */
   timeoutMs?: number;
+  /** How redirects are followed. Every hop is checked against the URL safety options. */
   redirectPolicy?: RedirectPolicy;
+  /** Maximum response body size in bytes. Defaults to 1 MiB. */
+  maxResponseBytes?: number;
 };
 
 export type ResolveOptions = UrlSafetyOptions & {
@@ -227,6 +232,11 @@ export type VerifyResult = {
   paymentUri?: string;
   paymentReference?: string | null;
   paymentQuote?: PaymentQuote;
+  /**
+   * `true` when `sha256(preimage)` was checked against the invoice payment hash: the
+   * requested BOLT11 invoice, or the response `pr` when verifying by URL.
+   */
+  preimageVerified?: true;
   reason?: string;
   raw: unknown;
 };
@@ -239,6 +249,7 @@ export type SuccessAction =
       description: string;
       ciphertext: string;
       iv: string;
-      decrypt(preimage: string): string;
+      /** Decrypts the action with the 32-byte hex payment preimage (LUD-09 AES-CBC). */
+      decrypt(preimage: string): Promise<string>;
     }
   | { tag: string; raw: unknown };

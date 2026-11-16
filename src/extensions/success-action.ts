@@ -2,12 +2,6 @@ import { InvalidCallbackResponseError } from "../core/errors";
 import type { SuccessAction, UrlSafetyOptions } from "../core/types";
 import { assertHttpUrl } from "../utils/internal";
 
-function aesDecryptNotAvailable(): never {
-  throw new Error(
-    "AES successAction decryption is not available synchronously. Use the raw ciphertext and Web Crypto in userland.",
-  );
-}
-
 function base64ToBytes(value: string): Uint8Array {
   const decoded = atob(value);
   return Uint8Array.from(decoded, (char) => char.charCodeAt(0));
@@ -72,13 +66,14 @@ export function parseSuccessAction(
     typeof action.ciphertext === "string" &&
     typeof action.iv === "string"
   ) {
-    return {
+    const aes: SuccessAction = {
       tag,
       description: action.description,
       ciphertext: action.ciphertext,
       iv: action.iv,
-      decrypt: aesDecryptNotAvailable,
+      decrypt: (preimage: string) => decryptSuccessAction(aes, preimage),
     };
+    return aes;
   }
 
   return {

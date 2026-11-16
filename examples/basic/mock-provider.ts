@@ -1,9 +1,15 @@
+import { getMetadataHash } from "../../src";
+import { testBolt11Invoice, testPreimage } from "../../test/fixtures/bolt11";
+
 type ProviderState = {
   bolt11Settled: boolean;
   liquidSettled: boolean;
+  lastInvoice?: string;
 };
 
 const origin = "https://lnaddress.test";
+const aliceMetadata =
+  '[["text/plain","Alice test wallet"],["text/identifier","alice@lnaddress.test"]]';
 
 function json(body: unknown, init?: ResponseInit): Response {
   return new Response(JSON.stringify(body), {
@@ -32,7 +38,7 @@ export function createMockLnurlFetch(): typeof fetch {
         callback: `${origin}/callback/bolt11`,
         minSendable: 1_000,
         maxSendable: 100_000,
-        metadata: '[["text/plain","Alice test wallet"],["text/identifier","alice@lnaddress.test"]]',
+        metadata: aliceMetadata,
         commentAllowed: 80,
         payerData: {
           name: { mandatory: true },
@@ -52,9 +58,13 @@ export function createMockLnurlFetch(): typeof fetch {
     }
 
     if (url.pathname === "/callback/bolt11") {
+      // Sign a real BOLT11 invoice for the requested amount so the client's
+      // default invoice validation (amount, signature, expiry) passes.
+      const amountMsat = BigInt(url.searchParams.get("amount") ?? "0");
+      state.lastInvoice = await testBolt11Invoice(amountMsat, getMetadataHash(aliceMetadata));
       return json({
         status: "OK",
-        pr: "lnbc1qqqqqqqqqqqqqq",
+        pr: state.lastInvoice,
         routes: [],
         verify: `${origin}/verify/bolt11`,
         successAction: {
@@ -79,8 +89,8 @@ export function createMockLnurlFetch(): typeof fetch {
       return json({
         status: "OK",
         settled,
-        preimage: settled ? "00".repeat(32) : null,
-        pr: "lnbc1qqqqqqqqqqqqqq",
+        preimage: settled ? testPreimage : null,
+        ...(state.lastInvoice ? { pr: state.lastInvoice } : {}),
       });
     }
 

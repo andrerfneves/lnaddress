@@ -88,7 +88,7 @@ describe("fetchServiceKeys", () => {
       new Promise<"stalled">((resolve) => setTimeout(() => resolve("stalled"), 100)),
     ]);
 
-    expect(result).toBeInstanceOf(InvalidServiceKeysError);
+    expect(result).toBeInstanceOf(NetworkError);
   });
 
   test("rejects domain mismatches in fetched documents", async () => {

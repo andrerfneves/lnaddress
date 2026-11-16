@@ -5,8 +5,11 @@ Lightning Address-first TypeScript client for LNURL-pay.
 `lnaddress` makes the common Lightning Address flow tiny while keeping the typed primitives wallets, apps, and servers need for advanced LNURL-pay work.
 
 ```sh
-bun i lnaddress
+bun add lnaddress
+# or: npm install lnaddress / pnpm add lnaddress
 ```
+
+> **Pre-release:** `lnaddress` has not been published to npm yet. The first release is published from a `v*` tag (see [Release Instructions](#release-instructions)). Until then, build it from this repository (`bun install && bun run build`).
 
 ```ts
 import { pay } from "lnaddress";
@@ -20,14 +23,21 @@ if (payment.type === "bolt11") {
 }
 ```
 
+## Contents
+
+- [Why lnaddress](#why-lnaddress) · [Supported LUDs](#supported-luds) · [Quickstart](#quickstart-request-a-bolt11-invoice)
+- Flow: [Resolve first, pay later](#resolve-first-pay-later) · [Comments](#comments) · [Payer Data](#payer-data) · [Verify](#verify)
+- Extensions: [Payment Options](#payment-options) · [PaymentQuote units](#paymentquote-units-and-quotes) · [nodePubkeys](#invoice-origin-checks-with-nodepubkeys) · [Service keys](#domain-service-key-discovery) · [Destinations](#destination-instructions)
+- Operations: [Network and provider controls](#network-and-provider-controls) · [Error Handling](#error-handling) · [API Reference](#api-reference) · [Compatibility](#compatibility) · [Security Notes](#security-notes) · [Known limitations](#known-limitations)
+
 ## Why lnaddress
 
 - Lightning Address first, LNURL-pay underneath.
 - Small API surface: resolve, request, pay, verify, and service-key discovery.
 - Native `fetch`, with custom fetch injection for apps, tests, and edge runtimes.
 - Strict TypeScript types with discriminated payment instructions.
-- Runtime validation for provider responses.
-- No axios, no Node-only core APIs, no LNURL kitchen sink.
+- Runtime validation for provider responses, including BOLT11 invoice checks by default.
+- Two small runtime dependencies (`js-sha256`, `zod`; `@noble/secp256k1` is bundled), no Node-only APIs, no LNURL kitchen sink.
 
 ## Supported LUDs
 
@@ -44,7 +54,9 @@ if (payment.type === "bolt11") {
 | LUD-XX | `nodePubkeys` invoice-origin checks for `payRequest` | Supported |
 | LUD-XX | domain service-key discovery at `/.well-known/lnurl-service` | Supported |
 
-`lnaddress` intentionally does not implement withdraw, auth, hosted channels, channel requests, NWC, encrypted provider data, or keysend in v0.1.0.
+`LUD-XX` rows are draft proposals that have no LUD number yet; their wire format may still change.
+
+`lnaddress` intentionally does not implement withdraw, auth, hosted channels, channel requests, NWC, encrypted provider data, or keysend.
 
 ## Quickstart: request a BOLT11 invoice
 
@@ -158,8 +170,11 @@ const result = await verifyPayment(payment);
 
 if (result.status === "OK" && result.settled) {
   console.log(result.preimage);
+  console.log(result.preimageVerified); // true: sha256(preimage) matched the invoice payment hash
 }
 ```
+
+When you pass a BOLT11 payment instruction, `verifyPayment` checks the provider's answer against the invoice. If the response echoes a `pr` that isn't the invoice you requested, or returns a preimage that doesn't hash to the invoice's payment hash, it throws `VerifyError`. A verified preimage sets `preimageVerified: true`. When verifying by URL, the preimage is checked against the `pr` in the response, if there is one.
 
 You can also verify by URL:
 
@@ -335,11 +350,14 @@ This repository includes copy-pasteable examples and a richer mocked playground:
 
 ```sh
 bun examples/basic/resolve.ts
+bun examples/basic/pay-bolt11.ts
 
 cd examples/playground
 bun install
 bun run dev
 ```
+
+The basic scripts use a local mocked provider that signs real BOLT11 invoices, so they run with default validation on. `bun run test:examples` type-checks and runs all of them.
 
 ## Custom Fetch
 
@@ -379,14 +397,25 @@ const quoted = await requestPayment("merchant@example.com", {
 });
 ```
 
-By default, `lnaddress` rejects `.onion`, localhost, loopback, link-local, and private-network HTTP(S) URLs. Opt in only when that is intentional:
+By default, `lnaddress` rejects `.onion`, localhost, loopback, link-local, and private-network HTTP(S) URLs. These checks look at the URL string only; hostnames are not resolved to IPs. Opt in only when that is intentional:
 
 ```ts
 await resolve("https://abcdefghijklmnop.onion/lnurlp/alice", { allowOnion: true });
 await resolve("http://localhost:3000/.well-known/lnurlp/alice", { allowPrivateNetwork: true });
 ```
 
-`redirectPolicy` is enforced before following redirects. `providerPolicy: "same-origin"` requires callback and verify URLs to stay on the resolved provider origin; `"same-site"` allows the same hostname or subdomain. Use a custom `fetch` for stricter DNS/IP allowlists, proxies, or runtime-specific SSRF controls.
+| Option | Default | Behavior |
+| --- | --- | --- |
+| `redirectPolicy` | `"follow"` | Redirects are followed by `lnaddress` itself (up to 20 hops), and every target is checked against the onion/private-network rules *before* it is requested. `"same-origin"` also rejects origin changes, `"no-downgrade"` rejects HTTPS→HTTP, and `"error"` rejects any redirect. `Authorization`, `Proxy-Authorization`, and `Cookie` headers are dropped when a redirect changes origin. |
+| `timeoutMs` | none | Aborts the request if the full response, headers and body, has not arrived in time. |
+| `signal` | none | Caller-controlled cancellation, including while the body is read. Combined with `timeoutMs` when both are set. |
+| `maxResponseBytes` | `1048576` (1 MiB) | Rejects larger response bodies, checking `Content-Length` first and then the bytes actually read. |
+| `providerPolicy` | `"off"` | `"same-origin"` requires callback and verify URLs to stay on the resolved provider origin; `"same-site"` allows the same hostname or a subdomain (not eTLD+1). |
+| `allowOnion` / `allowPrivateNetwork` | `false` | Opt-ins for Tor and local/private hosts. |
+
+The private-network checks look at hostnames and IP literals, not DNS results. For server-side code that handles untrusted input, also use a custom `fetch` for DNS/IP allowlists, proxies, or runtime-specific SSRF controls.
+
+Browsers hide redirect targets from `redirect: "manual"` (an opaque response). When that happens, `lnaddress` repeats the request with native redirect handling and checks the final URL against the same rules. A redirected request is therefore sent twice in browsers, and the target is checked after it is fetched rather than before. Under `redirectPolicy: "error"` the request is not repeated.
 
 ## Error Handling
 
@@ -440,6 +469,25 @@ const payment = await requestPayment("alice@example.com", {
 });
 ```
 
+Validation runs in this order before the callback is sent: `paymentOption`, amount (`amountMsat` range or `unitAmount` unit/bounds), `receiveUnit`, `comment`, mandatory `payerData`, then `providerPolicy` on the callback URL.
+
+| Option | Default | Notes |
+| --- | --- | --- |
+| `amountMsat` | — | Millisatoshis. Mutually exclusive with `unitAmount`; one is required. Checked against `minSendable`/`maxSendable` (or the selected option's bounds). |
+| `unitAmount` | — | `{ amount, unit }` in the unit's smallest denomination. Requires the provider to return `paymentQuote`. |
+| `receiveUnit` | — | Asks the provider to quote the receiver's unit. Requires `paymentQuote.receive`. |
+| `paymentOption` | — | Advertised `paymentOptions` id. Omit for the default LUD-06 Lightning flow. |
+| `comment` | — | LUD-12. Rejected if `commentAllowed` is absent or `0`, or if the comment is longer than `commentAllowed`. |
+| `payerData` | — | LUD-18. Sent as JSON. Unrequested fields are passed through. |
+| `validateBolt11` | `true` | Decodes the invoice and checks amount, network, and expiry. Recovers the signer and checks it against the `n` tag when present. |
+| `validateMetadataHash` | `false` | Also require the invoice description hash to equal `sha256(metadata)`. |
+| `expectedNetwork` | — | `"bitcoin"` (`lnbc`), `"testnet"` (`lntb`), `"signet"` (`lntbs`), or `"regtest"` (`lnbcrt`). |
+| `validateExpiry` | `true` | Reject expired invoices. |
+| `now` | `Date.now()` | Clock override for expiry checks (`Date`, seconds, or a function). |
+| `nodePubkeyPolicy` | `"warn"` | `"warn"`, `"enforce"`, or `"off"`. |
+| `providerPolicy` | `"off"` | See [Network and provider controls](#network-and-provider-controls). |
+| `fetch`, `headers`, `timeoutMs`, `signal`, `redirectPolicy`, `maxResponseBytes`, `allowOnion`, `allowPrivateNetwork` | — | Applied to both the resolve and callback requests. |
+
 ### `pay(input, options)`
 
 One-shot `resolve` plus `requestPayment`.
@@ -462,10 +510,39 @@ validateComment(payRequest, comment);
 validateMandatoryPayerData(payRequest, payerData);
 validatePaymentOption(payRequest, paymentOption);
 validateUnit(payRequest, unitCode, paymentOption, { amount });
+parsePayRequestResponse(raw, context);
+parseSuccessAction(raw, options);
+decryptSuccessAction(action, preimage); // async, LUD-09 AES
+isDestinationPayment(payment);
+assertDestinationPayment(payment);
+destinationMatchesRail(payment, rail);
+assertDestinationRail(payment, rail);
 serviceKeysUrl(domainOrUrl);
 parseServiceKeysResponse(raw, context);
 fetchServiceKeys(domainOrUrl, options);
+LNURL_SERVICE_PATH; // "/.well-known/lnurl-service"
 ```
+
+### Errors
+
+Every error extends `LnAddressError` and carries a stable `code`:
+
+| Class | `code` |
+| --- | --- |
+| `InvalidLightningAddressError` | `INVALID_LIGHTNING_ADDRESS` |
+| `InvalidLnurlError` | `INVALID_LNURL` |
+| `NetworkError` | `NETWORK_ERROR` |
+| `InvalidPayRequestError` | `INVALID_PAY_REQUEST` |
+| `AmountOutOfRangeError` | `AMOUNT_OUT_OF_RANGE` |
+| `CommentNotAllowedError` | `COMMENT_NOT_ALLOWED` |
+| `CommentTooLongError` | `COMMENT_TOO_LONG` |
+| `MissingMandatoryPayerDataError` | `MISSING_MANDATORY_PAYER_DATA` (also exposes `missingFields`) |
+| `InvalidCallbackResponseError` | `INVALID_CALLBACK_RESPONSE` |
+| `InvalidPaymentOptionError` | `INVALID_PAYMENT_OPTION` |
+| `InvalidRequestPaymentOptionsError` | `INVALID_REQUEST_PAYMENT_OPTIONS` |
+| `NodePubkeyMismatchError` | `NODE_PUBKEY_MISMATCH` |
+| `InvalidServiceKeysError` | `INVALID_SERVICE_KEYS` |
+| `VerifyError` | `VERIFY_ERROR` |
 
 ## Types
 
@@ -492,28 +569,37 @@ import type {
 if (payment.type === "bolt11") {
   payment.pr;
 } else {
-  payment.paymentDestination;
+  // Destination instructions carry a paymentDestination, a paymentUri, or both.
+  payment.paymentDestination ?? payment.paymentUri;
 }
 ```
 
 ## Compatibility
 
 - Bun: primary package manager and test runner.
-- Node.js: Node 18+ through native `fetch`.
-- Browsers and edge runtimes: no Node-only APIs in core code.
+- Node.js: Node 18+ through native `fetch` (CI runs a smoke test on 18, 20, 22, and 24).
+- Browsers and edge runtimes: only standard Web APIs (`fetch`, `URL`, Web Crypto, `TextEncoder`, streams). No `Buffer`, `process`, or other Node polyfills are needed. The playground (`examples/playground`) builds with a plain Vite config.
 - Package output: ESM-first with CJS compatibility through `exports.require`.
 
 ## Security Notes
 
 - `metadataHash` is computed from the exact metadata string returned by the provider.
-- `validateBolt11` is enabled by default and checks invoice structure, amount, network, expiry, signature, and payee node id when present.
+- `validateBolt11` is enabled by default. It checks the bech32 checksum, the network prefix, the amount, and expiry, and requires a payment hash. The signature is verified against the `n` payee node id when present; otherwise the payee is recovered from it. Invoice decoding is built in and checked against the BOLT11 specification's test vectors.
 - BOLT11 description-hash validation is opt-in with `validateMetadataHash: true` because current LUD-06 behavior no longer requires it by default.
 - If a provider returns `paymentQuote`, display requested amount, payment amount, receiver amount, fees, and expiry before payment.
 - If a provider advertises `nodePubkeys`, BOLT11 payments include `nodePubkeyVerification` so wallets can show invoice-origin warnings. Mismatches are non-blocking by default (`nodePubkeyPolicy: "warn"`) and can be made strict with `"enforce"`.
 - Domain service-key discovery validates flat `signingKeys` / `encryptionKeys` documents from `/.well-known/lnurl-service`; optional `certChain` metadata is preserved but not trusted beyond caller policy.
-- LUD-09 AES success actions can be decrypted asynchronously with `decryptSuccessAction`.
+- LUD-09 AES success actions can be decrypted with `await action.decrypt(preimage)` or `decryptSuccessAction(action, preimage)`.
 - LUD-09 URL success actions and destination `paymentUri` values are untrusted provider data; do not fetch/open them without app-level policy.
-- Always verify settlement with `verifyPayment` when the provider supplies a verify URL.
+- Use `verifyPayment` when the provider supplies a verify URL. A returned preimage is checked against the invoice payment hash (`preimageVerified: true`), which proves payment. `settled: true` without a preimage is still only the provider's claim.
+
+See [SECURITY.md](./SECURITY.md) for the full security model.
+
+## Known limitations
+
+- Private-network checks inspect hostnames and IP literals only. A public hostname that resolves to a private address is not detected. Use a custom `fetch` with DNS controls on servers.
+- In browsers, redirect targets are checked after the browser has followed them (see [Network and provider controls](#network-and-provider-controls)).
+- `providerPolicy: "same-site"` means same hostname or subdomain, not public-suffix-aware eTLD+1.
 
 ## Roadmap
 
@@ -542,12 +628,16 @@ bun run lint
 bun run build
 ```
 
+CI (`.github/workflows/ci.yml`) runs `bun run check` and an `npm publish --dry-run` on every PR and push to `main`, plus a Node 18/20/22/24 smoke test of the built package.
+
 ## Release Instructions
 
-1. Update `CHANGELOG.md`.
-2. Bump `package.json` with semver.
-3. Create and push a tag like `v0.1.0`.
-4. GitHub Actions publishes with npm provenance/trusted publishing.
+Prerequisite: the npm package must be configured for [trusted publishing](https://docs.npmjs.com/trusted-publishers) from this repository's `release.yml` workflow.
+
+1. Move the `Unreleased` entries in `CHANGELOG.md` under the new version heading.
+2. Bump `version` in `package.json` with semver. The tag must match it.
+3. Commit, then create and push a tag like `v0.1.0`.
+4. `.github/workflows/release.yml` runs `bun run check` and publishes with npm provenance.
 
 Dry run locally:
 

@@ -38,42 +38,50 @@ export function parseSuccessAction(
     return undefined;
   }
 
-  if (tag === "message" && typeof action.message === "string") {
-    return {
-      tag,
-      message: action.message,
-    };
-  }
-
-  if (tag === "url" && typeof action.description === "string" && typeof action.url === "string") {
-    let url: URL;
-    try {
-      url = assertHttpUrl(action.url, options);
-    } catch (cause) {
-      throw new InvalidCallbackResponseError("URL successAction URL is invalid", { cause });
+  if (tag === "message") {
+    if (typeof action.message === "string") {
+      return {
+        tag,
+        message: action.message,
+      };
     }
-
-    return {
-      tag,
-      description: action.description,
-      url: url.toString(),
-    };
+    return undefined;
   }
 
-  if (
-    tag === "aes" &&
-    typeof action.description === "string" &&
-    typeof action.ciphertext === "string" &&
-    typeof action.iv === "string"
-  ) {
-    const aes: SuccessAction = {
-      tag,
-      description: action.description,
-      ciphertext: action.ciphertext,
-      iv: action.iv,
-      decrypt: (preimage: string) => decryptSuccessAction(aes, preimage),
-    };
-    return aes;
+  if (tag === "url") {
+    if (typeof action.description === "string" && typeof action.url === "string") {
+      let url: URL;
+      try {
+        url = assertHttpUrl(action.url, options);
+      } catch (cause) {
+        throw new InvalidCallbackResponseError("URL successAction URL is invalid", { cause });
+      }
+
+      return {
+        tag,
+        description: action.description,
+        url: url.toString(),
+      };
+    }
+    return undefined;
+  }
+
+  if (tag === "aes") {
+    if (
+      typeof action.description === "string" &&
+      typeof action.ciphertext === "string" &&
+      typeof action.iv === "string"
+    ) {
+      const aes: SuccessAction = {
+        tag,
+        description: action.description,
+        ciphertext: action.ciphertext,
+        iv: action.iv,
+        decrypt: (preimage: string) => decryptSuccessAction(aes, preimage),
+      };
+      return aes;
+    }
+    return undefined;
   }
 
   return {
